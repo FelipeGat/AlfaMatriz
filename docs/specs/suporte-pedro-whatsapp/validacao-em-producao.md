@@ -16,6 +16,8 @@ vira comentário na tarefa dele (ou tarefa nova, tipo Bug), e não ajuste no mei
 - [ ] O retrato do Gestor recente (lido a cada 10 min): a agenda dos técnicos pedida pelo WhatsApp (passo
       D1) diz a hora da leitura.
 - [ ] `whatsapp_configs.pedro_ativo` ligado no Gestor.
+- [ ] Para o passo A7: Gestor e Matriz com a lista da casa (31/10/2026) publicados, o Gestor antes, e a lista
+      salva de novo em Suporte › Pedro (ou 15 min depois da publicação). O número de quem testa na lista.
 
 ## A. Identificação (T-478)
 
@@ -34,6 +36,10 @@ vira comentário na tarefa dele (ou tarefa nova, tipo Bug), e não ajuste no mei
 6. Do mesmo número, relate um problema que o cliente X já tem em chamado aberto. **Esperado:** "Registrei
    as informações que você me passou", sem o número do chamado; no Gestor, a informação entra no chamado
    que já existia.
+7. **Quem é da casa, fora do horário** (31/10/2026). Depois das 18:00 ou no fim de semana, de um número da
+   lista de acesso interno, escreva "quantos atendimentos estão abertos no Gestor?". **Esperado:** nenhum
+   menu do Gestor; o Pedro responde pelo nome, com o total por etapa. Do mesmo jeito, de um número fora da
+   lista: o menu do Gestor, como antes.
 
 ## B. Chamado sempre no Gestor (T-488)
 

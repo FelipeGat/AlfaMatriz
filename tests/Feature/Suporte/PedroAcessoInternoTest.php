@@ -139,6 +139,44 @@ class PedroAcessoInternoTest extends TestCase
         $this->post(route('suporte.pedro.acessos'), ['acessos_internos' => '+55 27 98888-7777 | Intruso | diretor'])->assertForbidden();
     }
 
+    /** FR-A11 (Felipe, 31/10/2026): o Gestor decide entre o Pedro e o menu antes daqui, e precisa da lista. */
+    public function test_salvar_a_lista_manda_ao_gestor_so_as_chaves(): void
+    {
+        config(['services.suporte_gestor' => ['url' => 'https://gestor.teste', 'token' => 'segredo-integracao']]);
+        Http::fake(['gestor.teste/*' => Http::response(['quantos' => 2])]);
+
+        $this->actingAs($this->felipe)->post(route('suporte.pedro.acessos'), ['acessos_internos' => "+55 27 99999-0001 | Fulano | diretor\n+55 27 3333-0002 | Ciclano | suporte\n27 99999-0001 | Fulano de novo | gestor"])
+            ->assertSessionHas('status', 'Acessos internos salvos: valem a partir da próxima mensagem.');
+
+        Http::assertSentCount(1);
+        Http::assertSent(fn ($r) => $r->url() === 'https://gestor.teste/api/integracao/matriz/whatsapp/internos'
+            && $r->hasHeader('Authorization', 'Bearer segredo-integracao')
+            && $r['chaves'] === ['2799990001', '2733330002']
+            && ! str_contains($r->body(), 'Fulano') && ! str_contains($r->body(), 'diretor'));
+    }
+
+    public function test_gestor_fora_do_ar_nao_impede_salvar_e_a_rotina_tenta_de_novo(): void
+    {
+        config(['services.suporte_gestor' => ['url' => 'https://gestor.teste', 'token' => 'segredo-integracao']]);
+        Http::fake(['gestor.teste/*' => Http::sequence()->push(['motivo' => 'x'], 500)->push(['motivo' => 'x'], 500)->push(['quantos' => 1])]);
+
+        $this->actingAs($this->felipe)->post(route('suporte.pedro.acessos'), ['acessos_internos' => '+55 27 99999-0001 | Fulano | diretor'])
+            ->assertSessionHasNoErrors()
+            ->assertSessionHas('status', fn ($s) => str_contains($s, 'o Gestor não recebeu a lista'));
+        $this->assertSame('diretor', app(AcessoInterno::class)->deQuem('5527999990001')['perfil'], 'a lista fica salva aqui');
+
+        $this->artisan('suporte:acessos-ao-gestor')->assertFailed();
+        $this->artisan('suporte:acessos-ao-gestor')->assertSuccessful();
+        Http::assertSentCount(3);
+    }
+
+    public function test_sem_gestor_a_rotina_nao_chama_ninguem(): void
+    {
+        Http::fake();
+        $this->artisan('suporte:acessos-ao-gestor')->assertSuccessful();
+        Http::assertNothingSent();
+    }
+
     /** FR-A7 (Felipe, 21/10/2026): achar a cliente, mostrar o que ela tem e perguntar antes de registrar. */
     public function test_pedido_de_registro_traz_a_cliente_com_os_atendimentos_dela(): void
     {

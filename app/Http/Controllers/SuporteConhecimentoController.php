@@ -36,8 +36,13 @@ class SuporteConhecimentoController extends Controller
             return back()->withInput()->withErrors(['acessos_internos' => 'Linha não entendida (use telefone | nome | diretor, gestor ou suporte): '.$ruins[0]]);
         }
         $conhecimento->gravarAjuste(\App\Services\Suporte\AcessoInterno::AJUSTE, $texto);
+        // O Gestor decide Pedro ou menu antes de a mensagem chegar aqui: sem a lista lá, quem
+        // é da casa recebe o menu fora do horário (FR-A11).
+        $gestor = app(\App\Services\Suporte\AcessoInterno::class)->mandarAoGestor();
 
-        return back()->with('status', 'Acessos internos salvos: valem a partir da próxima mensagem.');
+        return back()->with('status', $gestor === false
+            ? 'Acessos internos salvos, mas o Gestor não recebeu a lista: fora do horário, quem é da casa ainda recebe o menu. Nova tentativa em até 15 minutos.'
+            : 'Acessos internos salvos: valem a partir da próxima mensagem.');
     }
 
     private function dono(Request $request): bool

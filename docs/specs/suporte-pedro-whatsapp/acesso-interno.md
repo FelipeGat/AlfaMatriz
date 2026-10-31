@@ -94,4 +94,14 @@ Telegram". O Pedro "não pode se confundir: tem que ter certeza de que sou eu, p
     `Identificacao`, em identificacao.md). O Pedro diz que essas informações só vão para
     os telefones cadastrados do cliente e oferece registrar o problema. O que nasceu na própria conversa pode ser
     informado. O login do portal já seguia essa regra.
+- **FR-A11, a qualquer hora vale também no Gestor** (Felipe, 31/10/2026, sábado: mandou "Boa tarde Pedro" do
+  número dele e recebeu o menu do Gestor).
+  - **Causa:** o Gestor recebe o WhatsApp primeiro e decide sozinho entre o Pedro e o menu, pelo horário (dias
+    úteis, 07:00–18:00), antes de o repasse chegar aqui. A isenção de horário de `Pedro::enfileirar` nunca rodava.
+  - **Agora:** o Matriz manda ao Gestor só as chaves dos telefones da lista (DDD + 8 últimos dígitos, sem nome
+    nem perfil), ao salvar a lista em Suporte › Pedro e a cada 15 minutos (`suporte:acessos-ao-gestor`). Lá elas
+    servem só para entregar a conversa ao Pedro a qualquer hora (Gestor: `docs/specs/whatsapp-pedro`, FR-016). A
+    lista continua sendo uma só, a daqui: a do Gestor é cópia e é substituída inteira a cada envio.
+  - Se o Gestor não recebe, a tela avisa e a rotina tenta de novo; até lá, fora do horário, quem é da casa
+    recebe o menu, como antes. O tempo limite do Gestor vale igual: sem resposta do Pedro em 5 min, sai o menu.
 - **Fora do escopo** (Felipe, 21/10/2026: "pode deixar de fora o AlfaHome"): o pessoal do AlfaHome.

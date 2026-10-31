@@ -56,6 +56,23 @@ class AcessoInterno
         }));
     }
 
+    /** @return list<string> as chaves dos telefones da lista (DDD + 8 últimos dígitos), sem repetir */
+    public function chaves(): array
+    {
+        return array_values(array_unique(array_map(fn ($p) => (string) CanalWhatsApp::chave($p['telefone']), $this->lista())));
+    }
+
+    /**
+     * Manda as chaves ao Gestor (FR-A11). Null quando o número não passa pelo Gestor: aí
+     * quem decide o horário é só o Pedro::enfileirar daqui.
+     */
+    public function mandarAoGestor(): ?bool
+    {
+        $canal = app(CanalWhatsApp::class);
+
+        return $canal->viaGestor() ? $canal->numerosInternosAoGestor($this->chaves()) : null;
+    }
+
     /** @return array{telefone: string, nome: string, perfil: string}|null */
     public function deQuem(string $telefone): ?array
     {

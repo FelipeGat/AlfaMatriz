@@ -9,6 +9,7 @@ use App\Models\User;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -60,6 +61,31 @@ class CanalWhatsApp
         }
 
         return (array) $r->json();
+    }
+
+    /**
+     * As chaves dos números da casa (acesso-interno.md, FR-A11): o Gestor decide entre o
+     * Pedro e o menu ANTES de o repasse chegar aqui, então precisa saber quem é da casa
+     * para não mandar o menu a ela fora do horário. Só a chave sai — nome e perfil, não.
+     * Falha não derruba quem chamou: devolve false, e a rotina de 15 minutos tenta de novo.
+     *
+     * @param  list<string>  $chaves
+     */
+    public function numerosInternosAoGestor(array $chaves): bool
+    {
+        try {
+            $r = Http::withToken((string) config('services.suporte_gestor.token'))->acceptJson()->timeout(20)
+                ->post(rtrim((string) config('services.suporte_gestor.url'), '/').'/api/integracao/matriz/whatsapp/internos', ['chaves' => array_values($chaves)]);
+        } catch (\Throwable $e) {
+            Log::warning('[Pedro] a lista da casa não chegou ao Gestor', ['erro' => $e::class]);
+
+            return false;
+        }
+        if (! $r->successful()) {
+            Log::warning('[Pedro] o Gestor recusou a lista da casa', ['status' => $r->status(), 'motivo' => $r->json('motivo')]);
+        }
+
+        return $r->successful();
     }
 
     /** O motivo do contrato, em português para a tela. */

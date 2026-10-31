@@ -168,6 +168,14 @@ Schedule::command('suporte:registros')
     ->withoutOverlapping()
     ->onOneServer();
 
+// Os números da casa vão ao Gestor, que decide entre o Pedro e o menu antes de a mensagem
+// chegar aqui (acesso-interno.md, FR-A11). A tela manda ao salvar; isto cobre a falha de
+// rede e a primeira carga depois da publicação.
+Schedule::command('suporte:acessos-ao-gestor')
+    ->everyFifteenMinutes()
+    ->withoutOverlapping()
+    ->onOneServer();
+
 // Os tokens do quadro que a Central de IA emite por pedido (T-472) vencem
 // sozinhos, mas a linha fica: um pedido por vez, todo dia, enche a tabela.
 Schedule::command('sanctum:prune-expired', ['--hours' => 24])
