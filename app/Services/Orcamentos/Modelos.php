@@ -15,6 +15,8 @@ namespace App\Services\Orcamentos;
 class Modelos
 {
     public const PRODUTOS = [
+        /* Produtos da VixCard: saíram em 31/10/2026, quando o Matriz ficou só com a Alfa e o
+         * Grupo Soluções. Os textos ficam aqui comentados.
         // VixCard — comanda digital por cartão NFC (antes Vix-Beer; ADR 0003 do nex-beer).
         // NÃO é chope self-service: quem lê o cartão é o atendente, no celular Android.
         'nexbeer' => [
@@ -73,6 +75,7 @@ class Modelos
                 ['Landing page', 1, 'un', 0, 'unico'],
             ],
         ],
+        */
         // ERP do Grupo Soluções, vendido a terceiros como "Gestor VixSoftHouse" (proposta Gustavo, 19/10/2026).
         'gestor' => [
             'nome' => 'Gestor',

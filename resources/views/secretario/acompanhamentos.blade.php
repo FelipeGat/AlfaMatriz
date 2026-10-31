@@ -1,6 +1,6 @@
 <x-app-layout>
     <x-slot name="titulo">Acompanhamentos</x-slot>
-    <x-slot name="contexto"><span>central de gestão · Grupo Soluções e VixCard</span></x-slot>
+    <x-slot name="contexto"><span>central de gestão · Grupo Soluções</span></x-slot>
     <x-slot name="acoes">
         <a href="{{ route('secretario.configuracoes') }}#avisos"
            class="h-[30px] px-3 inline-flex items-center gap-1.5 rounded-control border border-btn-line text-ink-dim text-[12.5px] font-semibold hover:text-brand hover:border-brand transition whitespace-nowrap">
@@ -124,7 +124,7 @@
                             <option value="">Toda prioridade</option><option value="alta">Alta</option><option value="normal">Média</option><option value="baixa">Baixa</option>
                         </select>
                         <select x-model="origem" class="rounded-control border border-btn-line bg-canvas px-2 py-1.5 text-[13px] text-ink">
-                            <option value="">Toda origem</option><option value="Ponto de gestão">Pontos lançados</option><option value="Alerta · regra">Alertas das regras</option><option value="Gestor">Gestor (Grupo Soluções)</option><option value="VixOrganize">VixOrganize (VixCard)</option>
+                            <option value="">Toda origem</option><option value="Ponto de gestão">Pontos lançados</option><option value="Alerta · regra">Alertas das regras</option><option value="Gestor">Gestor (Grupo Soluções)</option>{{-- <option value="VixOrganize">VixOrganize (VixCard)</option> — desligado em 31/10/2026 --}}
                         </select>
                         <button type="button" @click="prio = ''; origem = ''; busca = ''" class="text-[12.5px] text-ink-mute hover:text-brand">limpar</button>
                     </div>
@@ -235,7 +235,7 @@
                     @csrf
                     <select name="empresa" class="{{ $campo }}">
                         @foreach (\App\Services\Secretario\CentralDeGestao::EMPRESAS as $k => $nome)
-                            <option value="{{ $k }}" @selected(old('empresa', 'vixcard') === $k)>{{ $nome }}</option>
+                            <option value="{{ $k }}" @selected(old('empresa', 'grupo_solucoes') === $k)>{{ $nome }}</option>
                         @endforeach
                     </select>
                     <input type="text" name="titulo" x-ref="ponto" value="{{ old('titulo') }}" maxlength="190" required placeholder="O que precisa da sua decisão?" class="{{ $campo }}">

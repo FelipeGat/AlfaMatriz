@@ -20,7 +20,8 @@ use Illuminate\Support\Carbon;
 class CockpitService
 {
     /** O dono do repositório no GitHub → o nome do grupo da tela (em minúsculas). */
-    public const GRUPO_DO_DONO = ['vixhouse' => 'vixcard', 'felipegat' => 'grupo soluções'];
+    // Desligado em 31/10/2026: o Matriz ficou só com a Alfa e o Grupo Soluções. Era: 'vixhouse' => 'vixcard'.
+    public const GRUPO_DO_DONO = [/* 'vixhouse' => 'vixcard', */ 'felipegat' => 'grupo soluções'];
 
     public function __construct(private readonly AgentesService $agentes) {}
 

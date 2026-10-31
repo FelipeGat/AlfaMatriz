@@ -38,15 +38,16 @@ class PainelVixcard
      * a da Alfa Soluções, cada uma com as naturezas de sistema que a compõem.
      */
     public const PASTAS = [
-        'vixcard' => ['Projetos VixCard', ['vixcard']],
+        // Desligada em 31/10/2026 (o Matriz ficou só com a Alfa e o Grupo Soluções).
+        // 'vixcard' => ['Projetos VixCard', ['vixcard']],
         'alfa' => ['Projetos Alfa Soluções', ['produto', 'interno']],
     ];
 
-    public function projetos(?CarbonImmutable $hoje = null, string $pasta = 'vixcard'): Collection
+    public function projetos(?CarbonImmutable $hoje = null, string $pasta = 'alfa'): Collection
     {
         $hoje ??= CarbonImmutable::today();
 
-        return Sistema::whereIn('natureza', self::PASTAS[$pasta][1] ?? ['vixcard'])->where('ativo', true)->orderBy('nome')->get()
+        return Sistema::whereIn('natureza', self::PASTAS[$pasta][1] ?? self::PASTAS['alfa'][1])->where('ativo', true)->orderBy('nome')->get()
             ->map(fn (Sistema $s) => $this->projeto($s, $hoje));
     }
 

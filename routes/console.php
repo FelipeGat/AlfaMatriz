@@ -115,12 +115,12 @@ Schedule::command('secretario:emails')
     ->withoutOverlapping()
     ->onOneServer();
 
-// Projetos da VixCard (docs/specs/secretario-vixorganize): a fila do
-// VixOrganize das contas conectadas, a cada 10 min. Só GET.
-Schedule::command('secretario:vixorganize')
-    ->everyTenMinutes()
-    ->withoutOverlapping()
-    ->onOneServer();
+// VixOrganize (docs/specs/secretario-vixorganize): desligado em 31/10/2026, quando o
+// Matriz ficou só com a Alfa e o Grupo Soluções. O comando continua existindo.
+// Schedule::command('secretario:vixorganize')
+//     ->everyTenMinutes()
+//     ->withoutOverlapping()
+//     ->onOneServer();
 
 // Os alertas do AlfaMonitor que o webhook não entregou (#399): o monitor
 // desiste depois de ~8h40, e o Matriz fora mais que isso os perderia. A

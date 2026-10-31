@@ -30,7 +30,7 @@ from faster_whisper import WhisperModel
 
 VOCABULARIO = os.environ.get(
     "WHISPER_VOCABULARIO",
-    "AlfaMatriz, AlfaGym, AlfaControl, AlfaHome, VixCard, VixHouse, Vix-ID, VixLink, VixTrace, RFID, NFC, "
+    "AlfaMatriz, AlfaGym, AlfaControl, AlfaHome, AlfaJornada, RFID, NFC, "
     "Grupo Soluções, Delta, Invest, GW, Gestor, proposta, orçamento, Condonal.",
 )
 

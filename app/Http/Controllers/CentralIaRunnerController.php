@@ -54,6 +54,8 @@ class CentralIaRunnerController extends Controller
             'em_curso' => ['nullable', 'array', 'max:50'],
             'em_curso.*' => ['integer'],
         ]);
+        // Antes de tudo, para o estado e as sessões também não levarem o projeto.
+        $dados['projetos'] = array_values(array_filter($dados['projetos'], fn ($p) => ! $this->fora($p)));
 
         $token = $request->user()->currentAccessToken();
         $tokenId = $token instanceof \Laravel\Sanctum\PersonalAccessToken && is_int($token->getKey()) ? $token->getKey() : null;
@@ -233,6 +235,18 @@ class CentralIaRunnerController extends Controller
      * O estado de cada projeto, como o runner mediu — só os campos que a tela
      * mostra, com tamanho limitado, e só de projetos que a máquina informou.
      */
+    /** Projeto que a Central não lista (config central_ia.projetos_fora). */
+    private function fora(string $projeto): bool
+    {
+        foreach (config('central_ia.projetos_fora', []) as $padrao) {
+            if (fnmatch($padrao, $projeto, FNM_CASEFOLD)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private function estado(array $estado, array $projetos): array
     {
         $limpo = [];
@@ -269,7 +283,8 @@ class CentralIaRunnerController extends Controller
         $linhas = [];
 
         foreach (array_slice((array) ($c['linhas'] ?? []), 0, 2000) as $l) {
-            if (! is_array($l) || ! preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) ($l['dia'] ?? '')) || ! in_array($l['agente'] ?? null, ['claude', 'codex', 'copilot'], true)) {
+            if (! is_array($l) || ! preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) ($l['dia'] ?? '')) || ! in_array($l['agente'] ?? null, ['claude', 'codex', 'copilot'], true)
+                || (is_string($l['projeto'] ?? null) && $this->fora($l['projeto']))) {
                 continue;
             }
             $linhas[] = [

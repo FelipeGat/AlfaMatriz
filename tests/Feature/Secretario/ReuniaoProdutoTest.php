@@ -48,13 +48,14 @@ class ReuniaoProdutoTest extends TestCase
 
     public function test_so_o_dono_vincula_o_produto(): void
     {
-        $this->actingAs($this->felipe)->patch(route('secretario.reunioes.produto', $this->r->id), ['sistema_id' => $this->vixId->id])->assertRedirect();
-        $this->assertSame($this->vixId->id, $this->r->fresh()->sistema_id);
-        $this->actingAs($this->felipe)->get(route('secretario.reunioes.index'))->assertOk()->assertSee('Produto')->assertSee('Vix-ID')->assertSee('AlfaGym');
+        // Desde 31/10/2026 só produto da Alfa: o produto VixCard saiu da lista.
+        $this->actingAs($this->felipe)->patch(route('secretario.reunioes.produto', $this->r->id), ['sistema_id' => $this->gym->id])->assertRedirect();
+        $this->assertSame($this->gym->id, $this->r->fresh()->sistema_id);
+        $this->actingAs($this->felipe)->get(route('secretario.reunioes.index'))->assertOk()->assertSee('Produto')->assertSee('AlfaGym')->assertDontSee('Vix-ID');
 
         $this->actingAs($this->rossini)->patch(route('secretario.reunioes.produto', $this->r->id), ['sistema_id' => $this->gym->id])->assertNotFound();
         $this->actingAs($this->victor)->patch(route('secretario.reunioes.produto', $this->r->id), ['sistema_id' => $this->gym->id])->assertForbidden();
-        $this->assertSame($this->vixId->id, $this->r->fresh()->sistema_id);
+        $this->assertSame($this->gym->id, $this->r->fresh()->sistema_id);
     }
 
     public function test_compartilha_com_participante_que_ve_o_retrato_sem_a_transcricao(): void
@@ -86,6 +87,7 @@ class ReuniaoProdutoTest extends TestCase
 
     public function test_aparece_no_painel_vixcard_so_se_o_produto_for_vixcard(): void
     {
+        $this->markTestSkipped('A pasta Projetos VixCard foi desligada em 31/10/2026 (o Matriz ficou só com a Alfa e o Grupo Soluções).');
         $this->r->compartilhadaCom()->attach($this->victor->id);
         $this->r->update(['sistema_id' => $this->gym->id]);
         $this->actingAs($this->victor)->get(route('vixcard.projetos'))->assertOk()->assertDontSee('RFID para a confecção');

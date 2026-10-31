@@ -215,7 +215,8 @@
                 </div>
             </section>
 
-            {{-- Projetos da VixCard (docs/specs/secretario-vixorganize). A chave não volta para a tela. --}}
+            {{-- VixOrganize (docs/specs/secretario-vixorganize): desligado em 31/10/2026, quando o Matriz
+                 ficou só com a Alfa e o Grupo Soluções. A seção fica comentada.
             <section id="vixorganize" class="scroll-mt-20 rounded-panel border border-line bg-surface">
                 <button type="button" @click="aberto.vixorganize = !aberto.vixorganize" class="flex w-full items-center gap-2.5 border-b border-line px-4 py-3 text-left">
                     <span class="h-5 w-5 text-ink-dim"><x-nav-icon name="view-grid" peso="1.7" /></span>
@@ -247,6 +248,7 @@
                     </form>
                 </div>
             </section>
+            --}}
 
             <section class="rounded-panel border border-line bg-surface">
                 <button type="button" @click="aberto.gestor = !aberto.gestor" class="flex w-full items-center gap-2.5 border-b border-line px-4 py-3 text-left">
@@ -283,7 +285,7 @@
                         ['chat', 'Telegram', $telegramPareado ? ['ok', 'Conectado'] : ['erro', 'Não ligado']],
                         ['microphone', 'Transcrição de áudio', $maquinaOnline ? ['ok', 'Disponível'] : ['alerta', 'Máquina desligada']],
                         ['building', 'Gestor', $gestorEstado],
-                        ['view-grid', 'VixOrganize', $vixEstado],
+                        /* ['view-grid', 'VixOrganize', $vixEstado], — desligado em 31/10/2026 */
                     ] as [$icone, $rotulo, $st])
                         <li class="flex items-center gap-3 px-4 py-2.5">
                             <span class="h-5 w-5 text-ink-dim"><x-nav-icon :name="$icone" peso="1.7" /></span>

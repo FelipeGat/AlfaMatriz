@@ -43,10 +43,10 @@ class SessoesEConsumoTest extends TestCase
     {
         Sanctum::actingAs($user, ['central-ia-runner']);
         $this->postJson(route('central-ia.runner.batida'), $extra + [
-            'maquina' => 'wsl', 'agentes' => ['claude', 'codex', 'copilot'], 'projetos' => ['gestor', 'alfahome', 'vixcard'],
+            'maquina' => 'wsl', 'agentes' => ['claude', 'codex', 'copilot'], 'projetos' => ['gestor', 'alfahome', 'alfagym'],
             'estado' => [
                 'gestor' => ['git' => true, 'branch' => 'feature/custo', 'pendentes' => 1, 'ultimo_commit' => now()->subHour()->toIso8601String()],
-                'vixcard' => ['git' => true, 'branch' => 'Felipe', 'pendentes' => 33, 'ultimo_commit' => now()->subDays(20)->toIso8601String()],
+                'alfagym' => ['git' => true, 'branch' => 'Felipe', 'pendentes' => 33, 'ultimo_commit' => now()->subDays(20)->toIso8601String()],
             ],
             'sessoes' => [[
                 'agente' => 'claude', 'id' => self::SESSAO, 'projeto' => 'gestor', 'cwd' => '/home/x/projetos',
@@ -88,7 +88,7 @@ class SessoesEConsumoTest extends TestCase
 
         $recentes = $this->actingAs($user)->getJson(route('central-ia.painel'))->json('recentes');
 
-        $this->assertSame(['gestor', 'vixcard'], array_column($recentes, 'nome'));
+        $this->assertSame(['gestor', 'alfagym'], array_column($recentes, 'nome'));
         $this->assertSame(33, $recentes[1]['pendentes']);
     }
 

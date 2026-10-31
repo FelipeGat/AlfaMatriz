@@ -63,10 +63,10 @@
             ['route' => 'produtos.index', 'recurso' => 'sistemas', 'pattern' => ['produtos.*', 'sistemas.*', 'precos.*'], 'label' => 'Produtos', 'icon' => 'cube-outline', 'matriz' => true],
             ['route' => 'faturamento.index', 'recurso' => 'faturamento', 'pattern' => 'faturamento.*', 'label' => 'Faturamento', 'icon' => 'repeat'],
             // Projetos (19/10/2026): veio de Desenvolvimento, com duas pastas dentro —
-            // Projetos VixCard e Projetos Alfa Soluções. A rota segue `vixcard.projetos`
-            // porque é a tela inicial da conta VixCard.
+            // Projetos Alfa Soluções (a pasta da VixCard saiu em 31/10/2026). A rota segue
+            // `vixcard.projetos` porque o nome vem de quando a tela era da conta VixCard.
             ['route' => 'vixcard.projetos', 'recurso' => 'tarefas', 'pattern' => 'vixcard.*', 'label' => 'Projetos', 'icon' => 'tag', 'matriz' => true],
-            // Orçamentos VixCard (orcamentos-vixcard): recurso fora do admin — Felipe e Victor.
+            // Orçamentos (orcamentos-vixcard): recurso fora do admin.
             ['route' => 'orcamentos.index', 'recurso' => 'orcamentos', 'pattern' => 'orcamentos.*', 'label' => 'Orçamentos', 'icon' => 'document', 'matriz' => true],
         ],
         'Financeiro' => [

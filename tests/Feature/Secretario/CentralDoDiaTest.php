@@ -90,9 +90,9 @@ class CentralDoDiaTest extends TestCase
         ]]]);
         $this->actingAs($u);
 
-        $this->post(route('secretario.acompanhamentos.pontos'), ['empresa' => 'vixcard', 'titulo' => 'Aprovar tabela de preços', 'prazo' => '2026-10-20', 'prioridade' => 'alta'])->assertRedirect();
+        $this->post(route('secretario.acompanhamentos.pontos'), ['empresa' => 'invest', 'titulo' => 'Aprovar tabela de preços', 'prazo' => '2026-10-20', 'prioridade' => 'alta'])->assertRedirect();
         $this->post(route('secretario.acompanhamentos.pontos'), ['empresa' => 'outra', 'titulo' => 'x', 'prioridade' => 'alta'])->assertSessionHasErrors('empresa');
-        $ponto = SecretarioItem::where('empresa', 'vixcard')->sole();
+        $ponto = SecretarioItem::where('empresa', 'invest')->sole();
         $this->assertTrue($ponto->so_data);
 
         $r = $this->get(route('secretario.acompanhamentos'))->assertOk();

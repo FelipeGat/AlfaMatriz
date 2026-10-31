@@ -21,7 +21,7 @@
 @endphp
 <x-app-layout>
     <x-slot name="titulo">{{ $o ? 'Orçamento '.$o->codigo() : 'Novo orçamento' }}</x-slot>
-    <x-slot name="contexto"><span>{{ $o ? $o->cliente.' · '.Orcamento::SITUACOES[$o->situacao] : 'Comercial · VixCard' }}</span></x-slot>
+    <x-slot name="contexto"><span>{{ $o ? $o->cliente.' · '.Orcamento::SITUACOES[$o->situacao] : 'Comercial' }}</span></x-slot>
     <x-slot name="acoes">
         <a href="{{ route('orcamentos.index') }}" class="{{ $botao }}">Orçamentos</a>
     </x-slot>

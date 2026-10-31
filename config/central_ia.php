@@ -9,6 +9,14 @@ return [
     // mensagem cabe nos dois canais sem ser partida.
     'max_texto' => 3000,
 
+    // Pastas que a Central não lista, mesmo que a máquina as tenha (padrão do
+    // fnmatch, sem diferença de maiúscula). Desde 31/10/2026 o Matriz é só da
+    // Alfa e do Grupo Soluções (dono do produto): projeto de outra empresa numa
+    // máquina ligada à Central não aparece nem recebe pedido. A máquina tem o
+    // seu filtro (CENTRAL_IA_IGNORAR no runner), mas ele depende de cada pessoa
+    // configurar; este vale para todas.
+    'projetos_fora' => ['vix*', 'nexbeer*', 'perfil-digital*', 'serra_park*', 'serrapark*'],
+
     'agentes' => [
         // Pedidos por pessoa por dia, contando todos os agentes. Cada pedido
         // gasta a assinatura de IA de quem pediu.

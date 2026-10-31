@@ -49,7 +49,7 @@ class OrcamentosTest extends TestCase
     private function dados(array $extra = []): array
     {
         return array_replace([
-            'produto' => 'vix-id', 'cliente' => 'Marmoraria Lorenzo', 'contato' => 'Lorenzo', 'cidade' => 'Cariacica · ES', 'validade_dias' => 15,
+            'produto' => 'alfacontrol', 'cliente' => 'Marmoraria Lorenzo', 'contato' => 'Lorenzo', 'cidade' => 'Cariacica · ES', 'validade_dias' => 15,
             'titulo' => 'Controle de acesso', 'destaque' => 'Vix-ID', 'lead' => 'Portaria com RFID.', 'entrada' => 10000, 'parcelas' => 10, 'desconto_avista' => 5,
             'inclui' => "Portal RFID\nTreinamento", 'nao_inclui' => 'Obras civis', 'passos' => "Aprovação\nInstalação", 'aceite' => 1,
             'itens' => [
@@ -72,8 +72,8 @@ class OrcamentosTest extends TestCase
 
     public function test_cria_numera_totaliza_e_gera_o_pdf_padrao(): void
     {
-        $this->actingAs($this->felipe)->get(route('orcamentos.create', ['produto' => 'cartoes-nfc']))->assertOk()
-            ->assertSee('NTAG213 personalizado')->assertSee('Salvar e ver o PDF')->assertSee('2 · Itens &amp; valores', false);
+        $this->actingAs($this->felipe)->get(route('orcamentos.create', ['produto' => 'alfacontrol']))->assertOk()
+            ->assertSee('Licen\u00e7a AlfaControl', false)->assertSee('Salvar e ver o PDF')->assertSee('2 · Itens &amp; valores', false);
         $this->post(route('orcamentos.store'), $this->dados())->assertRedirect();
         $o = Orcamento::sole();
         $this->assertSame([2026, 1, 1, 'rascunho'], [$o->ano, $o->numero, $o->revisao, $o->situacao]);

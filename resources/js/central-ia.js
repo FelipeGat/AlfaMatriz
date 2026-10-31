@@ -247,7 +247,7 @@ export function centralIa(config) {
         irPara(tela) { this.tela = tela; if (['atividade', 'consumo'].includes(tela)) this.carregarRelatorio(tela); if (tela === 'ajustes') this.carregarMaquinas(); guardar('central-ia:tela', tela); if (tela === 'projetos') this.$nextTick(() => { const f = this.$refs.feed; if (f) f.scrollTop = f.scrollHeight; }); },
 
         async criarGrupo() {
-            const nome = prompt('Nome do grupo (ex.: VixCard, Grupo Soluções, Pessoal):');
+            const nome = prompt('Nome do grupo (ex.: Alfa, Grupo Soluções, Pessoal):');
             if (!nome?.trim()) return;
             try { await this.pedir(config.grupos, 'POST', { nome: nome.trim() }); this.reconectar(); } catch (erro) { this.falhou(erro); }
         },

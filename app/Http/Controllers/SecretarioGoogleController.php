@@ -138,7 +138,7 @@ class SecretarioGoogleController extends Controller
                 // O calendário de cada evento (filtro "Meus calendários"): a empresa do ponto/compromisso, senão a origem.
                 'calendario' => match (true) {
                     // Agenda do Google com o nome da empresa (ex.: "VixCard", "Comercial Grupo") ganha a cor dela.
-                    $x['origem'] === 'google' && str_contains(mb_strtolower($x['origem_rotulo']), 'vixcard') => 'vixcard',
+                    // Saiu em 31/10/2026 com a VixCard: $x['origem'] === 'google' && str_contains(mb_strtolower($x['origem_rotulo']), 'vixcard') => 'vixcard',
                     $x['origem'] === 'google' && str_contains(mb_strtolower($x['origem_rotulo']), 'grupo') => 'grupo_solucoes',
                     ($x['empresa'] ?? null) === null => $x['origem'],
                     in_array($x['empresa'], \App\Services\Secretario\CentralDeGestao::COM_CALENDARIO, true) => $x['empresa'],

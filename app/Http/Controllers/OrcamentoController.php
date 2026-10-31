@@ -56,7 +56,7 @@ class OrcamentoController extends Controller
 
     public function create(Request $request): View
     {
-        $produto = array_key_exists((string) $request->query('produto'), Modelos::PRODUTOS) ? (string) $request->query('produto') : 'vix-id';
+        $produto = array_key_exists((string) $request->query('produto'), Modelos::PRODUTOS) ? (string) $request->query('produto') : 'alfacontrol';
 
         $lead = $request->filled('lead') ? Lead::find($request->integer('lead')) : null;
 

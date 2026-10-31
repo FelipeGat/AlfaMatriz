@@ -12,6 +12,12 @@ class ProdutoVixcardTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->markTestSkipped('Desligado em 31/10/2026: o Matriz ficou só com a Alfa e o Grupo Soluções, e a aba Produtos VixCard saiu (o código fica comentado).');
+    }
+
     public function test_cadastra_sem_bloco_comercial_e_volta_para_a_aba_dele(): void
     {
         $this->actingAs(User::factory()->create())

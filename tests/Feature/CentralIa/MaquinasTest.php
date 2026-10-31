@@ -163,6 +163,28 @@ class MaquinasTest extends TestCase
         $this->withToken($token)->postJson(route('central-ia.runner.batida'), ['maquina' => 'mac-ana', 'agentes' => [], 'projetos' => []])->assertUnauthorized();
     }
 
+    /** 31/10/2026: pasta de outra empresa na máquina não entra na Central — nem no estado, nem nas sessões, nem no consumo. */
+    public function test_batida_descarta_os_projetos_de_fora_do_matriz(): void
+    {
+        config(['central_ia.projetos_fora' => ['outra*', 'ACME-*']]);
+        $ana = $this->pessoa();
+        $token = $this->trocar($this->codigo($ana), 'pc-ana')->json('token');
+        Auth::forgetGuards();
+        $this->withToken($token)->postJson(route('central-ia.runner.batida'), ['maquina' => 'pc-ana', 'agentes' => ['claude'],
+            'projetos' => ['alfagym', 'outra-empresa', 'acme-painel', 'Outra_Coisa'],
+            'estado' => ['alfagym' => ['git' => true], 'outra-empresa' => ['git' => true]],
+            'sessoes' => [['agente' => 'claude', 'id' => 'sessao-0001', 'projeto' => 'outra-empresa', 'cwd' => '/x'], ['agente' => 'claude', 'id' => 'sessao-0002', 'projeto' => 'alfagym', 'cwd' => '/y']],
+            'consumo' => ['linhas' => [['dia' => '2026-10-31', 'agente' => 'claude', 'projeto' => 'acme-painel', 'entrada' => 5], ['dia' => '2026-10-31', 'agente' => 'claude', 'projeto' => 'alfagym', 'entrada' => 7]]],
+        ])->assertOk();
+
+        $r = CentralIaRunner::where('user_id', $ana->id)->firstOrFail();
+        $this->assertSame(['alfagym'], $r->projetos);
+        $this->assertSame(['alfagym'], array_keys($r->estado));
+        $this->assertSame(['alfagym'], array_column($r->sessoes, 'projeto'));
+        $this->assertSame(['alfagym'], array_column($r->consumo['linhas'], 'projeto'));
+        $this->assertSame(['alfagym'], app(AgentesService::class)->disponiveis($ana)['projetos']);
+    }
+
     /** Revisão da T-374: o pedido que a máquina tinha na mão não fica "executando" até o teto. */
     public function test_desconectar_interrompe_o_pedido_que_a_maquina_tinha_na_mao(): void
     {

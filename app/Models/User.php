@@ -155,12 +155,18 @@ class User extends Authenticatable
      */
     public function temEscopoVixcard(): bool
     {
-        // Do mesmo cache das permissões (uma consulta por requisição): isto é
-        // perguntado dentro de TODA consulta escopada.
-        $concedidas = $this->permissoesConcedidas();
+        // Desligado em 31/10/2026: o Matriz ficou só com a Alfa e o Grupo
+        // Soluções, e nenhuma conta é mais recortada. Este é o interruptor
+        // único: com ele em false, o escopo, a tela inicial, o MCP e o quadro
+        // compacto voltam ao normal. O código fica para referência.
+        return false;
 
-        return isset($concedidas['perfil:'.\App\Models\Scopes\EscopoVixcard::PERFIL])
-            && ! isset($concedidas[self::QUADRO_FORA_DA_VIXCARD]);
+        // // Do mesmo cache das permissões (uma consulta por requisição): isto é
+        // // perguntado dentro de TODA consulta escopada.
+        // $concedidas = $this->permissoesConcedidas();
+        //
+        // return isset($concedidas['perfil:'.\App\Models\Scopes\EscopoVixcard::PERFIL])
+        //     && ! isset($concedidas[self::QUADRO_FORA_DA_VIXCARD]);
     }
 
     /**

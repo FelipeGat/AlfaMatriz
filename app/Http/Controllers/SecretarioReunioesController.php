@@ -195,7 +195,8 @@ class SecretarioReunioesController extends Controller
     /** Os produtos que podem ser vinculados: o catálogo inteiro, VixCard inclusive. */
     public static function produtos(): \Illuminate\Database\Eloquent\Builder
     {
-        return Sistema::whereIn('natureza', ['produto', 'vixcard'])->where('ativo', true)->orderBy('nome');
+        // Era ['produto', 'vixcard']; a VixCard saiu do Matriz em 31/10/2026.
+        return Sistema::whereIn('natureza', ['produto' /* , 'vixcard' */])->where('ativo', true)->orderBy('nome');
     }
 
     /** A empresa da reunião, trocada na própria lista. */

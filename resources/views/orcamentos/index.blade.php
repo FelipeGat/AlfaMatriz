@@ -12,7 +12,7 @@
 @endphp
 <x-app-layout>
     <x-slot name="titulo">Orçamentos</x-slot>
-    <x-slot name="contexto"><span>Comercial · VixSoftHouse · propostas, conversão e valores</span></x-slot>
+    <x-slot name="contexto"><span>Comercial · propostas, conversão e valores</span></x-slot>
 
     {{-- docs/specs/orcamentos-vixcard/padrao-e-historico.md (FR-H11): o painel da tela no
          molde que o Felipe mandou em 20/10/2026 — indicadores e gráficos do período, sobre as

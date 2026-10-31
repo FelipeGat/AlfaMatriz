@@ -59,14 +59,15 @@ class ModeloVixHouseTest extends TestCase
 
     public function test_sistema_nasce_no_vixhouse_e_cartao_no_classico(): void
     {
-        $this->assertSame('vixhouse', Modelos::modeloDoPdf('vix-id'));
+        $this->assertSame('vixhouse', Modelos::modeloDoPdf('alfacontrol'));
         $this->assertSame('classico', Modelos::modeloDoPdf('cartoes-nfc'));
         $this->actingAs($this->felipe)->get(route('orcamentos.create', ['produto' => 'gestor']))->assertOk()->assertSee('Modelo do PDF')->assertSee('VixHouse · sistemas');
 
         // Sem a escolha no formulário, vale o do produto.
         $this->post(route('orcamentos.store'), $this->inove())->assertSessionHasNoErrors()->assertRedirect();
-        $this->post(route('orcamentos.store'), $this->inove(['produto' => 'cartoes-nfc', 'cliente' => 'Clube']))->assertRedirect();
-        $this->assertSame(['vixhouse', 'classico'], Orcamento::orderBy('id')->pluck('modelo')->all());
+        // O cartão NFC saiu do catálogo em 31/10/2026 (produto da VixCard): já não se cria orçamento dele.
+        $this->post(route('orcamentos.store'), $this->inove(['produto' => 'cartoes-nfc', 'cliente' => 'Clube']))->assertSessionHasErrors('produto');
+        $this->assertSame(['vixhouse'], Orcamento::orderBy('id')->pluck('modelo')->all());
 
         // O histórico importado foi enviado no clássico; o levantamento pode pedir o VixHouse.
         $base = ['grupo' => 'g', 'ordem_no_grupo' => 1, 'data' => '2026-10-25', 'situacao' => 'rascunho', 'sistema' => 'gestor-vixcard', 'capa' => ['titulo' => 'Gestor'], 'cliente' => ['nome' => 'X']];

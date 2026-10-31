@@ -54,7 +54,9 @@ class GruposEventosLimitesTest extends TestCase
         ]]);
 
         $p = collect($this->actingAs($user)->getJson(route('central-ia.painel'))->json('projetos'))->keyBy('nome');
-        $this->assertSame([$alfa, $vix, null], [$p['gestor']['grupo_id'], $p['vix-beer']['grupo_id'], $p['alfahome']['grupo_id']]);
+        // O par VixHouse → VixCard saiu do CockpitService::GRUPO_DO_DONO em 31/10/2026: o repositório
+        // da VixHouse fica sem grupo, e o da FelipeGat continua indo para o Grupo Soluções.
+        $this->assertSame([$alfa, null, null], [$p['gestor']['grupo_id'], $p['vix-beer']['grupo_id'], $p['alfahome']['grupo_id']]);
         $this->assertFalse($p->has('piaui-brag'), 'pasta arquivada, sem conversa em curso, não aparece');
     }
 

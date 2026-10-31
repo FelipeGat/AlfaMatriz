@@ -14,52 +14,8 @@ o que cada sistema faz de fato, o que **não** prometer e de onde vêm os preço
 - **Não reaproveitar nada das landings e propostas antigas do AlfaGym e do AlfaControl.** Elas têm depoimentos
   fictícios e números falsos ("centenas de condomínios", "18 módulos", "sistema #1").
 
-## NexBeer (VixCard)
-
-- **O que é:** comanda pós-paga por cartão ou pulseira NFC. O atendente lê o cartão no celular Android, pelo Chrome,
-  e o cliente acerta na saída.
-- **Não é chope self-service.** Não há torneira, válvula nem fluxômetro.
-- **Pronto:**
-  - portaria, balcão e caixa;
-  - fila offline só para lançar consumo;
-  - baixa dividida em vários pagamentos;
-  - caixa por operador com contagem cega;
-  - troca de cartão perdido e cartões em aberto;
-  - relatório do evento;
-  - painel da revenda.
-- **Não prometer:**
-  - produção (ainda não existe deploy);
-  - pré-pago, crediário, white label, relatórios por período;
-  - integração com PDV, iPhone, leitor USB, QR;
-  - processamento de pagamento ou nota fiscal.
-- **Preço:** transcrições de áudio, "não é tabela oficial" (fonte: `nex-beer/CLAUDE.md` §9 e
-  `ANALISE-COMERCIAL-PIAUI.md`):
-  - R$ 79,90/mês por CNPJ à revenda, revendido a R$ 180;
-  - cartões: 500 a R$ 11,50 e 1.000 a R$ 8,90.
-
-## Vix-ID (VixCard)
-
-- **O que é:** inventário e controle por RFID UHF. Tem coletor Chainway C72, impressora Zebra, portal de saída
-  Control iD iDUHF com o VIX Sync, API de leitura para o ERP, plataforma de três níveis e app que se atualiza sozinho.
-- `vix_id_planta` e `vix_id_patrimonio` são **o mesmo produto** em branches diferentes. O segmento do cliente muda só o
-  vocabulário das telas.
-- **Não prometer:**
-  - Gestão Têxtil (proposta, sem merge);
-  - planta baixa;
-  - carga pelo coletor (container);
-  - escrita no ERP e importação do marketplace;
-  - gravação e trava de etiquetas na ZT231R (ZPL ainda não confirmado no manual).
-- **Corrigir nas propostas:** a Zebra ZD220 citada na da Lorenzo não grava RFID.
-- **Preço:** não há tabela oficial. Nas propostas enviadas:
-  - **mensalidade:** de R$ 790 a R$ 1.399;
-  - **Roupas FRID:**
-    - implantação R$ 4.900;
-    - C72 R$ 6.500;
-    - portal R$ 11.500;
-    - impressora R$ 2.490;
-    - etiqueta de R$ 0,49 a R$ 0,59;
-    - locação em 24 meses: R$ 1.260 a R$ 1.860/mês;
-  - **MedSenior:** piloto de 90 dias por R$ 6.000.
+<!-- NexBeer e Vix-ID (VixCard) saíram em 31/10/2026, com a divisão das empresas: o Pedro lê esta base
+     no prompt do suporte da Alfa. As seções foram para o pacote da VixCard no OneDrive. -->
 
 ## Gestor (Grupo Soluções; vendido como "Gestor VixSoftHouse")
 

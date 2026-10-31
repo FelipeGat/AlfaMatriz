@@ -319,7 +319,7 @@
                         class="rounded-control bg-brand px-3 py-1.5 text-xs font-semibold text-on-brand">+ Novo assunto</button>
                 <form x-show="novoAssunto" x-cloak @submit.prevent="criarAssunto()" class="space-y-1.5 rounded-control border border-line p-2">
                     <label class="sr-only" for="central-novo-assunto">Nome do assunto</label>
-                    <input id="central-novo-assunto" type="text" maxlength="120" x-bind:value="novoAssunto?.titulo ?? ''" @input="novoAssunto.titulo = $event.target.value" placeholder="Ex.: Comercial VixCard"
+                    <input id="central-novo-assunto" type="text" maxlength="120" x-bind:value="novoAssunto?.titulo ?? ''" @input="novoAssunto.titulo = $event.target.value" placeholder="Ex.: Comercial Alfa"
                            class="w-full rounded-control border-line bg-input py-1.5 text-sm text-ink placeholder-ink-faint focus:border-brand focus:ring-brand">
                     <label class="sr-only" for="central-novo-assunto-grupo">Grupo</label>
                     <select id="central-novo-assunto-grupo" @change="novoAssunto.grupo_id = $event.target.value" class="w-full rounded-control border-line bg-input py-1.5 text-xs text-ink">
@@ -340,7 +340,7 @@
                 <input id="central-busca-assuntos" type="search" x-model="buscaAssuntos" placeholder="Buscar assunto…" autocomplete="off"
                        class="rounded-control border-line bg-input py-1.5 text-sm text-ink placeholder-ink-faint focus:border-brand focus:ring-brand">
                 <div class="min-h-0 flex-1 space-y-2 overflow-y-auto pr-0.5">
-                    <p x-show="!assuntos.length" class="p-2 text-xs text-ink-mute">Nenhum assunto ainda. Crie o primeiro: "Comercial VixCard", "Andamento de obras"…</p>
+                    <p x-show="!assuntos.length" class="p-2 text-xs text-ink-mute">Nenhum assunto ainda. Crie o primeiro: "Comercial Alfa", "Andamento de obras"…</p>
                     <template x-for="sec in secoesAssuntos" :key="sec.id">
                         <div>
                             <button type="button" @click="recolher(sec.id)" class="flex w-full min-w-0 items-center gap-1 px-1 py-1 text-left font-mono text-[11px] uppercase tracking-caps text-ink-faint hover:text-ink">
@@ -397,7 +397,7 @@
                 <div x-show="tela === 'business' && !assuntoAtual" x-cloak class="absolute inset-0 z-[5] flex flex-col items-center justify-center gap-2 bg-panel p-6 text-center">
                     <span class="h-8 w-8 text-brand-text"><x-nav-icon name="chat" /></span>
                     <p class="font-semibold text-ink">Escolha um assunto à esquerda, ou crie um novo.</p>
-                    <p class="max-w-sm text-sm text-ink-mute">Cada assunto é um chat contínuo: "Comercial VixCard", "Andamento de obras"… A IA que atender já recebe o histórico e a memória dele.</p>
+                    <p class="max-w-sm text-sm text-ink-mute">Cada assunto é um chat contínuo: "Comercial Alfa", "Andamento de obras"… A IA que atender já recebe o histórico e a memória dele.</p>
                 </div>
                 <div class="flex flex-none flex-wrap items-center gap-x-3 gap-y-1 border-b border-line px-4 py-2">
                     <button type="button" @click="alternarProjetos()" :aria-expanded="(!projetosRecolhidos).toString()" :aria-controls="tela === 'chats' ? 'central-chats' : (tela === 'business' ? 'central-business' : 'central-projetos')"

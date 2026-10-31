@@ -18,10 +18,11 @@ use Illuminate\Support\Collection;
  */
 class CentralDeGestao
 {
-    public const EMPRESAS = ['grupo_solucoes' => 'Grupo Soluções', 'vixcard' => 'VixCard', 'invest' => 'Invest', 'delta' => 'Delta'];
+    // A VixCard saiu em 31/10/2026 (o Matriz ficou só com a Alfa e o Grupo Soluções). Era: 'vixcard' => 'VixCard'.
+    public const EMPRESAS = ['grupo_solucoes' => 'Grupo Soluções', /* 'vixcard' => 'VixCard', */ 'invest' => 'Invest', 'delta' => 'Delta'];
 
     /** As que têm calendário próprio na Minha agenda; as demais caem em "Outros". */
-    public const COM_CALENDARIO = ['grupo_solucoes', 'vixcard'];
+    public const COM_CALENDARIO = ['grupo_solucoes' /* , 'vixcard' */];
 
     public function __construct(private AgendaConsolidada $agenda) {}
 
@@ -141,21 +142,22 @@ class CentralDeGestao
                     'so_data' => true, 'status' => $status, 'prioridade' => $prioridade, 'link' => null, 'acoes' => []]);
             }
         }
-        // Projetos abertos da VixCard, do retrato do VixOrganize
-        // (docs/specs/secretario-vixorganize): a posição na fila vira prioridade.
-        $vix = \App\Models\SecretarioVixOrganize::daConta($user);
-        foreach ($vix?->projetos() ?? [] as $p) {
-            if (($p['status'] ?? '') === 'concluido') {
-                continue;
-            }
-            $prazo = ! empty($p['due_date']) ? CarbonImmutable::parse($p['due_date']) : null;
-            $linhas->push(['aba' => 'projetos', 'icone' => 'view-grid', 'assunto' => $p['name'],
-                'sub' => '#'.$p['rank'].' na fila · '.($p['current_phase'] ?? 'sem fase').' · '.(int) $p['progress'].'%',
-                'origem' => 'VixCard', 'chip' => 'VixOrganize', 'quando' => $prazo, 'so_data' => true,
-                'status' => $prazo && $prazo->endOfDay()->lessThan($agora) ? 'Vencido' : ($p['status_label'] ?? 'Em aberto'),
-                'prioridade' => $p['rank'] <= 1 ? 'alta' : ($p['rank'] <= 3 ? 'normal' : 'baixa'),
-                'link' => route('secretario.vixorganize', ['projeto' => $p['slug']]), 'acoes' => []]);
-        }
+        // VixOrganize desligado em 31/10/2026 (o Matriz ficou só com a Alfa e o Grupo Soluções).
+        // // Projetos abertos da VixCard, do retrato do VixOrganize
+        // // (docs/specs/secretario-vixorganize): a posição na fila vira prioridade.
+        // $vix = \App\Models\SecretarioVixOrganize::daConta($user);
+        // foreach ($vix?->projetos() ?? [] as $p) {
+        //     if (($p['status'] ?? '') === 'concluido') {
+        //         continue;
+        //     }
+        //     $prazo = ! empty($p['due_date']) ? CarbonImmutable::parse($p['due_date']) : null;
+        //     $linhas->push(['aba' => 'projetos', 'icone' => 'view-grid', 'assunto' => $p['name'],
+        //         'sub' => '#'.$p['rank'].' na fila · '.($p['current_phase'] ?? 'sem fase').' · '.(int) $p['progress'].'%',
+        //         'origem' => 'VixCard', 'chip' => 'VixOrganize', 'quando' => $prazo, 'so_data' => true,
+        //         'status' => $prazo && $prazo->endOfDay()->lessThan($agora) ? 'Vencido' : ($p['status_label'] ?? 'Em aberto'),
+        //         'prioridade' => $p['rank'] <= 1 ? 'alta' : ($p['rank'] <= 3 ? 'normal' : 'baixa'),
+        //         'link' => route('secretario.vixorganize', ['projeto' => $p['slug']]), 'acoes' => []]);
+        // }
         $peso = ['alta' => 0, 'normal' => 1, 'baixa' => 2];
 
         return $linhas->map(fn ($l) => $l + ['prazo' => PainelDoDia::prazo($l['quando'], $agora)])

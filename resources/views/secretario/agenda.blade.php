@@ -21,7 +21,7 @@
         $calendarios = [
             'google' => ['Google Agenda', 'bg-exame', 'border-exame bg-exame-tint'], 'secretario' => ['Secretário (Matriz)', 'bg-warn', 'border-warn bg-warn-tint'],
             'matriz' => ['Agenda do Matriz', 'bg-good', 'border-good bg-good-tint'], 'grupo_solucoes' => ['Grupo Soluções', 'bg-retorno', 'border-retorno bg-retorno-tint'],
-            'vixcard' => ['VixCard', 'bg-bloqueio', 'border-bloqueio bg-bloqueio-tint'], 'outros' => ['Outros', 'bg-ink-faint', 'border-ink-faint bg-head'],
+            /* 'vixcard' => ['VixCard', 'bg-bloqueio', 'border-bloqueio bg-bloqueio-tint'], — saiu em 31/10/2026 */ 'outros' => ['Outros', 'bg-ink-faint', 'border-ink-faint bg-head'],
         ];
     @endphp
     <div x-data="minhaAgenda(@js(collect($calendarios)->map(fn ($c) => $c[2])))" x-init="iniciar()" class="mx-auto grid w-full max-w-7xl grid-cols-1 gap-4 2xl:grid-cols-[minmax(0,1fr)_300px]">

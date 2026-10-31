@@ -281,7 +281,7 @@ class EmailsGestorTest extends TestCase
             ->assertJsonPath('convite.titulo', 'Reunião RFID - VIXCARD')->assertJsonPath('convite.data', '2026-10-22')->assertJsonPath('convite.hora', '15:00')
             ->assertJsonPath('convite.ja_na_agenda', false);
 
-        $dados = ['titulo' => 'Reunião RFID - VIXCARD', 'data' => '2026-10-22', 'hora' => '15:00', 'empresa' => 'vixcard', 'descricao' => 'Convite por e-mail de victor@vixcard.com.br'];
+        $dados = ['titulo' => 'Reunião RFID - VIXCARD', 'data' => '2026-10-22', 'hora' => '15:00', 'empresa' => 'grupo_solucoes', 'descricao' => 'Convite por e-mail de victor@vixcard.com.br'];
         $this->postJson(route('secretario.agenda.novo'), $dados)->assertOk();
         $this->postJson(route('secretario.agenda.novo'), $dados)->assertOk()->assertJsonPath('mensagem', fn ($m) => str_starts_with($m, 'Já está na sua agenda'));
         $this->assertSame(1, SecretarioItem::where('titulo', 'Reunião RFID - VIXCARD')->count());

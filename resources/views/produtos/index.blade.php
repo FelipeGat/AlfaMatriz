@@ -59,10 +59,12 @@
                      aba pedia que o leitor completasse a frase. --}}
                 Sistemas internos · {{ $contagens['internos'] }}
             </x-abas.item>
+            {{-- Aba Produtos VixCard: saiu em 31/10/2026 (o Matriz ficou só com a Alfa e o Grupo Soluções).
             <x-abas.item :href="route('produtos.index', array_merge(request()->query(), ['aba' => 'vixcard']))"
                          :ativo="$aba === 'vixcard'" icone="tag">
                 Produtos VixCard · {{ $contagens['vixcard'] }}
             </x-abas.item>
+            --}}
         </x-abas>
 
         @if ($aba === 'internos')

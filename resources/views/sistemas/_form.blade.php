@@ -39,12 +39,14 @@
             <select id="natureza" name="natureza" x-model="natureza"
                     class="mt-1 block w-full h-8 py-0 text-[12.5px]">
                 @foreach (\App\Models\Sistema::NATUREZAS as $chave => $rotulo)
+                    {{-- Produto VixCard não se cadastra mais desde 31/10/2026; a chave fica para o histórico. --}}
+                    @continue($chave === 'vixcard' && $naturezaAtual !== 'vixcard')
                     <option value="{{ $chave }}" @selected($naturezaAtual === $chave)>{{ $rotulo }}</option>
                 @endforeach
             </select>
             <p class="mt-1 text-xs text-ink-mute">
                 Produto é o que a Alfa vende — entra no faturamento. Interno é o que a Alfa usa e existe
-                para as tarefas apontarem. Produto VixCard é o que a VixCard vende: fica fora do faturamento da Alfa.
+                para as tarefas apontarem.
             </p>
         @else
             {{-- Travado, e dizendo por quê no mesmo lugar. Um select

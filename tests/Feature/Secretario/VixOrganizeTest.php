@@ -26,6 +26,12 @@ class VixOrganizeTest extends TestCase
 {
     use RefreshDatabase, SecretarioNosTestes;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->markTestSkipped('Desligado em 31/10/2026: o Matriz ficou só com a Alfa e o Grupo Soluções, e o VixOrganize saiu (o código fica comentado).');
+    }
+
     private const URL = 'https://1.1.1.1';
 
     private const CHAVE = 'chave-de-escrita-com-mais-de-16';

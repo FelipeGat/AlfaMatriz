@@ -16,7 +16,8 @@ class ProdutoController extends Controller
         // internos exibe a contagem do catálogo comercial no próprio rótulo, e
         // o cabeçalho da tela também. Poupá-la exigiria um segundo caminho de
         // contagem — e dois caminhos discordam. O catálogo é de punhado.
-        $aba = in_array($request->query('aba'), ['internos', 'vixcard'], true) ? $request->query('aba') : 'produtos';
+        // A aba Produtos VixCard saiu em 31/10/2026 (o Matriz ficou só com a Alfa e o Grupo Soluções).
+        $aba = in_array($request->query('aba'), ['internos' /* , 'vixcard' */], true) ? $request->query('aba') : 'produtos';
 
         $produtos = Sistema::produtos()
             ->with(['modulos.contratacoes' => fn ($q) => $q->where('status', 'ativo')])

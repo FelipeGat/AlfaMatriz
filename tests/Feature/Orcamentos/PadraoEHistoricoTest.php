@@ -106,11 +106,11 @@ class PadraoEHistoricoTest extends TestCase
         $this->get(route('orcamentos.create', ['lead' => $this->direct->id]))->assertOk()->assertSee('27.458.553', false)->assertSee('Pré-cliente (Funil de Vendas)');
 
         // A prévia monta a seção ligada enquanto se digita.
-        $this->post(route('orcamentos.previa'), ['produto' => 'vix-id', 'cliente' => 'Direct', 'titulo' => 'Portal', 'parcelas' => 1, 'lead_id' => $this->direct->id,
+        $this->post(route('orcamentos.previa'), ['produto' => 'alfacontrol', 'cliente' => 'Direct', 'titulo' => 'Portal', 'parcelas' => 1, 'lead_id' => $this->direct->id,
             'dados_cliente' => ['cnpj' => '27.458.553/0001-49'], 'secoes' => ['solucao' => ['ativo' => '1', 'titulo' => 'Como resolvemos', 'texto' => 'Antenas no portão.']]])
             ->assertOk()->assertSee('Como resolvemos')->assertSee('Antenas no portão.')->assertSee('27.458.553/0001-49');
         // Desligada, não sai.
-        $this->post(route('orcamentos.previa'), ['produto' => 'vix-id', 'cliente' => 'Direct', 'titulo' => 'Portal', 'parcelas' => 1,
+        $this->post(route('orcamentos.previa'), ['produto' => 'alfacontrol', 'cliente' => 'Direct', 'titulo' => 'Portal', 'parcelas' => 1,
             'secoes' => ['solucao' => ['ativo' => '0', 'titulo' => 'Como resolvemos', 'texto' => 'Antenas no portão.']]])
             ->assertOk()->assertDontSee('Como resolvemos');
     }
@@ -118,7 +118,7 @@ class PadraoEHistoricoTest extends TestCase
     /** Faixas, opcionais e "sob consulta" saem com o preço, fora do total (20/10/2026). */
     public function test_opcao_fica_fora_do_total(): void
     {
-        $this->actingAs($this->felipe)->post(route('orcamentos.store'), ['produto' => 'vixlink', 'modelo' => 'classico', 'cliente' => 'Clube', 'titulo' => 'Cartão', 'parcelas' => 1, 'validade_dias' => 15,
+        $this->actingAs($this->felipe)->post(route('orcamentos.store'), ['produto' => 'alfagym', 'modelo' => 'classico', 'cliente' => 'Clube', 'titulo' => 'Cartão', 'parcelas' => 1, 'validade_dias' => 15,
             'itens' => [['descricao' => 'Implantação', 'quantidade' => 1, 'unidade' => 'un', 'valor_unitario' => 290, 'cobranca' => 'unico'],
                 ['descricao' => 'Cartões — 1.000 unidades', 'quantidade' => 1000, 'unidade' => 'un', 'valor_unitario' => 14.9, 'cobranca' => 'opcao'],
                 ['descricao' => 'Leitor USB', 'quantidade' => 2, 'unidade' => 'un', 'valor_unitario' => 0, 'cobranca' => 'opcao']]])->assertRedirect();
@@ -133,7 +133,7 @@ class PadraoEHistoricoTest extends TestCase
     /** Material, implantação e recorrente separados, cada um com subtotal (20/10/2026). */
     public function test_material_implantacao_e_recorrente_separados(): void
     {
-        $this->actingAs($this->felipe)->post(route('orcamentos.store'), ['produto' => 'vix-id', 'modelo' => 'classico', 'cliente' => 'Direct', 'titulo' => 'Portal', 'parcelas' => 1, 'validade_dias' => 15,
+        $this->actingAs($this->felipe)->post(route('orcamentos.store'), ['produto' => 'alfacontrol', 'modelo' => 'classico', 'cliente' => 'Direct', 'titulo' => 'Portal', 'parcelas' => 1, 'validade_dias' => 15,
             'itens' => [['descricao' => 'Coletor C72', 'quantidade' => 1, 'unidade' => 'un', 'valor_unitario' => 6500, 'categoria' => 'material'],
                 ['descricao' => 'Etiquetas', 'quantidade' => 1000, 'unidade' => 'un', 'valor_unitario' => 0.59, 'categoria' => 'material'],
                 ['descricao' => 'Implantação e treinamento', 'quantidade' => 1, 'unidade' => 'serv', 'valor_unitario' => 4900, 'categoria' => 'implantacao'],
@@ -154,7 +154,7 @@ class PadraoEHistoricoTest extends TestCase
     /** A capa elaborada: foto do orçamento (ou a padrão), clientes atendidos e emissor dos ajustes. */
     public function test_capa_com_foto_ajustes_e_revisao_de_rascunho(): void
     {
-        $this->actingAs($this->felipe)->post(route('orcamentos.store'), ['produto' => 'vix-id', 'modelo' => 'classico', 'cliente' => 'Direct', 'titulo' => 'Portal', 'parcelas' => 1, 'validade_dias' => 15,
+        $this->actingAs($this->felipe)->post(route('orcamentos.store'), ['produto' => 'alfacontrol', 'modelo' => 'classico', 'cliente' => 'Direct', 'titulo' => 'Portal', 'parcelas' => 1, 'validade_dias' => 15,
             'capa' => \Illuminate\Http\UploadedFile::fake()->image('capa.jpg', 1200, 1700)])->assertRedirect();
         $o = Orcamento::sole();
         Storage::disk(Pdf::DISCO)->assertExists($o->capa_imagem);
@@ -177,7 +177,7 @@ class PadraoEHistoricoTest extends TestCase
     /** Imagens do corpo (20/10/2026, desenho da FRID): entram na página escolhida, a revisão as leva e caminho de fora não entra. */
     public function test_imagens_do_corpo_entram_na_pagina_escolhida(): void
     {
-        $base = ['produto' => 'vix-id', 'cliente' => 'Direct', 'titulo' => 'Portal', 'parcelas' => 1, 'validade_dias' => 15,
+        $base = ['produto' => 'alfacontrol', 'cliente' => 'Direct', 'titulo' => 'Portal', 'parcelas' => 1, 'validade_dias' => 15,
             'secoes' => ['extras' => ['ativo' => '1', 'texto' => "## Leitor de mão ou portal\nOs dois leem as mesmas etiquetas."]]];
         $this->actingAs($this->felipe)->post(route('orcamentos.store'), $base + [
             'imagens_novas' => [\Illuminate\Http\UploadedFile::fake()->image('portal.jpg', 1536, 1024)], 'imagens_novas_onde' => 'livre:leitor-de-mao-ou-portal'])->assertRedirect();
@@ -196,7 +196,7 @@ class PadraoEHistoricoTest extends TestCase
         $this->assertSame([['arquivo' => $img['arquivo'], 'legenda' => 'Portal instalado', 'onde' => 'galeria']], $o->imagensDoCorpo());
         $html = app(Pdf::class)->html($o);
         $this->assertStringContainsString('Portal instalado', $html);
-        $this->assertStringContainsString('Vix-ID na prática', $html);
+        $this->assertStringContainsString('AlfaControl na prática', $html);
 
         // A revisão leva as imagens; tirar uma não apaga o arquivo, que a anterior ainda usa.
         $this->post(route('orcamentos.revisar', $o))->assertRedirect();

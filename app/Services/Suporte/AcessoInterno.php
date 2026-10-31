@@ -21,7 +21,7 @@ class AcessoInterno
 
     /** Cada perfil inclui o de baixo. */
     public const PERFIS = [
-        'diretor' => 'Diretor: Gestor completo, Matriz (VixCard) e o resumo do dia',
+        'diretor' => 'Diretor: Gestor completo, orçamentos do Matriz e o resumo do dia',
         'gestor' => 'Gestor completo: suporte, financeiro e comercial',
         'suporte' => 'Só os atendimentos do Gestor',
     ];
@@ -84,7 +84,7 @@ class AcessoInterno
         }
         if (self::ve($acesso, 'diretor')) {
             $blocos[] = $this->resumoDoDia();
-            $blocos[] = $this->orcamentosVixCard();
+            $blocos[] = $this->orcamentosDoMatriz();
         }
 
         return $blocos;
@@ -286,14 +286,14 @@ class AcessoInterno
             .($dono ? app(MontadorDeBriefing::class)->montar($dono, CarbonImmutable::now(config('app.timezone')), true)['texto'] : '- Conta do diretor não encontrada.');
     }
 
-    private function orcamentosVixCard(): string
+    private function orcamentosDoMatriz(): string
     {
         $os = Orcamento::whereIn('situacao', ['rascunho', 'enviado', 'negociacao'])->orderBy('ano')->orderBy('numero')->limit(40)->get();
         if ($os->isEmpty()) {
-            return "## VIXCARD — ORÇAMENTOS NO MATRIZ\n- Nenhum em aberto.";
+            return "## ORÇAMENTOS NO MATRIZ\n- Nenhum em aberto.";
         }
 
-        return "## VIXCARD — ORÇAMENTOS NO MATRIZ (em aberto: rascunho, enviado ou em negociação)\n"
+        return "## ORÇAMENTOS NO MATRIZ (em aberto: rascunho, enviado ou em negociação)\n"
             .$os->map(fn ($o) => '- '.$o->codigo().' — '.$o->cliente.' — '.(Orcamento::SITUACOES[$o->situacao] ?? $o->situacao)
                 .' — projeto '.$this->brl($o->total_unico).($o->total_mensal > 0 ? ' + '.$this->brl($o->total_mensal).'/mês' : '')
                 .' — '.($o->enviado_em ? 'enviado em '.$o->enviado_em->format('d/m') : 'criado em '.$o->created_at?->format('d/m')))->implode("\n");

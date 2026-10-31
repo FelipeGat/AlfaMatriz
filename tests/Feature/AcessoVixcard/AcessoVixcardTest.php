@@ -31,6 +31,7 @@ class AcessoVixcardTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->markTestSkipped('Desligado em 31/10/2026: o Matriz ficou só com a Alfa e o Grupo Soluções, e o acesso recortado da VixCard saiu (o código fica comentado).');
         $this->admin = User::factory()->create(['name' => 'Felipe Admin']);
         (new PerfilPermissaoSeeder)->run();
         $this->rossini = User::factory()->create(['name' => 'Rossini Alfa']);

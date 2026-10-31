@@ -28,7 +28,7 @@ class AgendaPelaMaquinaTest extends TestCase
     private function lida(array $extra = []): array
     {
         return array_replace(['maquina' => 'wsl', 'lido_em' => now()->toIso8601String(),
-            'agendas' => [['id' => 'vix@group', 'nome' => 'VixCard', 'primaria' => false], ['id' => 'eu@gmail.com', 'nome' => 'Felipe', 'primaria' => true]],
+            'agendas' => [['id' => 'vix@group', 'nome' => 'Comercial Grupo', 'primaria' => false], ['id' => 'eu@gmail.com', 'nome' => 'Felipe', 'primaria' => true]],
             'eventos' => [
                 ['agenda' => 'vix@group', 'id' => 'e1', 'titulo' => 'Visita RFID', 'inicio' => '2026-10-21T15:00:00-03:00', 'fim' => '2026-10-21T16:00:00-03:00', 'dia_inteiro' => false, 'link' => 'https://www.google.com/calendar/event?eid=e1'],
                 ['agenda' => 'eu@gmail.com', 'id' => 'e2', 'titulo' => 'Feriado', 'inicio' => '2026-11-02', 'fim' => '2026-11-03', 'dia_inteiro' => true, 'link' => 'javascript:x'],
@@ -51,7 +51,7 @@ class AgendaPelaMaquinaTest extends TestCase
         $this->actingAs($u);
         $j = $this->getJson(route('secretario.agenda.eventos', ['de' => '2026-10-21', 'ate' => '2026-10-21']))->assertOk()->json();
         $this->assertNull($j['google']['aviso']);
-        $this->assertSame(['Visita RFID', 'vixcard', '2026-10-21T15:00'], [$j['eventos'][0]['titulo'], $j['eventos'][0]['calendario'], $j['eventos'][0]['inicio']]);
+        $this->assertSame(['Visita RFID', 'grupo_solucoes', '2026-10-21T15:00'], [$j['eventos'][0]['titulo'], $j['eventos'][0]['calendario'], $j['eventos'][0]['inicio']]);
         $this->get(route('secretario.configuracoes'))->assertOk()->assertSee('Lido pela sua máquina')->assertSee('Pela máquina')->assertDontSee('Sincronizar agora');
 
         // Agenda desligada em Configurações: na próxima leitura, os eventos dela não entram.
