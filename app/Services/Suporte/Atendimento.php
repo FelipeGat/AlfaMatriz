@@ -139,9 +139,13 @@ class Atendimento
                 $this->telegram->enviar('📞 <b>Gestor nº '.e($a->numero).'</b>'.e($dobro).': '.e($nome)."\n".e(Str::before($a->descricao, "\n\n"))."\n".e(route('suporte.conversas', $c->id)));
             }
             // O número sempre volta para quem pediu (Felipe, 21/10/2026), dizendo o que foi feito.
-            $texto = match ($a->modo) {
-                'vincular' => "Verifiquei que já existe um chamado aberto sobre esse assunto, o nº {$a->numero}, e acrescentei a ele as informações que você me passou.",
-                'reabrir' => "Esse problema já tinha um chamado, o nº {$a->numero}, e eu o reabri para que a equipe analise novamente.",
+            // Menos para quem não escreve do cadastro (31/10/2026): o chamado que já existia é
+            // histórico do cliente, e dizer o número dele confirmaria o que o Pedro não pode
+            // confirmar. A pessoa ouve que a informação chegou à equipe, e só.
+            $texto = match (true) {
+                $a->modo !== 'novo' && ! $a->pedido_por && app(Identificacao::class)->nivel($c) !== Identificacao::CADASTRO => 'Registrei as informações que você me passou.',
+                $a->modo === 'vincular' => "Verifiquei que já existe um chamado aberto sobre esse assunto, o nº {$a->numero}, e acrescentei a ele as informações que você me passou.",
+                $a->modo === 'reabrir' => "Esse problema já tinha um chamado, o nº {$a->numero}, e eu o reabri para que a equipe analise novamente.",
                 default => "Abri o seu chamado, de nº {$a->numero}.",
             };
             // Quem é da casa recebe o texto de registro, seco de propósito; o cliente, o de uma pessoa da equipe (T-478).

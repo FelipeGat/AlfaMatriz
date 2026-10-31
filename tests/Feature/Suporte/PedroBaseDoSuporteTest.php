@@ -246,7 +246,7 @@ class PedroBaseDoSuporteTest extends TestCase
         $this->assertSame(['ativa', $ana->id, 'resolvido'], [$n->estado, $n->confirmado_por, $n->situacao]);
         $this->chega('e agora a câmera', 'wamid.2', '552733894253');
         $this->actingAs($ana)->post(route('suporte.devolver', $c->id));
-        $this->assertStringContainsString('Limpeza do sensor; síndica confirmou.', (string) app(BaseDoSuporte::class)->paraOPrompt($c->fresh(), 'câmera'));
+        $this->assertStringContainsString('Limpeza do sensor; síndica confirmou.', (string) app(BaseDoSuporte::class)->paraOPrompt($c->fresh(), 'câmera', true));
     }
 
     public function test_sem_ninguem_da_equipe_qualquer_um_do_suporte_confirma_e_pode_descartar(): void
@@ -258,7 +258,7 @@ class PedroBaseDoSuporteTest extends TestCase
         $this->assertTrue(app(BaseDoSuporte::class)->podeConfirmar($bia, $n));
         $this->actingAs($bia)->post(route('suporte.base.descartar', $n->id))->assertRedirect(route('suporte.base'));
         $this->assertSame('descartada', $n->fresh()->estado);
-        $this->assertNull(app(BaseDoSuporte::class)->paraOPrompt($c, 'boleto segunda via'));
+        $this->assertNull(app(BaseDoSuporte::class)->paraOPrompt($c, 'boleto segunda via', false));
     }
 
     /**

@@ -141,7 +141,9 @@ class PedroConhecimentoTest extends TestCase
         SuporteConversa::create(['telefone' => '5527911112222', 'gestor_cliente_id' => 13, 'solicitante_nome' => 'Maria', 'ultima_entrada_em' => now()]);
         $this->chega('preciso do boleto do castanheiras', 'wamid.2', '5527911112222');
         $prompt = $this->prompt();
-        $this->assertStringContainsString('Login do portal: não informar', $prompt);
+        $this->assertStringContainsString('POR SEGURANÇA, o número +55 (27) 91111-2222 NÃO é um telefone do cadastro', $prompt);
+        $this->assertStringContainsString(\App\Services\Suporte\Contexto::FINANCEIRO_PELO_NOME, $prompt);
+        $this->assertStringNotContainsString('- Login do portal', $prompt, 'o roteiro cita o nome da linha; a linha não vai');
         $this->assertStringNotContainsString('sindico@castanheiras.com.br', $prompt);
     }
 

@@ -16,7 +16,8 @@ identificação, e seguia respondendo sem ela.
   (`SuporteConversa::solicitante`). Antes de abrir, o Pedro confere se já existe atendimento do mesmo assunto
   (vincular ou reabrir, `Atendimento::modoNoGestor`, que já existia).
 - **Pedido sensível** (histórico, boleto, login do portal, acesso, cancelamento): continua só para os telefones do
-  cadastro do cliente (`Contexto::numeroDoCadastro`), como antes.
+  cadastro do cliente (`Identificacao::doCadastro`, antes `Contexto::numeroDoCadastro`). Ver "Níveis de
+  identificação", abaixo.
 - **Comercial não precisa de identificação**: quem quer contratar não é cliente.
 - **Segurança vem antes**: fumaça, faísca, choque ou água em equipamento elétrico recebem a orientação na hora.
 
@@ -69,3 +70,46 @@ gravada pela máquina, e a manda no retrato. Feito em 26/10/2026 (`ContatosDoGes
   libera pedido sensível** (`porTelefone` não os vê). Conversa ainda não identificada cujo número é contato de UM
   cliente só entra identificada antes do prompt, com o nome e a função do Gestor. De dois clientes (o porteiro de
   dois condomínios), segue perguntando. Outra pessoa no mesmo telefone se apresenta, como antes.
+
+## Níveis de identificação (31/10/2026)
+
+Pedido do dono: "o Pedro não pode passar informação nenhuma, nem mesmo NF nem boleto, para quem ele não conhece;
+ele tem que sempre consultar o telefone cadastrado dentro do cadastro do cliente". A regra já existia, mas cada
+trecho do pedido à IA decidia sozinho, e três deles tinham ficado de fora: quem só disse o nome recebia os
+**sistemas ativos** do cliente, a **memória do cliente e os atendimentos de outras conversas** na base do suporte e
+os **alertas** do cliente. O pedido de identificação, antes de a pessoa dizer quem é, já levava o e-mail de login do
+portal quando o número era do cadastro. E a regra de boleto e nota vivia só no texto.
+
+Agora o nível é um só, calculado em código (`App\Services\Suporte\Identificacao::nivel`), e o `Contexto` monta o
+pedido inteiro a partir dele:
+
+| Nível | Quando | O que o Pedro recebe do cliente |
+|---|---|---|
+| `interno` | número da lista de acesso interno | outra conversa (acesso-interno.md) |
+| `desconhecido` | ainda não disse nome e cliente | só o nome do cliente, se o número já o traz |
+| `pelo_nome` | identificado, número fora do cadastro | o nome do cliente e o que nasceu nesta conversa; nada do cadastro |
+| `cadastro` | o número é telefone do cadastro do cliente | sistemas, contratos, histórico, memória, alertas e login do portal |
+
+- **Número do cadastro** (`Identificacao::doCadastro`): o telefone está no cadastro de TODO cliente confirmado.
+  Matriz e Gestor ligados (`clientes.gestor_cliente_id`) são a mesma organização, e basta um dos dois cadastros.
+  Sem a ligação são duas, e o número precisa estar nas duas: o síndico profissional que está no cadastro do
+  condomínio A e diz falar pelo B não vê nada do B. O contato gravado pelo Pedro no Gestor (T-479) não conta.
+- **O rótulo diz como o cliente foi confirmado**: `CONFIRMADO PELO TELEFONE DO CADASTRO` ou `IDENTIFICADO SÓ PELO
+  NOME`. O "CONFIRMADO" sozinho tratava o nome dito na conversa como prova.
+- **Boleto, nota e cobrança** (`Contexto::FINANCEIRO`, em todo nível): o Pedro não tem documento nem situação de
+  pagamento de ninguém, não diz se existe, e documento só sai pelo financeiro, para o contato do cadastro, nunca na
+  conversa — nem para o número do cadastro, porque telefone de portaria passa de mão em mão. Ele orienta o caminho
+  do portal (o roteiro "Boleto / segunda via") e, se precisar de mais, é com o financeiro. Para quem só disse o
+  nome (`Contexto::FINANCEIRO_PELO_NOME`), o caminho do portal vai sem login, e ele diz que informações e documentos
+  do cliente só vão para os contatos cadastrados.
+- **Chamado vinculado ou reaberto** (`Atendimento::concluirNoGestor`): para quem não escreve do cadastro, a
+  resposta é "Registrei as informações que você me passou", sem o número nem a existência do chamado anterior, que
+  é histórico do cliente. O chamado é vinculado ou reaberto do mesmo jeito; a equipe recebe o número.
+- **Consulta futura de boleto ou NF**: só no nível `cadastro`, e o documento vai ao contato do cadastro (WhatsApp ou
+  e-mail), nunca à conversa. Frente nova, com spec própria e uma leitura no Gestor que devolva só o documento do
+  cliente. Destino natural, conferido no esquema em 31/10/2026 (não nos dados): o **e-mail financeiro** do cadastro
+  — `cliente_emails.financeiro` no Matriz (`Cliente::emailsFinanceiros`, que cai no principal) e `emails.eh_financeiro`
+  no Gestor. Telefone não tem marca de cobrança em nenhum dos dois, e o retrato do Gestor ainda não lê os e-mails:
+  traz `telefones` e os e-mails de login do portal com o financeiro liberado.
+- **Os testes** (`tests/Feature/Suporte/PedroNivelDeIdentificacaoTest.php`) conferem cada nível contra a lista do
+  que é do nível de cima: trecho novo do pedido que esquecer a regra quebra ali.

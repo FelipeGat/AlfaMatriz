@@ -90,7 +90,8 @@ Telegram". O Pedro "não pode se confundir: tem que ter certeza de que sou eu, p
   - **Agora:** o modo equipe saiu. Telefone de funcionário fora da lista é cliente como qualquer outro. Dado da casa,
     só pela lista de acesso interno.
   - **Cliente confirmado só pelo nome** ("sou do Castanheiras"), de um número que não está no cadastro dele, não vê
-    atendimentos, etapas nem contratos (`Contexto::numeroDoCadastro`). O Pedro diz que essas informações só vão para
+    atendimentos, etapas nem contratos (`Contexto::numeroDoCadastro`; desde 31/10/2026, o nível de
+    `Identificacao`, em identificacao.md). O Pedro diz que essas informações só vão para
     os telefones cadastrados do cliente e oferece registrar o problema. O que nasceu na própria conversa pode ser
     informado. O login do portal já seguia essa regra.
 - **Fora do escopo** (Felipe, 21/10/2026: "pode deixar de fora o AlfaHome"): o pessoal do AlfaHome.

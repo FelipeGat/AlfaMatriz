@@ -105,8 +105,8 @@ class PedroGestorTest extends TestCase
         $this->runner();
         $prompt = $this->postJson(route('suporte.runner.proxima'), ['maquina' => 'wsl'])->json('prompt');
         $this->assertStringContainsString('QUEM ESCREVE: João (porteiro)', $prompt);
-        $this->assertStringContainsString('CONFIRMADO (Gestor', $prompt);
-        // Confirmado só pelo nome, de um número fora do cadastro: nada do histórico (21/10/2026).
+        // Confirmado só pelo nome, de um número fora do cadastro: nada do histórico (21/10/2026), e o rótulo diz isso (31/10/2026).
+        $this->assertStringContainsString('IDENTIFICADO SÓ PELO NOME (Gestor', $prompt);
         $this->assertStringContainsString('POR SEGURANÇA, o número que escreve NÃO é um telefone do cadastro', $prompt);
         $this->assertStringNotContainsString('Gestor nº 782', $prompt);
         $this->assertStringContainsString("- 3: PORTÃO / ACESSO", $prompt);
@@ -199,8 +199,9 @@ class PedroGestorTest extends TestCase
     public function test_gravacao_ligada_a_maquina_grava_e_o_cliente_recebe_o_numero(): void
     {
         config(['services.suporte_pedro.gestor_gravar' => true]);
-        SuporteConversa::create(['telefone' => '5527988887777', 'gestor_cliente_id' => 13, 'solicitante_nome' => 'Maria', 'ultima_entrada_em' => now()]);
-        $this->chega('o portão G1 não fecha', 'wamid.1');
+        // Do telefone do cadastro: o nº do chamado que já existia pode ser dito (fora dele, PedroNivelDeIdentificacaoTest).
+        SuporteConversa::create(['telefone' => '552733894253', 'gestor_cliente_id' => 13, 'solicitante_nome' => 'Maria', 'ultima_entrada_em' => now()]);
+        $this->chega('o portão G1 não fecha', 'wamid.1', '552733894253');
         $this->responde(['resposta' => 'Vou encaminhar.', 'acao' => 'abrir_atendimento', 'resumo' => 'Portão G1 não fecha', 'destino' => 'gestor', 'assunto_id' => 999]);
 
         $a = SuporteGestorAbertura::sole();

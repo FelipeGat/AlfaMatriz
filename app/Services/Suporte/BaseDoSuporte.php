@@ -19,9 +19,10 @@ use Illuminate\Support\Str;
  * conhecimento e empresa só valem como instrução depois do "Validar".
  *
  * Ao Pedro vai só um recorte com teto (a base cresce, o pedido não): a empresa,
- * a memória do cliente CONFIRMADO na conversa (nunca a de outro), os atendimentos
- * dele e até três notas gerais que combinam com o que ele escreveu. Cada trecho
- * leva o número da nota, para a resposta dizer de onde veio.
+ * a memória do cliente CONFIRMADO na conversa pelo telefone do cadastro (nunca a de
+ * outro, nem para quem só disse o nome), os atendimentos dele e até três notas
+ * gerais que combinam com o que ele escreveu. Cada trecho leva o número da nota,
+ * para a resposta dizer de onde veio.
  */
 class BaseDoSuporte
 {
@@ -43,15 +44,18 @@ class BaseDoSuporte
      * A seção do prompt, ou null com a base vazia (o Pedro segue como antes).
      *
      * @param  string  $recentes  as últimas mensagens do cliente, para achar as notas gerais que combinam
+     * @param  bool  $doCadastro  o número é do cadastro do cliente (Identificacao)? Sem isso, a memória
+     *                            dele e os atendimentos de outras conversas ficam fora: quem só disse o
+     *                            nome não fica sabendo o que aconteceu com o cliente (31/10/2026).
      */
-    public function paraOPrompt(SuporteConversa $c, string $recentes): ?string
+    public function paraOPrompt(SuporteConversa $c, string $recentes, bool $doCadastro): ?string
     {
         $blocos = [];
         foreach (SuporteNota::ativas()->where('tipo', 'empresa')->with('validadoPor:id,name')->orderBy('id')->get() as $n) {
             $blocos[] = $this->bloco($n, self::TETOS['empresa']);
         }
 
-        $cliente = $this->doCliente($c);
+        $cliente = $doCadastro ? $this->doCliente($c) : null;
         if ($cliente) {
             foreach ((clone $cliente)->where('tipo', 'cliente')->get() as $n) {
                 $blocos[] = $this->bloco($n, self::TETOS['cliente']);
@@ -90,7 +94,11 @@ class BaseDoSuporte
         }
 
         return "## BASE DO SUPORTE (notas da equipe; cada uma com o número dela)\n"
-            .($cliente ? '' : "- Cliente não confirmado: nenhuma nota de cliente foi incluída.\n")
+            .match (true) {
+                (bool) $cliente => '',
+                $c->cliente_id || $c->gestor_cliente_id => "- O número que escreve não é do cadastro do cliente: nenhuma nota do cliente nem de atendimentos de outras conversas foi incluída.\n",
+                default => "- Cliente não confirmado: nenhuma nota de cliente foi incluída.\n",
+            }
             .implode("\n\n", $saida)
             .($fora ? "\n\n- ({$fora} nota(s) relacionada(s) não couberam neste pedido.)" : '');
     }

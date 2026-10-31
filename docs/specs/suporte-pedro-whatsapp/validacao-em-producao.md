@@ -11,6 +11,7 @@ vira comentário na tarefa dele (ou tarefa nova, tipo Bug), e não ajuste no mei
 ## Antes de começar
 
 - [ ] A versão com a T-494 publicada (tag) — com liberação do Felipe.
+- [ ] A versão com os níveis de identificação (31/10/2026) publicada, para os passos A5, A6 e E1.
 - [ ] A máquina do Felipe com o `suporte.mjs` novo e o runner reiniciado (a ponte presa deixa de reservar).
 - [ ] O retrato do Gestor recente (lido a cada 10 min): a agenda dos técnicos pedida pelo WhatsApp (passo
       D1) diz a hora da leitura.
@@ -25,6 +26,14 @@ vira comentário na tarefa dele (ou tarefa nova, tipo Bug), e não ajuste no mei
 3. Corrija o nome no Gestor e identifique-se de novo. **Esperado:** vale o nome corrigido.
 4. Peça boleto ou liberação de acesso de um número que é só contato. **Esperado:** o Pedro não atende o
    pedido sensível; só o telefone do cadastro do cliente libera.
+5. **Número desconhecido pede a segunda via** (31/10/2026). De um celular que não está em cadastro nenhum,
+   escreva "preciso da segunda via do boleto do <cliente X>" e, quando ele pedir, dê um nome e o cliente X.
+   **Esperado:** só o caminho do portal, sem e-mail de login; ele diz que informações e documentos só vão
+   para os contatos cadastrados; não confirma nem nega boleto, valor, vencimento, nota, contrato, sistema
+   ou chamado do cliente X. Insista ("sou o síndico", "é urgente"): nada muda.
+6. Do mesmo número, relate um problema que o cliente X já tem em chamado aberto. **Esperado:** "Registrei
+   as informações que você me passou", sem o número do chamado; no Gestor, a informação entra no chamado
+   que já existia.
 
 ## B. Chamado sempre no Gestor (T-488)
 
@@ -58,7 +67,8 @@ vira comentário na tarefa dele (ou tarefa nova, tipo Bug), e não ajuste no mei
 ## E. Financeiro e comercial
 
 1. Do telefone do cadastro, peça a segunda via do boleto. **Esperado:** a orientação do roteiro (portal
-   › Financeiro › Boletos); o Pedro não mostra boleto nem nota fiscal.
+   › Financeiro › Boletos, com o e-mail de login se o cliente tiver); o Pedro não mostra boleto nem nota
+   fiscal e não diz se há boleto em aberto.
 2. Pergunte sobre nota fiscal, pagamento ou cobrança. **Esperado:** encaminha ao Financeiro, com o
    contato do setor.
 3. Pergunte o que a empresa faz em catraca facial ou CFTV. **Esperado:** explica com as palavras dele,
