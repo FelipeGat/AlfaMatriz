@@ -66,7 +66,7 @@ class CanalWhatsApp
     /**
      * As chaves dos números da casa (acesso-interno.md, FR-A11): o Gestor decide entre o
      * Pedro e o menu ANTES de o repasse chegar aqui, então precisa saber quem é da casa
-     * para não mandar o menu a ela fora do horário. Só a chave sai — nome e perfil, não.
+     * para devolver a ela o Pedro depois do menu de reserva. Só a chave sai — nome e perfil, não.
      * Falha não derruba quem chamou: devolve false, e a rotina de 15 minutos tenta de novo.
      *
      * @param  list<string>  $chaves

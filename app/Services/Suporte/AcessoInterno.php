@@ -28,6 +28,12 @@ class AcessoInterno
 
     private const VE = ['diretor' => ['suporte', 'gestor', 'diretor'], 'gestor' => ['suporte', 'gestor'], 'suporte' => ['suporte']];
 
+    /**
+     * O retrato do Gestor é relido a cada 10 min; com mais de 30 (três leituras perdidas) ele vai marcado
+     * DESATUALIZADO, e só então o Pedro fala da hora da leitura (pedro-comunicacao, FR-002).
+     */
+    public const RETRATO_VELHO_MINUTOS = 30;
+
     /** @return list<array{telefone: string, nome: string, perfil: string}> as linhas válidas da lista */
     public function lista(): array
     {
@@ -186,7 +192,7 @@ class AcessoInterno
         $abertos = collect($r['atendimentos'] ?? [])->reject(fn ($a) => in_array($a['status'] ?? '', ['concluido', 'cancelado'], true))
             ->sortBy(fn ($a) => (string) ($a['criado_em'] ?? ''))->values();
         $porEtapa = $abertos->countBy(fn ($a) => str_replace('_', ' ', (string) ($a['status'] ?? '?')))->map(fn ($n, $e) => "{$e}: {$n}")->implode(', ');
-        $texto = "## ATENDIMENTOS DO GESTOR (lido às ".$this->hora($r['lido_em']).")\n"
+        $texto = "## ATENDIMENTOS DO GESTOR (".$this->leitura($r['lido_em']).")\n"
             .'- Abertos: '.$abertos->count().($porEtapa !== '' ? " ({$porEtapa})" : '').". Lista do mais antigo para o mais novo:\n"
             .$abertos->take(80)->map($linha)->implode("\n")
             .($abertos->count() > 80 ? "\n- (+".($abertos->count() - 80).' mais novos, não listados)' : '');
@@ -214,8 +220,9 @@ class AcessoInterno
             return "## AGENDA DOS TÉCNICOS\n- O retrato do Gestor ainda não foi lido: diga que não consegue consultar a agenda agora.";
         }
         $hoje = CarbonImmutable::now(config('app.timezone'))->startOfDay();
-        $dias = collect([$hoje->subDay(), $hoje, $hoje->addDay()]);
         $t = mb_strtolower($ultimasMensagens);
+        // Os dias pedidos vêm primeiro; hoje, amanhã e ontem completam, até o teto (pedro-comunicacao, FR-013).
+        $dias = collect(self::diasDaSemana($t, $hoje));
         foreach (['anteontem' => -2, 'ontem' => -1, 'hoje' => 0, 'amanhã' => 1, 'amanha' => 1, 'depois de amanhã' => 2] as $palavra => $n) {
             if (str_contains($t, $palavra)) {
                 $dias->push($hoje->addDays($n));
@@ -229,12 +236,13 @@ class AcessoInterno
                 $dias->push(CarbonImmutable::create($ano, (int) $mes, (int) $dia, 0, 0, 0, config('app.timezone')));
             }
         }
-        $dias = $dias->unique(fn ($x) => $x->toDateString())->sortBy(fn ($x) => $x->toDateString())->take(-5)->values();
+        $dias = $dias->merge([$hoje, $hoje->addDay(), $hoje->subDay()])->unique(fn ($x) => $x->toDateString())->take(self::TETO_DE_DIAS)
+            ->sortBy(fn ($x) => $x->toDateString())->values();
 
         $equipe = collect($r['equipe'] ?? [])->keyBy('id');
         $atendimentos = collect($r['atendimentos'] ?? [])->keyBy('id');
         $nome = fn ($id) => (string) ($equipe[$id]['nome'] ?? 'técnico '.$id);
-        $texto = "## AGENDA DOS TÉCNICOS (visitas no Gestor, lido às ".$this->hora($r['lido_em']).'; o retrato cobre de '
+        $texto = "## AGENDA DOS TÉCNICOS (visitas no Gestor, ".$this->leitura($r['lido_em']).'; o retrato cobre de '
             .$hoje->subDays(7)->format('d/m').' a '.$hoje->addDays(14)->format('d/m').')';
         foreach ($dias as $dia) {
             $doDia = collect($r['visitas'] ?? [])->filter(fn ($v) => str_starts_with((string) ($v['inicio'] ?? ''), $dia->toDateString()))
@@ -254,7 +262,7 @@ class AcessoInterno
                 $a = $atendimentos[$v['atendimento_id']] ?? null;
                 $cl = $a ? $d->cliente((int) ($a['cliente_id'] ?? 0)) : null;
                 $cliente = $cl ? (($cl['fantasia'] ?? '') ?: ($cl['nome'] ?? '')).(! empty($cl['pre']) ? ' (pré-cliente)' : '')
-                    : (! empty($a['solicitante']) ? $a['solicitante'].' (sem cadastro)' : 'cliente não identificado no retrato');
+                    : (! empty($a['solicitante']) ? $a['solicitante'] : 'cliente não informado');
                 $adicionais = collect((array) ($v['adicionais'] ?? []))->map(fn ($id) => Str::before($nome($id), ' '))->implode(', ');
                 $texto .= "\n- ".Str::before($nome($v['tecnico_id'] ?? 0), ' ').': '.substr((string) $v['inicio'], 11, 5).' às '.substr((string) ($v['fim'] ?? ''), 11, 5)
                     .' — '.($a ? 'nº '.$a['numero'] : 'atendimento '.$v['atendimento_id']).' — '.$cliente
@@ -269,6 +277,47 @@ class AcessoInterno
         return $texto.($tecnicos !== '' ? "\n- Técnicos com visita no período do retrato: {$tecnicos}." : '');
     }
 
+    /** Quantos dias a agenda leva num pedido: a semana que vem inteira e mais dois. */
+    public const TETO_DE_DIAS = 7;
+
+    /**
+     * Os dias da semana citados (FR-013): "quarta" é a desta semana — a de hoje, se hoje é quarta; se já
+     * passou, a desta e a da próxima, e a IA vê as duas datas —; "próxima quarta", a primeira depois de
+     * hoje; "esta semana" e "semana que vem", os dias úteis. A semana começa na segunda.
+     *
+     * @return list<CarbonImmutable>
+     */
+    public static function diasDaSemana(string $texto, CarbonImmutable $hoje): array
+    {
+        $segunda = $hoje->startOfDay()->subDays($hoje->dayOfWeekIso - 1);
+        $dias = [];
+        if (preg_match('/\b(semana que vem|pr[oó]xima semana)\b/u', $texto)) {
+            foreach (range(0, 4) as $i) {
+                $dias[] = $segunda->addWeek()->addDays($i);
+            }
+        }
+        if (preg_match('/\b(n?es[st]a semana)\b/u', $texto)) {
+            foreach (range(0, 4) as $i) {
+                $dias[] = $segunda->addDays($i);
+            }
+        }
+        $posicao = ['segunda' => 0, 'terca' => 1, 'terça' => 1, 'quarta' => 2, 'quinta' => 3, 'sexta' => 4, 'sabado' => 5, 'sábado' => 5, 'domingo' => 6];
+        preg_match_all('/\b(pr[oó]xim[ao]\s+)?(segunda|ter[cç]a|quarta|quinta|sexta|s[aá]bado|domingo)(?:-feira)?(?![\p{L}])/u', $texto, $m, PREG_SET_ORDER);
+        foreach ($m as $g) {
+            $nesta = $segunda->addDays($posicao[$g[2]]);
+            if ($g[1] !== '') {
+                $dias[] = $nesta->gt($hoje) ? $nesta : $nesta->addWeek();
+            } else {
+                $dias[] = $nesta;
+                if ($nesta->lt($hoje)) {
+                    $dias[] = $nesta->addWeek();
+                }
+            }
+        }
+
+        return $dias;
+    }
+
     /** O retrato do Secretário: financeiro e comercial do Gestor, lido da máquina do dono. */
     private function gestor(): string
     {
@@ -277,17 +326,37 @@ class AcessoInterno
             return "## GESTOR — FINANCEIRO E COMERCIAL\n- Ainda não lido: diga que não consegue consultar agora.";
         }
         $partes = ['## GESTOR — FINANCEIRO E COMERCIAL (lido às '.$this->hora($retrato->lido_em).($retrato->velho() ? '; DESATUALIZADO, avise' : '').')'];
+        $item = fn (array $i) => '  • '.$i['texto'].(! empty($i['data']) ? ' — '.CarbonImmutable::parse($i['data'])->format('d/m/Y') : '').(! empty($i['valor']) ? ' — '.$this->brl($i['valor']) : '');
         foreach (SecretarioGestorRetrato::BLOCOS as $chave => $rotulo) {
             $b = $retrato->dados['blocos'][$chave] ?? null;
             if (! $b) {
                 continue;
             }
             $partes[] = '- '.$b['quantidade'].' '.$rotulo.(! empty($b['valor']) ? ' — total '.$this->brl($b['valor']) : '');
-            foreach ((array) ($b['itens'] ?? []) as $i) {
-                $partes[] = '  • '.$i['texto'].(! empty($i['data']) ? ' — '.CarbonImmutable::parse($i['data'])->format('d/m/Y') : '').(! empty($i['valor']) ? ' — '.$this->brl($i['valor']) : '');
+            // As contas a pagar separadas (pedro-comunicacao, FR-007): vencidas de um lado, de hoje do outro.
+            foreach (['vencidas' => 'vencidas', 'hoje' => 'vencendo hoje'] as $parte => $nome) {
+                if (isset($b[$parte]['quantidade'])) {
+                    $partes[] = '  - '.$nome.': '.$b[$parte]['quantidade'].(! empty($b[$parte]['valor']) ? ' — total '.$this->brl($b[$parte]['valor']) : '');
+                }
             }
-            if ($b['quantidade'] > count((array) ($b['itens'] ?? []))) {
-                $partes[] = '  • (os itens acima são os '.count((array) ($b['itens'] ?? [])).' mais antigos; o total é '.$b['quantidade'].')';
+            $itens = (array) ($b['itens'] ?? []);
+            if ($itens) {
+                $partes[] = '  Lista (das mais antigas):';
+            }
+            foreach ($itens as $i) {
+                $partes[] = $item($i);
+            }
+            // 31/10/2026: com 10 itens e 24 no total, o Pedro ofereceu "as outras 19". Só existe o que está aqui.
+            if ($b['quantidade'] > count($itens)) {
+                $partes[] = $itens
+                    ? '  • (ESTA LISTA TEM SÓ '.count($itens).' DOS '.$b['quantidade'].': ofereça só estes; os outros '.($b['quantidade'] - count($itens)).' só no Gestor)'
+                    : '  • (SEM A LISTA: só a quantidade; os itens só no Gestor)';
+            }
+            if ($maiores = (array) ($b['maiores'] ?? [])) {
+                $partes[] = '  Maiores por valor ('.count($maiores).($b['quantidade'] > count($maiores) ? ' dos '.$b['quantidade'] : '').'):';
+                foreach ($maiores as $i) {
+                    $partes[] = $item($i);
+                }
             }
         }
 
@@ -319,6 +388,14 @@ class AcessoInterno
     private function dono(): ?User
     {
         return User::where('email', config('services.suporte_pedro.conta'))->first();
+    }
+
+    /** "lido às 09:52", e DESATUALIZADO quando o retrato passou do limite (FR-002): só aí o Pedro fala da hora. */
+    private function leitura($quando): string
+    {
+        $velho = CarbonImmutable::parse($quando)->lt(now()->subMinutes(self::RETRATO_VELHO_MINUTOS));
+
+        return 'lido às '.$this->hora($quando).($velho ? '; DESATUALIZADO, avise' : '');
     }
 
     private function hora($quando): string

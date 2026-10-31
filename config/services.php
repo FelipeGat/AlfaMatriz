@@ -78,7 +78,8 @@ return [
         'responsaveis' => array_filter(explode(',', (string) env('SUPORTE_PEDRO_RESPONSAVEIS', 'rossinidesouza06@gmail.com,alexandreblankl@outlook.com'))),
         'agente' => env('SUPORTE_PEDRO_AGENTE', 'claude'),
         'modelo' => env('SUPORTE_PEDRO_MODELO', 'sonnet'),
-        'inicio' => env('SUPORTE_PEDRO_INICIO', '07:00'),
+        // O horário da equipe e do cliente do cadastro (Felipe, 31/10/2026: "das 08:00 às 18:00").
+        'inicio' => env('SUPORTE_PEDRO_INICIO', '08:00'),
         'fim' => env('SUPORTE_PEDRO_FIM', '18:00'),
         // Gravar o atendimento NO Gestor de produção pela máquina: liberado pelo Felipe em 21/10/2026
         // ("não registrar no Matriz; quando o pedido vier de cliente, Wallas ou Alexandre, sempre ir

@@ -21,12 +21,19 @@ export function lerSaida(saida) {
     try { blocos = JSON.parse(linha.slice(MARCA.length)); } catch { return null; }
     if (!blocos || typeof blocos !== 'object' || Array.isArray(blocos)) return null;
     const limpo = {};
+    const lista = l => (Array.isArray(l) ? l : []).slice(0, 10).map(i => ({ texto: String(i.texto ?? '').slice(0, 200),
+        ...(typeof i.data === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(i.data) ? { data: i.data } : {}),
+        ...(typeof i.valor === 'number' ? { valor: i.valor } : {}) })).filter(i => i.texto);
+    // Quantidade e valor de uma parte do bloco (as contas a pagar vencidas e as de hoje).
+    const parte = p => (Number.isInteger(p?.quantidade) ? { quantidade: p.quantidade, ...(typeof p.valor === 'number' ? { valor: p.valor } : {}) } : null);
     for (const [chave, b] of Object.entries(blocos)) {
         if (!BLOCOS.has(chave) || !Number.isInteger(b?.quantidade)) return null;
-        limpo[chave] = { quantidade: b.quantidade, ...(typeof b.valor === 'number' ? { valor: b.valor } : {}),
-            itens: (Array.isArray(b.itens) ? b.itens : []).slice(0, 10).map(i => ({ texto: String(i.texto ?? '').slice(0, 200),
-                ...(typeof i.data === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(i.data) ? { data: i.data } : {}),
-                ...(typeof i.valor === 'number' ? { valor: i.valor } : {}) })).filter(i => i.texto) };
+        limpo[chave] = { quantidade: b.quantidade, ...(typeof b.valor === 'number' ? { valor: b.valor } : {}), itens: lista(b.itens) };
+        // Os campos novos (docs/specs/pedro-comunicacao, plan.md seção 3): só passam no formato esperado.
+        if (Array.isArray(b.maiores)) limpo[chave].maiores = lista(b.maiores);
+        for (const nome of ['vencidas', 'hoje']) {
+            if (parte(b[nome])) limpo[chave][nome] = parte(b[nome]);
+        }
     }
     return limpo;
 }

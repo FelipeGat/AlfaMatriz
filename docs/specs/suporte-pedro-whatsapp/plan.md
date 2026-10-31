@@ -34,7 +34,10 @@ WhatsApp (cliente) ──► Meta Cloud API ──webhook──► Matriz /api/s
 2. **Humano assumiu:** um echo do app, ou resposta pela tela, deixa a conversa com o humano. O Pedro fica quieto
    nela até a conversa ser devolvida a ele (botão na tela) ou até 24 h sem mensagem do humano (a confirmar).
 3. **Horário:** das 07:00 às 18:00 (America/Sao_Paulo). Fora dele, a mensagem só é gravada; às 07:00 um comando
-   agendado põe na fila as conversas que esperam.
+   agendado põe na fila as conversas que esperam. (Desde 31/10/2026 o Pedro atende o cliente NOVO a qualquer
+   hora; o cliente do cadastro, das 08:00 às 18:00, e fora disso recebe um aviso fixo com o plantão, sem IA
+   (`Pedro::enfileirar` → `avisarForaDoHorario`); às 08:00 o `Pedro::retomar` dá andamento ao que ficou da noite.
+   Ver spec.md, Clarificações.)
 4. **Pacote de contexto** (montado pelo Matriz e entregue ao worker):
    - o cliente (`clientes`, `cliente_telefones`) e o que ele tem (`cliente_sistema`, `cliente_contratos`);
    - a situação dos sistemas dele: Monitor (`monitor_alertas`) e manutenção programada (compromissos `deploy`);

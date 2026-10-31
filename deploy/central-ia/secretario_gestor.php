@@ -61,20 +61,34 @@ foreach (['orcamentos_aprovacao' => 'aguardando_aprovacao', 'orcamentos_elaborac
 // Cobranca::preCliente() devolve null no Gestor: só `cliente` é carregado.
 // Cancelada não é dívida (22/10/2026: apareciam como vencidas).
 $aReceber = fn () => Cobranca::whereNotIn('status', ['pago', 'cancelado'])->whereNull('prejuizo_em');
+// Os campos novos (docs/specs/pedro-comunicacao, plan.md seção 3) ficam DENTRO dos blocos de sempre:
+// "maiores", "vencidas" e "hoje". O Matriz de antes os descarta sem recusar a leitura, e o de depois
+// aceita a leitura de antes — a máquina e o Matriz podem ser atualizados em qualquer ordem.
+$cobranca = fn ($c) => ['texto' => $curto($nome($c).($c->descricao ? ' — '.$c->descricao : '')), 'data' => $data($c->data_vencimento), 'valor' => (float) $c->valor];
+$vencidas = fn () => $aReceber()->whereDate('data_vencimento', '<', today());
 $blocos['cobrancas_vencidas'] = [
-    'quantidade' => $aReceber()->whereDate('data_vencimento', '<', today())->count(),
-    'valor' => (float) $aReceber()->whereDate('data_vencimento', '<', today())->sum('valor'),
-    'itens' => $aReceber()->whereDate('data_vencimento', '<', today())->with('cliente')->orderBy('data_vencimento')->limit(10)->get()
-        ->map(fn ($c) => ['texto' => $curto($nome($c).($c->descricao ? ' — '.$c->descricao : '')), 'data' => $data($c->data_vencimento), 'valor' => (float) $c->valor])->values()->all(),
+    'quantidade' => $vencidas()->count(),
+    'valor' => (float) $vencidas()->sum('valor'),
+    'itens' => $vencidas()->with('cliente')->orderBy('data_vencimento')->limit(10)->get()->map($cobranca)->values()->all(),
+    'maiores' => $vencidas()->with('cliente')->orderByDesc('valor')->limit(10)->get()->map($cobranca)->values()->all(),
 ];
 $blocos['cobrancas_hoje'] = [
     'quantidade' => $aReceber()->whereDate('data_vencimento', today())->count(),
-    'itens' => $aReceber()->whereDate('data_vencimento', today())->with('cliente')->limit(10)->get()
-        ->map(fn ($c) => ['texto' => $curto($nome($c).($c->descricao ? ' — '.$c->descricao : '')), 'data' => $data($c->data_vencimento), 'valor' => (float) $c->valor])->values()->all(),
+    'valor' => (float) $aReceber()->whereDate('data_vencimento', today())->sum('valor'),
+    'itens' => $aReceber()->whereDate('data_vencimento', today())->with('cliente')->limit(10)->get()->map($cobranca)->values()->all(),
 ];
+// Contas a pagar com valor e lista, vencidas separadas das de hoje (31/10/2026: "16 contas a pagar
+// vencidas ou de hoje", sem valor, não servia para decidir o que pagar).
+$aPagar = fn () => ContaPagar::where('status', 'em_aberto');
+$conta = fn ($p) => ['texto' => $curto(trim((string) ($p->fornecedor?->nome_fantasia ?: $p->fornecedor?->razao_social ?: '')).($p->descricao ? ($p->fornecedor ? ' — ' : '').$p->descricao : '') ?: 'conta sem descrição'),
+    'data' => $data($p->data_vencimento), 'valor' => (float) $p->valor];
 $blocos['pagar_vencendo'] = [
-    'quantidade' => ContaPagar::where('status', 'em_aberto')->whereDate('data_vencimento', '<=', today())->count(),
-    'itens' => [],
+    'quantidade' => $aPagar()->whereDate('data_vencimento', '<=', today())->count(),
+    'valor' => (float) $aPagar()->whereDate('data_vencimento', '<=', today())->sum('valor'),
+    'itens' => $aPagar()->whereDate('data_vencimento', '<=', today())->with('fornecedor')->orderBy('data_vencimento')->limit(10)->get()->map($conta)->values()->all(),
+    'vencidas' => ['quantidade' => $aPagar()->whereDate('data_vencimento', '<', today())->count(), 'valor' => (float) $aPagar()->whereDate('data_vencimento', '<', today())->sum('valor')],
+    'hoje' => ['quantidade' => $aPagar()->whereDate('data_vencimento', today())->count(), 'valor' => (float) $aPagar()->whereDate('data_vencimento', today())->sum('valor')],
+    'maiores' => $aPagar()->whereDate('data_vencimento', '<', today())->with('fornecedor')->orderByDesc('valor')->limit(10)->get()->map($conta)->values()->all(),
 ];
 $blocos['reunioes_proximo_passo'] = [
     'quantidade' => ReuniaoCliente::comPendencia()->count(),

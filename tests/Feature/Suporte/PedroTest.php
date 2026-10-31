@@ -117,24 +117,27 @@ class PedroTest extends TestCase
         Http::assertNotSent(fn ($r) => str_contains((string) ($r['text']['body'] ?? ''), 'T-'));
     }
 
-    public function test_fora_do_horario_espera_a_abertura_e_humano_cala_o_pedro(): void
+    /**
+     * Até 31/10/2026 a noite esperava as 07:00 e o sábado não abria. Desde então o cliente novo é
+     * atendido a qualquer hora, e o do cadastro (este número) recebe o aviso fixo fora do horário —
+     * as duas metades têm os testes delas em PedroHorarioDoClienteTest.
+     */
+    public function test_a_noite_e_no_sabado_o_pedro_atende_e_humano_cala_o_pedro(): void
     {
         Carbon::setTestNow(Carbon::parse('2026-10-20 21:00', 'America/Sao_Paulo'));
-        $this->chega('Boa noite, sistema fora?', 'wamid.1');
-        $this->assertSame(0, SuportePedido::count());
-        Carbon::setTestNow(Carbon::parse('2026-10-21 07:00', 'America/Sao_Paulo'));
-        $this->artisan('suporte:pedro')->assertSuccessful();
-        $this->assertSame(1, SuportePedido::count(), 'às 07:00 ele atende a fila da noite');
+        $this->chega('Boa noite, sistema fora?', 'wamid.n', '5527911110000');
+        $this->assertSame(1, SuportePedido::count(), 'às 21:00 o cliente novo é atendido na hora');
 
-        // Sábado não abre.
+        // Sábado também.
         SuportePedido::query()->delete();
         Carbon::setTestNow(Carbon::parse('2026-10-24 10:00', 'America/Sao_Paulo'));
-        $this->artisan('suporte:pedro');
-        $this->assertSame(0, SuportePedido::count());
+        $this->chega('alguém aí?', 'wamid.s', '5527911110000');
+        $this->assertSame(1, SuportePedido::count(), 'no sábado ele atende');
 
         // Com humano na conversa, o Pedro não entra.
+        SuportePedido::query()->delete();
         Carbon::setTestNow(Carbon::parse('2026-10-21 08:00', 'America/Sao_Paulo'));
-        SuporteConversa::sole()->update(['situacao' => 'humano', 'humano_ate' => now()->addHours(5)]);
+        SuporteConversa::where('telefone', '5527999998888')->sole()->update(['situacao' => 'humano', 'humano_ate' => now()->addHours(5)]);
         $this->chega('alô?', 'wamid.2');
         $this->assertSame(0, SuportePedido::count());
     }

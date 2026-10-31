@@ -56,6 +56,32 @@ conversa, SLA). Serve de referência de código; não é infraestrutura comparti
   política da Meta para IA no WhatsApp Business antes de ligar.)
 - **Horário:** das 07:00 às 18:00. Fora dele, o Pedro **não responde**; a mensagem fica para o dia seguinte, e às
   07:00 ele atende a fila da noite. (A confirmar: sábado, domingo e feriado contam como "fora do horário"?)
+  **Mudou em 31/10/2026 à noite** (Felipe, depois de escrever num sábado de um número fora da lista da casa e
+  receber o menu do Gestor: "não quero saídas pelo gestor, todas aqui pelo Pedro"): o Pedro atende a qualquer
+  hora, cliente ou da casa, e na primeira mensagem se apresenta e pergunta em que pode ajudar. O horário
+  (`Horario::aberto`) passa a ser só o da equipe: o retorno de uma pessoa, os lembretes da fila, a cobrança dos
+  técnicos e o plantão para urgência. O menu do Gestor fica de reserva, para o Pedro sem resposta em 5 min
+  (Gestor: `docs/specs/whatsapp-pedro`, FR-012).
+  **Refinado na mesma noite** (Felipe, 31/10/2026, 18:23: "24 h para clientes novos perguntando em que pode
+  ajudar e direcionando corretamente, e para quem já é cliente somente em horário comercial, das 08:00 às 18:00;
+  após esse horário, informar que estamos fora do horário e, se for plantão, direcionar para o número do
+  plantão"; aprovadas as três recomendações em 31/10/2026):
+  - **Horário único das 08:00 às 18:00, de segunda a sexta**, para o cliente e para a equipe
+    (`SUPORTE_PEDRO_INICIO`/`_FIM`). Feriado ainda conta como dia útil.
+  - **Cliente novo** (número fora de qualquer cadastro, ou pré-cliente do funil): o Pedro atende a qualquer hora,
+    tira as dúvidas com o showroom, sem preço, e passa ao comercial avisando que o retorno é no próximo horário.
+  - **Cliente** (telefone no cadastro do Matriz ou do Gestor, contato do cliente gravado pelo Pedro, ou conversa
+    já ligada a um cliente): fora do horário recebe um **aviso fixo, sem IA e sem dado nenhum**: o horário, que a
+    mensagem ficou registrada e o plantão para urgência. O código decide (`Identificacao::ehCliente`), não o
+    pedido à IA. A cada nova sequência de mensagens sai um aviso curto (no máximo um a cada 2 min), porque o
+    Gestor manda o menu a quem fica 5 min sem resposta.
+  - **Número desconhecido que diz ser de um cliente**, fora do horário: assim que o cliente é confirmado na
+    conversa, vale a regra do cliente — o aviso, e nada se abre.
+  - **Às 08:00 o Pedro retoma sozinho** o que o cliente mandou à noite, se ainda estiver na janela de 24 h do
+    WhatsApp; a mensagem de sexta à noite já não pode ser respondida na segunda e fica para a equipe.
+  - **Os avisos automáticos dizem a verdade a cada público:** quem é da casa, com a máquina parada, ouve que o
+    Pedro está sem acesso às consultas; o cliente só ouve "fora do horário" fora do horário; e a falha da IA de
+    madrugada não promete um colega "em instantes".
 - **Quem recebe os atendimentos abertos:** sempre o Alexandre (id 3) e o Rossini (id 2), os dois avisados.
 - **Ações da primeira entrega:**
   - responder;

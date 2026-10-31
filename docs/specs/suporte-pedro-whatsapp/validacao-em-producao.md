@@ -18,11 +18,17 @@ vira comentário na tarefa dele (ou tarefa nova, tipo Bug), e não ajuste no mei
 - [ ] `whatsapp_configs.pedro_ativo` ligado no Gestor.
 - [ ] Para o passo A7: Gestor e Matriz com a lista da casa (31/10/2026) publicados, o Gestor antes, e a lista
       salva de novo em Suporte › Pedro (ou 15 min depois da publicação). O número de quem testa na lista.
+- [ ] Para os passos A8 a A10: Matriz e Gestor com o Pedro a qualquer hora (31/10/2026, à noite) publicados, o
+      MATRIZ antes: com o Gestor antes, a conversa da noite iria a um Pedro que ainda não responde fora do
+      horário, e o cliente ficaria 5 min sem resposta até o menu.
+- [ ] O `.env` de produção do Matriz sem `SUPORTE_PEDRO_INICIO=07:00` (o padrão passou a 08:00). E o
+      cabeçalho do menu do Gestor (`whatsapp_configs.menu_mensagem`), se citar 07:00, ajustado à mão.
 
 ## A. Identificação (T-478)
 
 1. Encerre a sua conversa em Suporte › Conversas e escreva como alguém de um cliente do Gestor, sem se
-   identificar, relatando um problema. **Esperado:** o Pedro pede nome e cliente antes de qualquer ajuda.
+   identificar, relatando um problema. **Esperado:** o Pedro se apresenta e pede nome e cliente antes de
+   qualquer ajuda.
 2. Diga nome, função e cliente. **Esperado:** em alguns minutos a pessoa aparece na aba Contato do
    cliente no Gestor, com origem WhatsApp.
 3. Corrija o nome no Gestor e identifique-se de novo. **Esperado:** vale o nome corrigido.
@@ -38,8 +44,25 @@ vira comentário na tarefa dele (ou tarefa nova, tipo Bug), e não ajuste no mei
    que já existia.
 7. **Quem é da casa, fora do horário** (31/10/2026). Depois das 18:00 ou no fim de semana, de um número da
    lista de acesso interno, escreva "quantos atendimentos estão abertos no Gestor?". **Esperado:** nenhum
-   menu do Gestor; o Pedro responde pelo nome, com o total por etapa. Do mesmo jeito, de um número fora da
-   lista: o menu do Gestor, como antes.
+   menu do Gestor; o Pedro responde pelo nome, com o total por etapa.
+8. **Cliente NOVO fora do horário** (31/10/2026, à noite: "todas aqui pelo Pedro"). Depois das 18:00 ou no fim
+   de semana, de um número fora da lista da casa e fora de qualquer cadastro (o 3269 do Felipe serve), escreva
+   só "olá". **Esperado:** nenhum menu do Gestor; o Pedro se apresenta numa frase e pergunta em que pode ajudar,
+   sem pedir nome nem empresa ainda. Pergunte por um serviço (CFTV, catraca) com uma empresa FICTÍCIA: ele
+   explica, sem preço. Peça uma proposta: ele passa ao comercial e avisa que o retorno é no próximo horário.
+   Diga que é urgente: ele passa o plantão. Com o runner parado, em ~2 min chega o aviso automático de fora do
+   horário com o plantão. **Não diga que é de um cliente que já existe**: o número passa a ser contato dele.
+9. **Cliente do cadastro fora do horário** (31/10/2026, 18:23). Depois das 18:00 ou no fim de semana, de um
+   telefone que está no cadastro de um cliente (combine com o cliente ou use um número de teste cadastrado),
+   escreva "o portão parou". **Esperado:** na hora, sem IA, "Olá! Nosso atendimento é de segunda a sexta, das
+   08:00 às 18:00, e agora estamos fora do horário…", com o plantão; nada se abre no Gestor. Escreva de novo:
+   em até 2 min, um aviso curto ("Sua mensagem também ficou registrada…"), e nenhum menu do Gestor.
+   **Às 08:00 do dia útil seguinte** (se ainda dentro de 24 h da última mensagem): o Pedro retoma sozinho o
+   pedido da noite.
+10. **Avisos por público.** No horário, com o runner parado: de um número da casa, "Estou sem acesso às
+    consultas agora…"; de um cliente, "Recebi a sua mensagem e ela ficou registrada…", **sem** "fora do
+    horário". Fora do horário, com o runner parado, o cliente novo recebe o aviso de fora do horário com o
+    plantão.
 
 ## B. Chamado sempre no Gestor (T-488)
 
@@ -84,6 +107,23 @@ vira comentário na tarefa dele (ou tarefa nova, tipo Bug), e não ajuste no mei
 
 1. Depois de um atendimento identificado, abra Suporte › Base. **Esperado:** o registro proposto pelo
    Pedro aguardando confirmação de uma pessoa; nada entra como fato sem ela.
+
+## G. Comunicação (`docs/specs/pedro-comunicacao`)
+
+Depois do Matriz e do instalador da máquina publicados. O financeiro é relido de hora em hora: os passos 3 e
+4 só valem depois da primeira leitura nova (até 1 h após o instalador).
+
+1. De um número da casa, pergunte "quantos atendimentos estão abertos?" e, em seguida, "e quais estão sem
+   responsável?". **Esperado:** a resposta começa pelo número; o nome só na primeira; nenhuma traz "lido às".
+2. Pergunte "como está a agenda de quarta?" e "e a semana que vem?". **Esperado:** as visitas dos dias certos.
+3. Pergunte "como estão as contas a pagar?". **Esperado:** vencidas e de hoje separadas, cada uma com
+   quantidade e total, e as mais antigas com fornecedor, data e valor.
+4. Pergunte "quantas cobranças vencidas?" e depois "me manda a lista completa". **Esperado:** ele nunca
+   oferece mais itens do que mostra; na lista completa, manda todos os que tem e diz que o resto está no
+   Gestor.
+5. Peça uma lista longa (por exemplo, "todos os atendimentos abertos com a descrição"). **Esperado:** várias
+   mensagens, cada uma com linhas inteiras, sem "…" no meio.
+6. Do perfil suporte, pergunte das contas a pagar. **Esperado:** ele diz que não consegue consultar isso.
 
 ## Fora do alcance desta semana
 

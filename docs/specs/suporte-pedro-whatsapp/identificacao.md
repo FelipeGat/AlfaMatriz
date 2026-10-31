@@ -7,6 +7,13 @@ identificação, e seguia respondendo sem ela.
 
 - **Antes de qualquer ajuda, o Pedro pede o nome da pessoa e o nome da empresa ou do condomínio.** Se ela já
   contou o problema, ele mostra que entendeu e explica, com simpatia, que precisa disso para abrir o chamado.
+- **Só um cumprimento, na primeira mensagem** (Felipe, 31/10/2026): o Pedro se apresenta numa frase curta (o
+  nome e o suporte da empresa) e pergunta em que pode ajudar, sem pedir nome nem empresa ainda. A identificação
+  vem quando a pessoa disser o que precisa. Quem já começa pelo problema ouve a apresentação e o pedido de
+  identificação na mesma mensagem.
+- **Fora do horário, quem se identifica como cliente que já existe** (Felipe, 31/10/2026): assim que o cliente é
+  confirmado na conversa, a resposta da IA não sai e nada se abre; vai o aviso fixo de fora do horário com o
+  plantão (spec.md, Clarificações). O nome e o cliente confirmados ficam gravados, e às 08:00 o Pedro retoma.
 - **Identificada = cliente confirmado (Matriz ou Gestor) + nome de quem escreve** (`SuporteConversa::identificada`).
   Número do cadastro já traz o cliente; aí só falta o nome.
 - **Sem lista de autorizados e sem aprovação humana.** A primeira proposta (lista mantida no Gestor, com
@@ -35,9 +42,10 @@ No código, e não só no texto para a IA:
 Quando a pessoa termina de se identificar, a resposta daquele pedido **não é enviada**: a conversa volta na hora
 ao Pedro com o contexto inteiro (pedido com `acao = identificou`), e ele responde uma vez só, já cuidando do
 problema. Custa uma chamada a mais da IA, uma vez por conversa, e evita a troca "obrigado" + "e o problema?".
-Se a volta não entra na hora (identificou às 17:59 e a IA respondeu às 18:01), a resposta continua segurada: a
-última mensagem segue sendo da pessoa, e o `Pedro::aguardando` retoma a conversa na abertura. Mandar o "obrigado"
-ali calaria essa retomada.
+Se a volta não entra na hora (outro pedido da conversa ainda na fila), a resposta continua segurada: a última
+mensagem segue sendo da pessoa, e o `Pedro::aguardando`, a cada minuto, retoma a conversa. Mandar o "obrigado"
+ali calaria essa retomada. (Até 31/10/2026 o caso era o horário: identificou às 17:59, a IA respondeu às 18:01, e
+a volta esperava a abertura. Desde então o Pedro atende a qualquer hora.)
 
 **Telefone compartilhado** (portaria): a identificação fica no número, mas quem disser OUTRO nome passa a ser o
 solicitante, e não herda a função de quem escreveu antes. O pedido de quem já se identificou também devolve

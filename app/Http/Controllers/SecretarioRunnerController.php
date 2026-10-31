@@ -86,6 +86,18 @@ class SecretarioRunnerController extends Controller
             'blocos.*.itens.*.texto' => ['required', 'string', 'max:200'],
             'blocos.*.itens.*.data' => ['nullable', 'date_format:Y-m-d'],
             'blocos.*.itens.*.valor' => ['nullable', 'numeric', 'min:0', 'max:1000000000'],
+            // Dentro dos blocos de sempre (pedro-comunicacao, plan.md seção 3): os maiores por valor e, nas
+            // contas a pagar, vencidas e de hoje separadas. Opcionais, para a leitura de antes continuar valendo.
+            'blocos.*.maiores' => ['sometimes', 'array', 'max:10'],
+            'blocos.*.maiores.*.texto' => ['required', 'string', 'max:200'],
+            'blocos.*.maiores.*.data' => ['nullable', 'date_format:Y-m-d'],
+            'blocos.*.maiores.*.valor' => ['nullable', 'numeric', 'min:0', 'max:1000000000'],
+            'blocos.*.vencidas' => ['sometimes', 'array:quantidade,valor'],
+            'blocos.*.vencidas.quantidade' => ['required_with:blocos.*.vencidas', 'integer', 'min:0', 'max:100000'],
+            'blocos.*.vencidas.valor' => ['nullable', 'numeric', 'min:0', 'max:1000000000'],
+            'blocos.*.hoje' => ['sometimes', 'array:quantidade,valor'],
+            'blocos.*.hoje.quantidade' => ['required_with:blocos.*.hoje', 'integer', 'min:0', 'max:100000'],
+            'blocos.*.hoje.valor' => ['nullable', 'numeric', 'min:0', 'max:1000000000'],
         ]);
         \App\Models\SecretarioGestorRetrato::updateOrCreate(['user_id' => $user->id], [
             'maquina' => $maquina, 'lido_em' => \Carbon\CarbonImmutable::parse($dados['lido_em'])->setTimezone(config('app.timezone')), 'dados' => ['blocos' => $dados['blocos']],

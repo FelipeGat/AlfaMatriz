@@ -104,4 +104,7 @@ Telegram". O Pedro "não pode se confundir: tem que ter certeza de que sou eu, p
     lista continua sendo uma só, a daqui: a do Gestor é cópia e é substituída inteira a cada envio.
   - Se o Gestor não recebe, a tela avisa e a rotina tenta de novo; até lá, fora do horário, quem é da casa
     recebe o menu, como antes. O tempo limite do Gestor vale igual: sem resposta do Pedro em 5 min, sai o menu.
+  - **Desde 31/10/2026 à noite o Pedro atende todo mundo a qualquer hora** (spec.md, Clarificações; Gestor
+    FR-012). A lista no Gestor continua servindo para devolver ao Pedro, na mensagem seguinte, a conversa da casa
+    que recebeu o menu de reserva sem ter ouvido o Pedro antes; o cliente só volta se o Pedro já respondeu.
 - **Fora do escopo** (Felipe, 21/10/2026: "pode deixar de fora o AlfaHome"): o pessoal do AlfaHome.

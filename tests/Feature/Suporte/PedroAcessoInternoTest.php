@@ -117,7 +117,8 @@ class PedroAcessoInternoTest extends TestCase
         $c = $this->conversa('5527998845397');
         $pedido = app(Pedro::class)->enfileirar($c->id);
         $this->assertNotNull($pedido, 'o diretor é atendido à noite');
-        $this->assertNull(app(Pedro::class)->enfileirar($this->conversa('5527988887777')->id), 'cliente, só no horário');
+        // Desde 31/10/2026 o cliente também ("todas aqui pelo Pedro").
+        $this->assertNotNull(app(Pedro::class)->enfileirar($this->conversa('5527988887777')->id), 'o cliente também, a qualquer hora');
 
         $pedido->update(['situacao' => 'reservado']);
         $longa = str_repeat('Atendimento aberto. ', 120);

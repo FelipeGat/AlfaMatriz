@@ -134,8 +134,13 @@ class PedroIdentificacaoTest extends TestCase
         Http::assertNotSent(fn ($r) => str_contains((string) ($r['text']['body'] ?? ''), 'T-'));
     }
 
-    /** Revisão da T-478: identificada às 17:59 e a IA responde às 18:01 — a resposta espera, e o Pedro retoma na abertura. */
-    public function test_identificou_fora_do_horario_o_pedro_retoma_na_abertura(): void
+    /**
+     * Revisão da T-478, refeita duas vezes em 31/10/2026: identificada às 17:59 e a IA responde às 18:01.
+     * Antes a volta esperava a abertura (07:00); depois o Pedro passou a atender a qualquer hora; e o
+     * cliente do cadastro voltou a ter horário (18:23). Este número é do cadastro: às 18:01 o
+     * "obrigado" não sai e vai o aviso de fora do horário. Na abertura, o Pedro retoma.
+     */
+    public function test_identificou_depois_das_18_o_cliente_do_cadastro_ouve_o_horario_e_o_pedro_retoma_as_8(): void
     {
         Carbon::setTestNow(Carbon::parse('2026-10-20 17:59', 'America/Sao_Paulo'));
         $this->chega('Sou a Maria, síndica, a catraca parou', 'wamid.1', '5527999998888');
@@ -144,13 +149,53 @@ class PedroIdentificacaoTest extends TestCase
 
         Http::assertNotSent(fn ($r) => ($r['text']['body'] ?? '') === 'Obrigado, Maria!');
         $this->assertTrue(SuporteConversa::sole()->identificada());
-        $this->assertSame(1, SuportePedido::count(), 'fora do horário a volta espera');
+        $this->assertSame(1, SuportePedido::count(), 'fora do horário, o cliente do cadastro não vai à IA');
+        Http::assertSent(fn ($r) => str_starts_with((string) ($r['text']['body'] ?? ''), 'Olá! Nosso atendimento é de segunda a sexta, das 08:00 às 18:00'));
 
-        Carbon::setTestNow(Carbon::parse('2026-10-21 07:00', 'America/Sao_Paulo'));
-        $this->assertSame(1, app(Pedro::class)->aguardando(), 'na abertura a conversa volta ao Pedro');
+        Carbon::setTestNow(Carbon::parse('2026-10-21 08:00', 'America/Sao_Paulo'));
+        CentralIaRunner::query()->update(['visto_em' => now()]);
+        $this->artisan('suporte:pedro')->assertSuccessful();
         $prompt = $this->responde(['resposta' => 'Bom dia, Maria! Vou ver a catraca com você.', 'acao' => 'responder']);
         $this->assertStringContainsString('QUEM ESCREVE: Maria (síndica)', $prompt);
+        $this->assertStringContainsString('fora do horário, e quem escreveu recebeu o aviso automático', $prompt);
         Http::assertSent(fn ($r) => ($r['text']['body'] ?? '') === 'Bom dia, Maria! Vou ver a catraca com você.');
+    }
+
+    /**
+     * Felipe, 31/10/2026, sábado 18:11: escreveu "ola" de um número fora da lista da casa e recebeu o menu do
+     * Gestor. Agora o Pedro atende, e o pedido manda se apresentar e perguntar em que pode ajudar, sem pedir
+     * a identificação a um cumprimento só.
+     */
+    public function test_cliente_no_sabado_a_noite_e_atendido_e_o_pedido_manda_se_apresentar(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-10-31 18:11', 'America/Sao_Paulo'));
+        $this->chega('ola', 'wamid.1');
+        $prompt = $this->responde(['resposta' => 'Olá! Aqui é o Pedro, do suporte. Em que posso ajudar?', 'acao' => 'responder']);
+
+        $this->assertStringContainsString('APRESENTAÇÃO', $prompt);
+        $this->assertStringContainsString('pergunte em que pode ajudar', $prompt);
+        $this->assertStringContainsString('a um cumprimento só, vale a APRESENTAÇÃO', $prompt);
+        $this->assertStringContainsString('HORÁRIO DA EQUIPE', $prompt);
+        Http::assertSent(fn ($r) => ($r['text']['body'] ?? '') === 'Olá! Aqui é o Pedro, do suporte. Em que posso ajudar?');
+    }
+
+    /** O Pedro de noite não promete gente: chamar um colega fora do horário leva o aviso do próximo horário. */
+    public function test_a_noite_chamar_um_colega_avisa_o_proximo_horario(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-10-31 18:11', 'America/Sao_Paulo'));
+        $this->chega('quero falar com uma pessoa', 'wamid.1');
+        $this->responde(['resposta' => 'Claro.', 'acao' => 'transferir', 'resumo' => 'pediu uma pessoa']);
+
+        Http::assertSent(fn ($r) => str_contains((string) ($r['text']['body'] ?? ''), \App\Services\Suporte\Transferencia::foraDoHorario()));
+    }
+
+    /** O que ficou sem resposta à noite (pedido que falhou, máquina fora) volta à fila na hora, sem esperar as 07:00. */
+    public function test_aguardando_vale_a_noite(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-10-31 22:00', 'America/Sao_Paulo'));
+        $this->chega('a catraca parou', 'wamid.1');
+        SuportePedido::query()->update(['situacao' => 'falhou']);
+        $this->assertSame(1, app(Pedro::class)->aguardando(), 'à noite a conversa volta à fila');
     }
 
     /** Revisão da T-478: telefone de portaria passa de mão em mão; quem diz outro nome passa a ser o solicitante. */

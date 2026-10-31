@@ -152,9 +152,9 @@ Schedule::command('model:prune', ['--model' => [\App\Models\MonitorEvento::class
     ->withoutOverlapping()
     ->onOneServer();
 
-// O Pedro, do suporte no WhatsApp (docs/specs/suporte-pedro-whatsapp): na abertura
-// (07:00, dias úteis) põe na fila quem escreveu fora do horário, e a cada minuto
-// responde sozinho, sem IA, o pedido que a máquina não atendeu a tempo. Também
+// O Pedro, do suporte no WhatsApp (docs/specs/suporte-pedro-whatsapp): a cada minuto,
+// a qualquer hora, põe na fila quem escreveu e ficou sem resposta e responde sozinho,
+// sem IA, o pedido que a máquina não atendeu a tempo. No horário da equipe, também
 // cobra o atendimento crítico e o nº do Gestor pendente, no intervalo da tela Suporte › Pedro.
 Schedule::command('suporte:pedro')
     ->everyMinute()
@@ -168,8 +168,8 @@ Schedule::command('suporte:registros')
     ->withoutOverlapping()
     ->onOneServer();
 
-// Os números da casa vão ao Gestor, que decide entre o Pedro e o menu antes de a mensagem
-// chegar aqui (acesso-interno.md, FR-A11). A tela manda ao salvar; isto cobre a falha de
+// Os números da casa vão ao Gestor, que devolve ao Pedro a conversa da casa que recebeu o
+// menu de reserva (acesso-interno.md, FR-A11). A tela manda ao salvar; isto cobre a falha de
 // rede e a primeira carga depois da publicação.
 Schedule::command('suporte:acessos-ao-gestor')
     ->everyFifteenMinutes()

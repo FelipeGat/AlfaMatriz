@@ -24,8 +24,11 @@ class Transferencia
     /** Sem resposta de uma pessoa nesse tempo, a equipe é lembrada de novo. */
     public const LEMBRAR_MINUTOS = 15;
 
-    /** O que se acrescenta fora do horário, onde quer que a conversa passe a uma pessoa. */
-    public const FORA_DO_HORARIO = ' Como já passou do nosso horário (das 7h às 18h, de segunda a sexta), o retorno é no próximo horário de atendimento.';
+    /** O que se acrescenta fora do horário, onde quer que a conversa passe a uma pessoa (o horário vem do ajuste, Horario::faixa). */
+    public static function foraDoHorario(): string
+    {
+        return ' Como já passou do nosso horário ('.Horario::faixa().', de segunda a sexta), o retorno é no próximo horário de atendimento.';
+    }
 
     public function __construct(private AvisoNoTelegram $telegram) {}
 
@@ -70,7 +73,7 @@ class Transferencia
             : ($nome ? "Já avisei a equipe que você deseja falar com {$nome}; em breve alguém continua com você por aqui."
                 : 'Já chamei um colega da equipe, que continua com você por aqui.');
 
-        return ['atendente' => $alvo, 'texto' => $texto.(Horario::aberto() ? '' : self::FORA_DO_HORARIO)];
+        return ['atendente' => $alvo, 'texto' => $texto.(Horario::aberto() ? '' : self::foraDoHorario())];
     }
 
     /**

@@ -212,17 +212,18 @@ class PedroNoGestorTest extends TestCase
     }
 
     /**
-     * 23/10/2026: o PC do Pedro desligado. Nenhuma máquina pega o pedido: o aviso é de fora do
-     * horário com o plantão (dos contatos da empresa), e não "um colega responderá"; uma vez só.
+     * 23/10/2026: o PC do Pedro desligado. Nenhuma máquina pega o pedido: o aviso tem o plantão (dos
+     * contatos da empresa), e não "um colega responderá"; uma vez só. Desde 31/10/2026, no horário ele
+     * não diz "fora do horário" (o Felipe leu isso numa sexta às 17:19): diz só que ficou registrada.
      */
-    public function test_sem_maquina_avisa_fora_do_horario_com_o_plantao_uma_vez(): void
+    public function test_sem_maquina_avisa_com_o_plantao_uma_vez_e_so_fora_do_horario_diz_fora_do_horario(): void
     {
         app(\App\Services\Suporte\Conhecimento::class)->gravarAjuste('contatos', "Comercial — (27) 99527-3269\nPlantão — (27) 99244-6889 (fins de semana e das 18:00 às 08:00)");
         $this->repasse('Bom dia Pedro', 'wamid.1', $this->estado())->assertOk();
         Carbon::setTestNow(now()->addMinutes(3));
         $this->artisan('suporte:pedro')->assertSuccessful();
 
-        $aviso = 'Olá! No momento estamos fora do horário de atendimento. Sua mensagem ficou registrada e retornaremos no próximo horário. Em caso de urgência ou emergência, ligue para o nosso plantão: (27) 99244-6889.';
+        $aviso = 'Olá! Recebi a sua mensagem e ela ficou registrada. Respondo por aqui assim que possível. Em caso de urgência ou emergência, ligue para o nosso plantão: (27) 99244-6889.';
         $this->assertSame([['enviar', $aviso]], array_map(fn ($p) => [$p['acao'], $p['dados']['texto'] ?? null], $this->pedidosAoGestor), 'sai pelo Gestor e segura o menu de lá');
         $this->assertSame('pedro', SuporteConversa::sole()->situacao);
 

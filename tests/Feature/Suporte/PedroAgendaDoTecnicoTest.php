@@ -71,7 +71,7 @@ class PedroAgendaDoTecnicoTest extends TestCase
         $this->assertStringContainsString('Quinta-feira, 22/10/2026', $p);
         $this->assertStringContainsString('- Cleison: 08:00 às 10:00 — nº 756 — Corais de Parati — finalizado — junto: Cristiano', $p);
         $this->assertStringContainsString('- Vitor: 08:00 às 10:00 — nº 824 — Revizza (pré-cliente) — agendado', $p, 'pré-cliente pelo nome, nunca "sem cliente"');
-        $this->assertStringContainsString('- Vitor: 08:00 às 18:00 — nº 729 — Emanuele (sem cadastro) — finalizado', $p, 'atendimento sem cadastro, pelo nome de quem pediu');
+        $this->assertStringContainsString('- Vitor: 08:00 às 18:00 — nº 729 — Emanuele — finalizado', $p, 'atendimento sem cadastro, pelo nome de quem pediu, sem o termo de bastidor (pedro-comunicacao, FR-003)');
         $this->assertStringContainsString('Ao "sim", use acao "confirmar_agenda"', $p);
         $this->assertStringNotContainsString('02/11', $p, 'só os dias pedidos e os vizinhos');
     }

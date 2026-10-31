@@ -5,9 +5,14 @@ namespace App\Services\Suporte;
 use Illuminate\Support\Carbon;
 
 /**
- * Quando o Pedro atende (Felipe, 20/10/2026): das 07:00 às 18:00, de segunda a
- * sexta. Fora disso a mensagem fica guardada e ele atende na abertura seguinte.
- * Feriado ainda conta como dia útil: o Matriz não tem cadastro de feriados.
+ * O horário de atendimento: das 08:00 às 18:00, de segunda a sexta (Felipe, 31/10/2026;
+ * até então começava às 07:00). Feriado ainda conta como dia útil: o Matriz não tem
+ * cadastro de feriados.
+ *
+ * Até 31/10/2026 era também o horário do Pedro. Desde então ele atende o cliente novo a
+ * qualquer hora ("todas aqui pelo Pedro", spec.md, Clarificações), e isto vale para o lado
+ * das pessoas (o retorno no próximo horário, os lembretes da fila, a cobrança dos técnicos)
+ * e para o cliente do cadastro, que fora daqui recebe o aviso fixo com o plantão.
  */
 class Horario
 {
@@ -19,6 +24,22 @@ class Horario
         }
         $hora = $q->format('H:i');
 
-        return $hora >= (string) config('services.suporte_pedro.inicio', '07:00') && $hora < (string) config('services.suporte_pedro.fim', '18:00');
+        return $hora >= self::inicio() && $hora < self::fim();
+    }
+
+    /** "das 08:00 às 18:00": o mesmo ajuste em todo texto que fala do horário, para nenhum ficar para trás. */
+    public static function faixa(): string
+    {
+        return 'das '.self::inicio().' às '.self::fim();
+    }
+
+    private static function inicio(): string
+    {
+        return (string) config('services.suporte_pedro.inicio', '08:00');
+    }
+
+    private static function fim(): string
+    {
+        return (string) config('services.suporte_pedro.fim', '18:00');
     }
 }

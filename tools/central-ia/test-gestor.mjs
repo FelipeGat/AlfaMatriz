@@ -5,6 +5,11 @@ import { hora, lerGestor, lerSaida } from '../../deploy/central-ia/gestor.mjs';
 // linha marcada, o formato é conferido, e a ponte NUNCA recebe --apply.
 const ok = 'Conectando...\nSECRETARIO_GESTOR:{"orcamentos_aprovacao":{"quantidade":4,"valor":38200,"itens":[{"texto":"Orç. 191","data":"2026-10-10","valor":12000}]},"funil_parado":{"quantidade":0,"itens":[]}}\n';
 assert.deepEqual(lerSaida(ok).orcamentos_aprovacao, { quantidade: 4, valor: 38200, itens: [{ texto: 'Orç. 191', data: '2026-10-10', valor: 12000 }] });
+// Os campos novos da leitura (pedro-comunicacao): passam; lixo dentro deles, não.
+const novo = lerSaida('SECRETARIO_GESTOR:' + JSON.stringify({ pagar_vencendo: { quantidade: 3, valor: 900, itens: [{ texto: 'Fornecedor X', data: '2026-10-30', valor: 500 }],
+    vencidas: { quantidade: 2, valor: 700, apagar: true }, hoje: { quantidade: 'x' }, maiores: [{ texto: 'Fornecedor X', valor: 500 }, { texto: '' }] } }));
+assert.deepEqual(novo.pagar_vencendo, { quantidade: 3, valor: 900, itens: [{ texto: 'Fornecedor X', data: '2026-10-30', valor: 500 }],
+    maiores: [{ texto: 'Fornecedor X', valor: 500 }], vencidas: { quantidade: 2, valor: 700 } });
 assert.equal(lerSaida('sem marca'), null);
 assert.equal(lerSaida('SECRETARIO_GESTOR:{"apagar":{"quantidade":1}}'), null, 'bloco desconhecido');
 assert.equal(lerSaida('SECRETARIO_GESTOR:{"funil_parado":{"quantidade":"x"}}'), null);
