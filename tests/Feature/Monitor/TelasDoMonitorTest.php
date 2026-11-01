@@ -107,6 +107,10 @@ class TelasDoMonitorTest extends TestCase
 
         config(['services.alfamonitor.url' => self::BASE.'/web', 'services.alfamonitor.api_url' => self::BASE.'/web']);
         app(ApiDoMonitor::class)->invalidar();
+        // Sem resposta falsa para o endereço novo, o pedido saía para a rede de
+        // verdade e só era registrado porque a conexão falhava; com a rede
+        // barrada (Http::preventStrayRequests) ele nem chegava a ser registrado.
+        Http::fake([self::BASE.'/web/api/v1/clientes*' => Http::response($this->exemplo('clientes'))]);
 
         $this->actingAs($admin)->get(route('monitor.clientes'));
         Http::assertSent(fn (Request $r) => str_starts_with($r->url(), self::BASE.'/web/api/v1/clientes'));
