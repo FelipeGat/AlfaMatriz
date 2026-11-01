@@ -43,9 +43,14 @@ class CockpitService
         $gruposPorNome = \App\Models\CentralIaGrupo::where('user_id', $user->id)->get(['id', 'nome'])->mapWithKeys(fn ($g) => [mb_strtolower(trim($g->nome)) => $g->id]);
         $grupoDoGit = fn (?string $remoto) => $remoto ? ($gruposPorNome[self::GRUPO_DO_DONO[mb_strtolower(strtok($remoto, '/'))] ?? ''] ?? null) : null;
 
-        $projetos = array_map(function (string $nome) use ($user, $fixados, $tarefas, $maquina, $grupoDe, $grupoDoGit) {
+        // Uma consulta para todos os projetos, e não uma por projeto: o painel roda a cada 5 s e a
+        // barra passa de 30 projetos — eram 34 das 66 consultas dele (01/11/2026, "demora imensa").
+        $ultimasMensagens = CentralIaMensagem::de($user)->whereIn('projeto', $nomes)
+            ->groupBy('projeto')->selectRaw('projeto, max(created_at) as ultima')->pluck('ultima', 'projeto');
+
+        $projetos = array_map(function (string $nome) use ($fixados, $tarefas, $maquina, $grupoDe, $grupoDoGit, $ultimasMensagens) {
             $emCurso = $tarefas->get($nome, collect());
-            $ultimaMensagem = CentralIaMensagem::de($user)->where('projeto', $nome)->max('created_at');
+            $ultimaMensagem = $ultimasMensagens->get($nome);
             $ultimaAtividade = collect([$emCurso->max('ultima_atividade_em'), $ultimaMensagem ? Carbon::parse($ultimaMensagem) : null])->filter()->max();
             $ativa = $emCurso->first();
 

@@ -1,5 +1,19 @@
 # Changelog — AlfaMatriz
 
+## AlfaMatriz — 01/11/2026 — Central de IA: painel da aba Business com metade das consultas (v2026.11.01.1)
+
+### Melhoria
+
+- **O painel da Central faz menos trabalho a cada atualização.** Para mostrar
+  a última atividade de cada projeto, ele consultava o banco uma vez por
+  projeto, a cada 5 segundos. Agora faz uma consulta só para todos. Na cópia
+  local, com 34 projetos, as consultas do painel caíram de 64 para 31 e o
+  tempo, de cerca de 60 ms para cerca de 42 ms. A última atividade mostrada
+  continua a mesma.
+- **Ainda não é a causa da demora ao abrir os chats.** Essa diferença é
+  pequena demais para explicar a espera de 01/11. A medição em produção
+  continua pendente.
+
 ## AlfaMatriz — 26/10/2026 — Orçamentos: novo modelo VixHouse do PDF para propostas de sistema (v2026.10.26.3, T-506)
 
 ### Novidade

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\CentralIa;
 
+use App\Models\CentralIaConversa;
 use App\Models\CentralIaExecucao;
 use App\Models\CentralIaMensagem;
 use App\Models\CentralIaRunner;
@@ -11,6 +12,8 @@ use App\Models\User;
 use App\Services\CentralIa\AgentesService;
 use App\Services\CentralIa\Roteador;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
@@ -241,6 +244,44 @@ class CockpitTest extends TestCase
 
         $this->actingAs($user)->postJson(route('central-ia.fixar', 'alfahome'))->assertJsonPath('fixado', false);
         $this->actingAs($user)->postJson(route('central-ia.fixar', 'nao-existe'))->assertNotFound();
+    }
+
+    /**
+     * A última atividade de cada projeto vem da mensagem mais recente DELE e
+     * da conta, numa consulta só: o painel roda a cada 5 s e a barra passa de
+     * 30 projetos (01/11/2026, "demora imensa" ao abrir os chats).
+     */
+    public function test_painel_traz_a_ultima_mensagem_de_cada_projeto_numa_consulta_so(): void
+    {
+        $user = $this->comCentral();
+        $outro = $this->comCentral();
+        $this->maquina($user);
+        $mensagem = function (User $dono, string $projeto, string $em) {
+            $m = new CentralIaMensagem(['conversa_id' => CentralIaConversa::firstOrCreate(['user_id' => $dono->id])->id,
+                'user_id' => $dono->id, 'projeto' => $projeto, 'autor_tipo' => CentralIaMensagem::AUTOR_USUARIO,
+                'origem' => CentralIaMensagem::ORIGEM_WEB, 'conteudo' => 'x']);
+            $m->created_at = $em;
+            $m->save();
+        };
+        // A mais recente do gestor entra PRIMEIRO (id menor): quem vale é a data, não o id.
+        $mensagem($user, 'gestor', '2026-10-25 09:30:00');
+        $mensagem($user, 'gestor', '2026-10-20 10:00:00');
+        $mensagem($user, 'alfahome', '2026-10-22 08:00:00');
+        $mensagem($outro, 'gestor', '2026-10-30 12:00:00');
+
+        $consultas = 0;
+        DB::listen(function ($q) use (&$consultas) {
+            if (str_contains($q->sql, 'central_ia_mensagens') && str_contains(strtolower($q->sql), 'max(')) {
+                $consultas++;
+            }
+        });
+        $painel = $this->actingAs($user)->getJson(route('central-ia.painel'))->assertOk()->json();
+        $ultima = collect($painel['projetos'])->pluck('ultima_atividade', 'nome');
+
+        $this->assertSame(Carbon::parse('2026-10-25 09:30:00')->toIso8601String(), $ultima['gestor']);
+        $this->assertSame(Carbon::parse('2026-10-22 08:00:00')->toIso8601String(), $ultima['alfahome']);
+        $this->assertNull($ultima['vixcard']);
+        $this->assertSame(1, $consultas);
     }
 
     public function test_batida_guarda_so_o_estado_permitido(): void
