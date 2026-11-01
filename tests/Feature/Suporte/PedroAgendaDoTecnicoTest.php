@@ -73,7 +73,8 @@ class PedroAgendaDoTecnicoTest extends TestCase
         $this->assertStringContainsString('- Vitor: 08:00 às 10:00 — nº 824 — Revizza (pré-cliente) — agendado', $p, 'pré-cliente pelo nome, nunca "sem cliente"');
         $this->assertStringContainsString('- Vitor: 08:00 às 18:00 — nº 729 — Emanuele — finalizado', $p, 'atendimento sem cadastro, pelo nome de quem pediu, sem o termo de bastidor (pedro-comunicacao, FR-003)');
         $this->assertStringContainsString('Ao "sim", use acao "confirmar_agenda"', $p);
-        $this->assertStringNotContainsString('02/11', $p, 'só os dias pedidos e os vizinhos');
+        // Na AGENDA; a linha do atendimento pode citar a próxima visita dele (pedro-comunicacao, FR-021).
+        $this->assertStringNotContainsString('02/11', substr($p, strpos($p, '## AGENDA DOS TÉCNICOS'), 2500), 'só os dias pedidos e os vizinhos');
     }
 
     public function test_dia_citado_sem_visita_e_dia_fora_do_retrato(): void
@@ -81,7 +82,8 @@ class PedroAgendaDoTecnicoTest extends TestCase
         $p = $this->prompt('5527998845397', 'e a agenda do Victor em 02/11? e em 20/12?');
 
         $this->assertStringContainsString('- Cleison: 08:00 às 18:00 — nº 756', $p);
-        $this->assertStringContainsString("Sábado, 24/10/2026\n- Nenhuma visita de técnico.", $p);
+        // Amanhã entra para conferir, marcado (pedro-comunicacao, FR-016).
+        $this->assertStringContainsString("Sábado, 24/10/2026 (NÃO PEDIDO)\n- Nenhuma visita de técnico.", $p);
         $this->assertStringContainsString("Domingo, 20/12/2026\n- Fora do período do retrato", $p);
     }
 

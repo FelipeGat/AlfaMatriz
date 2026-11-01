@@ -134,7 +134,10 @@ class PedroConhecimentoTest extends TestCase
         $this->assertStringContainsString("## A EMPRESA\nSomos o Grupo Soluções.\nSites:\n- https://exemplo.com.br\n", $prompt);
         $this->assertStringContainsString('Folders', $prompt);
         $this->assertStringContainsString('Portão parado', $prompt);
-        $this->assertStringContainsString('prioridade crítica, prazo de até 3 h para atender', $prompt);
+        // O prazo é da equipe (pedro-comunicacao, FR-018): no pedido ele virava promessa ao cliente.
+        $this->assertStringContainsString('Abre atendimento, prioridade crítica.', $prompt);
+        $this->assertStringNotContainsString('prazo de até', $prompt);
+        $this->assertStringNotContainsString('até 3 horas', $prompt);
         $this->assertStringContainsString('Login do portal (o número que escreve é do cadastro): sindico@castanheiras.com.br', $prompt);
 
         // Quem só disse o nome não recebe o e-mail.

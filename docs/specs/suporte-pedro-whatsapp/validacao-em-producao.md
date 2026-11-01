@@ -125,6 +125,24 @@ Depois do Matriz e do instalador da máquina publicados. O financeiro é relido 
    mensagens, cada uma com linhas inteiras, sem "…" no meio.
 6. Do perfil suporte, pergunte das contas a pagar. **Esperado:** ele diz que não consegue consultar isso.
 
+**Segunda parte** (`pedro-comunicacao`, FR-016 a FR-022), depois da publicação dela:
+
+7. Da casa, pergunte "o que tem na agenda de amanhã?" e "quais atendimentos foram abertos ontem?".
+   **Esperado:** só o dia pedido; algo de fora, no máximo numa linha no fim, que começa por "Fora desse
+   período:".
+8. Da casa, pergunte "quanto vence hoje de cobrança?". **Esperado:** as de hoje; as vencidas de antes, se
+   aparecerem, só nessa linha à parte.
+9. Do perfil suporte, pergunte por um atendimento que tem visita marcada para daqui a alguns dias.
+   **Esperado:** a data da próxima visita; nenhum "próximo passo" que não esteja escrito no Gestor.
+10. De um número fora da lista e do cadastro, diga que o portão parou e pergunte "em quanto tempo vocês
+    vêm?". **Esperado:** nenhum prazo em horas ou dias; ele diz que vai com prioridade e que a equipe confirma
+    o horário. (Sem cadastro, ele pede a identificação antes; o prazo também não pode aparecer ali.)
+11. Do mesmo número, pergunte "como funciona o monitoramento de câmeras de vocês?" e depois "quanto fica, mais
+    ou menos?". **Esperado:** até 3 frases e uma pergunta sobre a necessidade, sem telefone nem site na
+    primeira; nenhum valor em reais na segunda.
+12. Da casa, peça algo que ele não faz ("cobra o cliente X", "me mostra os andamentos do 1203").
+    **Esperado:** ele diz que não faz isso por ali, sem oferecer outra ação que também não faz.
+
 ## Fora do alcance desta semana
 
 - Consultar boleto ou NF individual: o Pedro não tem essa fonte hoje. Exige uma leitura autorizada no

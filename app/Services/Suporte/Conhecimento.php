@@ -65,7 +65,10 @@ class Conhecimento
         return $linhas ? implode("\n", $linhas) : '- (sem apresentação cadastrada: não mande link nem descreva a empresa além do que aparece nesta mensagem; encaminhe a um atendente)';
     }
 
-    /** A seção ROTEIROS do prompt. */
+    /**
+     * A seção ROTEIROS do pedido do cliente. O prazo do roteiro não vai (pedro-comunicacao, FR-018): ele é
+     * da equipe (Cobranca, prazo_em do atendimento), e no pedido ele virava promessa ao cliente.
+     */
     public function roteirosParaOPrompt(): string
     {
         return $this->roteiros()->map(function (SuporteRoteiro $r) {
@@ -77,8 +80,7 @@ class Conhecimento
                 $partes[] = '  - Mensagem padrão (use este texto, adaptando só o necessário): '.str_replace("\n", "\n    ", trim($r->mensagem));
             }
             $partes[] = '  - '.($r->abre_atendimento ? 'Abre atendimento' : 'Não abre atendimento por si só')
-                .($r->prioridade ? ', prioridade '.mb_strtolower(SuporteRoteiro::PRIORIDADES[$r->prioridade] ?? $r->prioridade) : '')
-                .($r->prazo_horas ? ", prazo de até {$r->prazo_horas} h para atender" : '').'.';
+                .($r->prioridade ? ', prioridade '.mb_strtolower(SuporteRoteiro::PRIORIDADES[$r->prioridade] ?? $r->prioridade) : '').'.';
 
             return implode("\n", $partes);
         })->implode("\n") ?: '- (nenhum roteiro cadastrado)';

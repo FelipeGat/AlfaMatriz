@@ -3,7 +3,7 @@
 // CenariosTest vai à IA DESTA máquina com os mesmos argumentos do runner (suporte.mjs:
 // claude -p, sem ferramentas, modelo do Pedro), e a resposta fica ao lado.
 //
-//   node tools/central-ia/bateria-pedro/rodar.mjs antes|depois [modelo]
+//   node tools/central-ia/bateria-pedro/rodar.mjs <rótulo> [modelo]   (antes, depois, r2-antes, r2-depois…)
 //
 // Os pedidos só têm dados fictícios; nada vai ao Matriz nem ao WhatsApp.
 import { spawn } from 'node:child_process';
@@ -16,8 +16,8 @@ import { modeloArgs, permissoes } from '../../../deploy/central-ia/politica.mjs'
 const raiz = join(dirname(fileURLToPath(import.meta.url)), '../../..');
 const rotulo = process.argv[2];
 const modelo = process.argv[3] || 'sonnet';
-if (!['antes', 'depois'].includes(rotulo)) {
-    console.error('uso: rodar.mjs antes|depois [modelo]');
+if (!/^[a-z0-9-]{2,20}$/.test(rotulo || '')) {
+    console.error('uso: rodar.mjs <rótulo> [modelo]');
     process.exit(2);
 }
 const pasta = join(raiz, 'storage/app/bateria-pedro', rotulo);

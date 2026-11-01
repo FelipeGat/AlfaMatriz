@@ -198,8 +198,13 @@ class PedroComunicacaoTest extends TestCase
 
         $p = $this->prompt('5527911110001', [['entrada', 'e a semana que vem?']]);
         $this->assertSame(AcessoInterno::TETO_DE_DIAS, substr_count(substr($p, strpos($p, '## AGENDA DOS TÉCNICOS'), 3000), "\n### "));
-        $this->assertStringContainsString('### Terça-feira, 10/11/2026', $p);
-        $this->assertStringContainsString('### Segunda-feira, 02/11/2026', $p, 'hoje entra junto, até o teto');
+        $this->assertStringContainsString("### Terça-feira, 10/11/2026\n", $p);
+        // Hoje entra junto, até o teto, para remarcar; mas marcado, para não entrar na resposta (FR-016).
+        $this->assertStringContainsString('### Segunda-feira, 02/11/2026 (NÃO PEDIDO)', $p);
+
+        $p = $this->prompt('5527911110001', [['entrada', 'como está a agenda?']]);
+        $this->assertStringContainsString('nenhum dia citado: ontem, hoje e amanhã', $p);
+        $this->assertStringNotContainsString('NÃO PEDIDO', $p);
     }
 
     /** FR-012: a resposta da casa em partes, cortada no parágrafo, com teto e aviso. */

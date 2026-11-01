@@ -101,7 +101,7 @@
                                 <option value="">—</option>
                                 @foreach (SuporteRoteiro::PRIORIDADES as $k => $v)<option value="{{ $k }}" @selected($r->prioridade === $k)>{{ $v }}</option>@endforeach
                             </select></label>
-                        <label><span class="{{ $rotulo }}">Prazo para atender (h)</span>
+                        <label><span class="{{ $rotulo }}">Prazo interno para atender (h)</span>
                             <input name="prazo_horas" type="number" min="1" max="720" value="{{ $r->prazo_horas }}" class="{{ $campo }}" @disabled(! $podeEditar)></label>
                         <label class="flex items-center gap-2 self-end pb-1.5 text-[13px] text-ink"><input type="checkbox" name="abre_atendimento" value="1" @checked($r->abre_atendimento) @disabled(! $podeEditar)> Abre atendimento</label>
                         <label class="flex items-center gap-2 self-end pb-1.5 text-[13px] text-ink"><input type="checkbox" name="ativo" value="1" @checked($r->ativo) @disabled(! $podeEditar)> Ativo</label>

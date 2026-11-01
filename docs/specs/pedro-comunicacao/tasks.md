@@ -43,3 +43,21 @@ Legenda: `[C]` crítica (bloqueia publicar) · `[N]` normal · `→` depende de.
 - [x] **6.4** `[C]` Publicar só com autorização: Matriz → instalador da máquina → conferir o `secretario_gestor.php`
   instalado e um retrato novo aceito. Autorizada pelo Felipe em 31/10/2026 ("aprovado os spec pode subir"); sai na
   v2026.10.31.5, junto do pacote 24 h.
+
+## Fase 7 — Segunda parte (FR-016 a FR-023)
+
+- [x] **7.1** `[N]` Bateria: cenários 21 a 26, campo `checar`, rótulos livres; rodar o **r2-antes** com o código da
+  v2026.10.31.5 antes de mexer (26 de 26 respondidas).
+- [x] **7.2** `[C]` Período: `Contexto::PERIODO` e a marca `(NÃO PEDIDO)` na agenda (FR-016, FR-017). Testes
+  ajustados em `PedroComunicacaoTest` e `PedroAgendaDoTecnicoTest`.
+- [x] **7.3** `[C]` Prazo: `Contexto::PRAZO`, roteiro sem `prazo_horas` no pedido, migração do "Portão parado",
+  rótulo da tela (FR-018). `PedroConhecimentoTest` ajustado.
+- [x] **7.4** `[C]` O que faz: `AcessoInterno::oQueFaz` e `Contexto::ACOES_DO_CLIENTE` (FR-019).
+- [x] **7.5** `[C]` Preço na entrega: `Contexto::semPrecoParaCliente` em `Pedro::concluir` (FR-020).
+- [x] **7.6** `[C]` Nada deduzido e próxima visita na linha do atendimento (FR-021).
+- [x] **7.7** `[N]` Comercial curto (FR-022).
+- [x] **7.8** `[C]` `PedroComunicacaoSegundaRodadaTest`; Suporte + Secretário verdes; suíte isolada sem falha nova.
+- [x] **7.9** `[N]` Rodar o **r2-depois** e o relatório `relatorio-r2-depois.html` (FR-023).
+- [x] **7.10** `[N]` Roteiro de validação: passos 7 a 12 do bloco G.
+- [x] **7.11** `[C]` Publicar só com autorização: Matriz (tag, com a migração); sem instalador nem Gestor.
+

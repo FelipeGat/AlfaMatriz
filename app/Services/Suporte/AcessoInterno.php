@@ -98,6 +98,33 @@ class AcessoInterno
         return in_array($o, self::VE[$acesso['perfil']] ?? [], true);
     }
 
+    /**
+     * O que o Pedro faz por quem é da casa, montado aqui e não escrito à mão no pedido (Felipe,
+     * 31/10/2026: "evitar oferecer ações que o Pedro ainda não consegue executar"). O "não faz" é o
+     * que ele já ofereceu ou que a equipe costuma pedir; quando uma capacidade entrar
+     * (pedro-inteligencia-operacional), ela sai daqui e vai para o "faz" junto do código.
+     */
+    public static function oQueFaz(array $acesso): string
+    {
+        $faz = ['consultar os atendimentos abertos do Gestor e qualquer um citado pelo número, com a etapa, quem está com ele e a próxima visita',
+            'consultar a agenda dos técnicos (de 7 dias atrás a 14 à frente)',
+            'registrar atendimento no Gestor (novo, vincular a um aberto ou reabrir um concluído, com técnico e horário), sempre depois da prévia e do "sim"'];
+        if (self::alteraAgenda($acesso)) {
+            $faz[] = 'lançar, corrigir ou cancelar visitas da agenda, depois da prévia e do "sim"';
+        }
+        if (self::ve($acesso, 'gestor')) {
+            $faz[] = 'consultar o financeiro e o comercial do Gestor (cobranças, contas a pagar, orçamentos aguardando aprovação, funil parado)';
+        }
+        if (self::ve($acesso, 'diretor')) {
+            $faz[] = 'mostrar o resumo do dia e os orçamentos em aberto do Matriz';
+        }
+        $naoFaz = ['ver andamentos ou o histórico de uma OS', 'concluir ou mudar a etapa de um atendimento', 'criar tarefa no quadro',
+            'mandar mensagem, cobrar ou ligar para cliente, técnico ou fornecedor', 'mandar boleto ou nota fiscal', 'pagar, baixar ou renegociar conta',
+            'editar cadastro de cliente', 'criar ou mudar POP'];
+
+        return "## O QUE VOCÊ FAZ POR ELE\n- Faz: ".implode('; ', $faz).".\n- Não faz (não ofereça): ".implode('; ', $naoFaz).'.';
+    }
+
     /** Os blocos de dados que este perfil vê, já em texto para o pedido à IA. @return list<string> */
     public function dados(array $acesso, string $ultimasMensagens): array
     {
@@ -178,22 +205,31 @@ class AcessoInterno
             return "## ATENDIMENTOS DO GESTOR\n- O retrato do Gestor ainda não foi lido: diga que não consegue consultar agora.";
         }
         $equipe = collect($r['equipe'] ?? [])->keyBy('id');
-        $linha = function (array $a) use ($d, $equipe) {
+        // A próxima visita de cada um (2ª rodada, 31/10/2026): sem ela, o Pedro disse que o 1203 não tinha visita,
+        // e tinha — só não estava nos dias da agenda do pedido.
+        $hoje = now(config('app.timezone'))->startOfDay()->format('Y-m-d H:i');
+        $visitas = collect($r['visitas'] ?? [])->filter(fn ($v) => (string) ($v['inicio'] ?? '') >= $hoje && in_array($v['situacao'] ?? '', ['agendado', 'em_atendimento'], true))
+            ->sortBy('inicio')->groupBy('atendimento_id')->map->first();
+        $linha = function (array $a) use ($d, $equipe, $visitas) {
             $cl = $d->cliente((int) ($a['cliente_id'] ?? 0));
             $nome = $cl ? (($cl['fantasia'] ?? '') ?: ($cl['nome'] ?? 'cliente')) : 'cliente';
             $quem = collect((array) ($a['funcionarios'] ?? []))->map(fn ($id) => Str::before((string) ($equipe[$id]['nome'] ?? ''), ' '))->filter()->implode(', ');
+            $v = $visitas[$a['id']] ?? null;
 
             return '- nº '.($a['numero'] ?? $a['id']).' — '.$nome.(! empty($cl['empresa']) ? ' ('.$cl['empresa'].')' : '')
                 .' — etapa: '.str_replace('_', ' ', (string) ($a['status'] ?? '?'))
                 .(! empty($a['criado_em']) ? ' — aberto em '.substr((string) $a['criado_em'], 8, 2).'/'.substr((string) $a['criado_em'], 5, 2) : '')
                 .($quem !== '' ? ' — com '.$quem : ' — sem responsável')
+                .($v ? ' — próxima visita: '.substr((string) $v['inicio'], 8, 2).'/'.substr((string) $v['inicio'], 5, 2).' '.substr((string) $v['inicio'], 11, 5)
+                    .' ('.Str::before((string) ($equipe[$v['tecnico_id'] ?? 0]['nome'] ?? 'técnico'), ' ').')' : '')
                 .' — '.Str::limit(trim((string) ($a['descricao'] ?? '')), 110, '…');
         };
         $abertos = collect($r['atendimentos'] ?? [])->reject(fn ($a) => in_array($a['status'] ?? '', ['concluido', 'cancelado'], true))
             ->sortBy(fn ($a) => (string) ($a['criado_em'] ?? ''))->values();
         $porEtapa = $abertos->countBy(fn ($a) => str_replace('_', ' ', (string) ($a['status'] ?? '?')))->map(fn ($n, $e) => "{$e}: {$n}")->implode(', ');
         $texto = "## ATENDIMENTOS DO GESTOR (".$this->leitura($r['lido_em']).")\n"
-            .'- Abertos: '.$abertos->count().($porEtapa !== '' ? " ({$porEtapa})" : '').". Lista do mais antigo para o mais novo:\n"
+            .'- Abertos: '.$abertos->count().($porEtapa !== '' ? " ({$porEtapa})" : '').'. Lista do mais antigo para o mais novo; "próxima visita" é a marcada no Gestor até '
+            .now(config('app.timezone'))->addDays(14)->format('d/m').", e quem não tem a linha não tem visita marcada até lá:\n"
             .$abertos->take(80)->map($linha)->implode("\n")
             .($abertos->count() > 80 ? "\n- (+".($abertos->count() - 80).' mais novos, não listados)' : '');
         // O número citado na conversa ("e o 776?"), aberto ou não.
@@ -221,7 +257,9 @@ class AcessoInterno
         }
         $hoje = CarbonImmutable::now(config('app.timezone'))->startOfDay();
         $t = mb_strtolower($ultimasMensagens);
-        // Os dias pedidos vêm primeiro; hoje, amanhã e ontem completam, até o teto (pedro-comunicacao, FR-013).
+        // Os dias pedidos vêm primeiro; ontem, hoje e amanhã completam, até o teto (pedro-comunicacao, FR-013). Os
+        // vizinhos ficam porque remarcar uma visita pede o dia em que ela está (pedro-dia-do-tecnico, decisão 7),
+        // mas vão marcados "não pedido" (FR-016): sem a marca, a IA misturava os dias na resposta.
         $dias = collect(self::diasDaSemana($t, $hoje));
         foreach (['anteontem' => -2, 'ontem' => -1, 'hoje' => 0, 'amanhã' => 1, 'amanha' => 1, 'depois de amanhã' => 2] as $palavra => $n) {
             if (str_contains($t, $palavra)) {
@@ -236,6 +274,7 @@ class AcessoInterno
                 $dias->push(CarbonImmutable::create($ano, (int) $mes, (int) $dia, 0, 0, 0, config('app.timezone')));
             }
         }
+        $pedidos = $dias->map(fn ($x) => $x->toDateString())->unique()->all();
         $dias = $dias->merge([$hoje, $hoje->addDay(), $hoje->subDay()])->unique(fn ($x) => $x->toDateString())->take(self::TETO_DE_DIAS)
             ->sortBy(fn ($x) => $x->toDateString())->values();
 
@@ -243,11 +282,13 @@ class AcessoInterno
         $atendimentos = collect($r['atendimentos'] ?? [])->keyBy('id');
         $nome = fn ($id) => (string) ($equipe[$id]['nome'] ?? 'técnico '.$id);
         $texto = "## AGENDA DOS TÉCNICOS (visitas no Gestor, ".$this->leitura($r['lido_em']).'; o retrato cobre de '
-            .$hoje->subDays(7)->format('d/m').' a '.$hoje->addDays(14)->format('d/m').')';
+            .$hoje->subDays(7)->format('d/m').' a '.$hoje->addDays(14)->format('d/m').'; '
+            .($pedidos ? 'os dias citados na conversa e, só para conferir, os marcados NÃO PEDIDO, que ficam fora da resposta' : 'nenhum dia citado: ontem, hoje e amanhã').')';
         foreach ($dias as $dia) {
             $doDia = collect($r['visitas'] ?? [])->filter(fn ($v) => str_starts_with((string) ($v['inicio'] ?? ''), $dia->toDateString()))
                 ->sortBy(fn ($v) => $nome($v['tecnico_id'] ?? 0).$v['inicio'])->values();
-            $texto .= "\n### ".Str::ucfirst($dia->locale('pt_BR')->isoFormat('dddd, DD/MM/YYYY'));
+            $texto .= "\n### ".Str::ucfirst($dia->locale('pt_BR')->isoFormat('dddd, DD/MM/YYYY'))
+                .($pedidos && ! in_array($dia->toDateString(), $pedidos, true) ? ' (NÃO PEDIDO)' : '');
             if ($dia->lt($hoje->subDays(7)) || $dia->gt($hoje->addDays(14))) {
                 $texto .= "\n- Fora do período do retrato: diga que não consegue consultar este dia.";
 

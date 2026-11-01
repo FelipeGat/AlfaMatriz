@@ -115,3 +115,50 @@ Gestão e na memória do Secretário. Em vez disso, os campos novos ficam **dent
 1. Matriz (tag) — aceita os dois formatos.
 2. Instalador da máquina (`instalar.sh` da produção) — leva o `secretario_gestor.php` novo.
 3. Sem mudança no Gestor.
+
+---
+
+# Segunda parte (FR-016 a FR-023) · 31/10/2026
+
+Pedido do Felipe às 20:19 (seis pontos), implementação liberada às 20:34. Mesmas três peças da primeira parte,
+nenhuma nova: dados por permissão (`AcessoInterno`), regras (`Contexto`) e entrega (`Pedro::concluir`).
+
+## Constitution Check (segunda parte)
+
+| Princípio | Como cumpre |
+|---|---|
+| I. Privacidade | Nada novo chega a quem não via: a próxima visita entra na linha do atendimento que o perfil já recebia; o bloco "o que você faz" só descreve. |
+| V. Prova executável | `PedroComunicacaoSegundaRodadaTest` (regras por pedido, prazo fora, o que faz por perfil, próxima visita, trava de preço na função e na entrega) + bateria r2-antes × r2-depois. |
+| VII. Autorização | Sem commit nem publicação neste pedido. |
+| VIII. Zero fabricação | O "até 3 horas" tem origem conferida (migração do roteiro); a bateria usa só dados fictícios. |
+
+## Desenho
+
+1. **Período (FR-016, FR-017)** — `Contexto::PERIODO`, só no pedido da casa, acima do JEITO. Na agenda,
+   `AcessoInterno::agenda` mantém os vizinhos (ontem, hoje, amanhã), porque remarcar uma visita pede o dia em que
+   ela está (`pedro-dia-do-tecnico`, decisão 7), mas marca cada um `(NÃO PEDIDO)` quando há dia citado, e o
+   cabeçalho explica a marca.
+2. **Prazo (FR-018)** — `Contexto::PRAZO` nos dois pedidos do cliente. `Conhecimento::roteirosParaOPrompt` não
+   manda mais o `prazo_horas`; ele continua no roteiro para a `Cobranca` (prazo_em do atendimento). A migração
+   `2026_10_31_210000_roteiro_portao_parado_sem_prazo_ao_cliente` troca a mensagem padrão do "Portão parado" só
+   se ela ainda for o texto original, letra por letra. Na tela, o campo vira "Prazo interno para atender (h)".
+3. **O que faz (FR-019)** — `AcessoInterno::oQueFaz($acesso)`, montado pelo perfil (agenda só para quem
+   `alteraAgenda`, financeiro só para quem `ve gestor`, resumo e orçamentos só para diretor), com a lista do que não
+   faz. No cliente, `Contexto::ACOES_DO_CLIENTE`. Quando a inteligência operacional ligar uma capacidade, ela
+   passa do "não faz" para o "faz" no mesmo commit.
+4. **Preço (FR-020)** — `Contexto::semPrecoParaCliente` (R$ seguido de número, ou número seguido de "reais"):
+   tira a frase, junta `Contexto::SEM_VALOR`; `Pedro::concluir` aplica só quando `! $interno`, antes de qualquer
+   texto do sistema ser anexado, e anota o pedido (`erro` = "valor em dinheiro retirado…").
+5. **Nada deduzido (FR-021)** — frase nova em `Contexto::COMUNICACAO`; JEITO do suporte sem "o próximo passo"
+   genérico; linha do atendimento com `próxima visita: dd/mm HH:MM (técnico)` (a primeira de hoje em diante, sem as
+   canceladas), e o cabeçalho diz que a falta da linha quer dizer "sem visita até dd/mm".
+6. **Comercial curto (FR-022)** — `Contexto::COMERCIAL_CURTO` nos dois pedidos do cliente.
+7. **Bateria (FR-023)** — `CenariosTest` aceita qualquer rótulo (só "antes" leva o financeiro antigo), ganha os
+   cenários 21 a 26 e o campo `checar` (proibido, exige, periodo, max_frases); `rodar.mjs` aceita o rótulo;
+   `relatorio.mjs r2-antes r2-depois` aplica as checagens, sem contar a apresentação nem "24 horas" de serviço
+   como prazo.
+
+## Ordem de publicação
+
+Só o Matriz (tag), com a migração. Nenhum arquivo da máquina nem do Gestor muda.
+

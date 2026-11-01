@@ -1,8 +1,9 @@
-# Feature Specification: Comunicação do Pedro (primeira parte)
+# Feature Specification: Comunicação do Pedro
 
 **Feature**: `pedro-comunicacao`
 **Created**: 31/10/2026
-**Status**: Draft — aprovada pelo Felipe em 31/10/2026 ("pode seguir suas recomendações")
+**Status**: Primeira parte publicada na v2026.10.31.5. Segunda parte (FR-016 a FR-023) aprovada pelo Felipe em
+31/10/2026, 20:19, com os seis pontos dele, e liberada para implementar às 20:34 ("Sim, tudo"); sem publicação.
 
 O Pedro é o assistente do suporte no WhatsApp (`docs/specs/suporte-pedro-whatsapp`). Ele já consulta o Gestor e
 o Matriz e responde a clientes e a quem é da casa. Esta spec trata de **como ele responde**: o que diz, quanto diz
@@ -235,6 +236,111 @@ a de depois.
 - **SC-005**: "Agenda de <dia da semana>" traz as visitas do dia certo em todas as situações de teste, incluindo
   "próxima" e "semana que vem".
 - **SC-006**: Nenhum cenário da bateria mostra valor financeiro a cliente ou a perfil sem acesso.
+
+## Segunda parte (31/10/2026)
+
+### Contexto e evidência
+
+Pedido do Felipe às 20:19, depois de ler a bateria da primeira parte (`storage/app/bateria-pedro`, só dados
+fictícios), em seis pontos: não misturar períodos quando a pergunta cita uma data; não trazer pendência de fora do
+período sem dizer que é adicional; não prometer SLA nem prazo sem confirmação no Gestor ou no contrato; respostas
+comerciais mais curtas; nenhum preço ao cliente; não oferecer o que o Pedro não faz. Na bateria:
+
+- **Período:** a agenda da semana que vem terminou nos três atendimentos sem data (cenário 9), e as cobranças de
+  hoje, nas 24 vencidas desde setembro (cenário 7), sem dizer que eram de fora.
+- **Prazo:** "a equipe técnica tem até 3 horas para atender" ao cliente (cenários 19 e 20). Não foi a IA: é a
+  mensagem padrão do roteiro "Portão parado" (migração `2026_10_20_150000`, `prazo_horas = 3`), e o pedido
+  mandava ao cliente o "prazo de até 3 h para atender" do roteiro. Não há SLA de cliente no Gestor nem no
+  contrato que o Pedro recebe.
+- **Comercial:** a resposta ao cliente novo juntou empresa, recusa de preço, telefone, site e horário (cenário
+  16).
+- **Preço:** nenhum cenário deu preço, mas nada conferia a resposta antes de sair.
+- **Achado extra:** ao perfil suporte, "não há visita agendada" e "próximo passo: esperar a peça chegar" para o
+  1203 (cenário 13), que tinha visita em 09/11 — fora dos dias da agenda do pedido — e nenhum passo registrado.
+
+### User Story 6 - Só o período perguntado (Priority: P1)
+
+Quem é da casa pergunta por um dia ou período e recebe só o que é dele; o que for de fora e importar vem numa linha
+à parte, dita como informação adicional.
+
+**Independent Test**: "o que tem na agenda de amanhã?" num dia sem visita amanhã: a resposta diz que não há visita e
+não lista as de quarta.
+
+**Acceptance Scenarios**:
+
+1. **Given** uma pergunta com dia ou período, **When** o Pedro responde, **Then** só os itens daquele período
+   entram no corpo da resposta.
+2. **Given** algo de fora que pede atenção, **When** o Pedro o menciona, **Then** é numa linha no fim, que começa
+   por "Fora desse período:".
+3. **Given** um pedido de agenda de um dia, **When** o pedido à IA é montado, **Then** os dias vizinhos que entram
+   para remarcar visitas vão marcados "NÃO PEDIDO".
+
+### User Story 7 - O cliente sem prazo, sem preço e sem texto demais (Priority: P1)
+
+O cliente pergunta "em quanto tempo vocês vêm?" ou "quanto custa?" e não ouve prazo nem valor; quem quer conhecer
+um serviço recebe poucas frases e uma pergunta sobre a necessidade.
+
+**Independent Test**: um cliente do cadastro com o portão parado pergunta o prazo: a resposta diz que vai com
+prioridade e que a equipe confirma o horário, sem horas nem dias.
+
+**Acceptance Scenarios**:
+
+1. **Given** o roteiro "Portão parado" com prazo de 3 h, **When** o pedido do cliente é montado, **Then** o prazo
+   não vai, e a mensagem padrão não promete horas.
+2. **Given** uma resposta da IA com valor em dinheiro para quem não é da casa, **When** ela é entregue, **Then** a
+   frase com o valor sai, e no lugar vai que valores são passados pelo comercial, na proposta.
+3. **Given** uma resposta com valor para quem é da casa (financeiro), **When** ela é entregue, **Then** sai como
+   veio.
+4. **Given** um cliente que quer conhecer um serviço, **When** o Pedro responde, **Then** são até 3 frases e uma
+   pergunta, sem telefone, site nem horário, a não ser que ele peça o contato ou seja encaminhado.
+
+### User Story 8 - Só o que ele faz, só o que está escrito (Priority: P2)
+
+O Pedro só oferece o que consegue fazer para aquele perfil, e não deduz causa, próximo passo ou ausência.
+
+**Independent Test**: o perfil suporte pergunta por um atendimento com visita marcada daqui a uma semana: a resposta
+traz a data da visita e nenhum "próximo passo" inventado.
+
+**Acceptance Scenarios**:
+
+1. **Given** um perfil, **When** o pedido da casa é montado, **Then** traz o que o Pedro faz por ele e o que não faz,
+   montado no código a partir do perfil.
+2. **Given** um atendimento com visita marcada nos próximos 14 dias, **When** ele aparece na lista, **Then** a linha
+   traz a data, a hora e o técnico da próxima visita (cancelada e passada não contam).
+
+### Functional Requirements (segunda parte)
+
+- **FR-016**: Quando a pergunta da casa cita um dia ou um período, a resposta MUST trazer só o que é dele. Na agenda,
+  os dias que entram só para conferência (vizinhos, para remarcar) MUST ir marcados "NÃO PEDIDO".
+- **FR-017**: O que for de fora do período e pedir atenção MUST vir, no máximo, numa linha no fim, que começa por
+  "Fora desse período:".
+- **FR-018**: O cliente MUST não ouvir prazo de atendimento, de visita ou de solução, nem SLA, sem confirmação no
+  Gestor ou no contrato: o prazo do roteiro não vai ao pedido do cliente (continua para a equipe, na cobrança dos
+  críticos), e a mensagem padrão do "Portão parado" troca a promessa de 3 h por "já vai para a equipe técnica" —
+  só se ainda for o texto original.
+- **FR-019**: O pedido da casa MUST trazer, montado no código a partir do perfil, o que o Pedro faz e o que não faz;
+  o pedido do cliente, a lista curta do que ele faz. O Pedro só oferece o que está no "faz".
+- **FR-020**: A resposta a quem não é da casa MUST sair sem valor em dinheiro: na entrega, a frase com o valor sai e
+  no lugar vai o aviso de que valores são passados pelo comercial; o pedido fica anotado. Sem exceção (o cliente
+  não tem valor a ouvir nesta conversa, nem o do boleto).
+- **FR-021**: Causa, próximo passo, previsão e a falta de algo MUST vir só quando os dados disserem. A linha de cada
+  atendimento MUST trazer a próxima visita marcada no Gestor (até 14 dias à frente), para a falta dela ser um fato.
+- **FR-022**: No assunto comercial, o Pedro MUST responder em até 3 frases, com uma pergunta sobre a necessidade;
+  telefone, site e horário só quando a pessoa pedir o contato ou quando ele encaminhar.
+- **FR-023**: A bateria MUST ganhar os cenários de período, prazo, comercial e preço no showroom (21 a 26) e as
+  checagens por situação, e a segunda parte é aprovada pela comparação r2-antes × r2-depois, com a IA real e dados
+  fictícios.
+
+### Success Criteria (segunda parte)
+
+- **SC-007**: Na bateria, nenhuma resposta da casa a um período mistura item de fora sem a linha "Fora desse
+  período:".
+- **SC-008**: Na bateria, nenhuma resposta a cliente promete prazo em horas, minutos ou dias, nem traz valor em
+  dinheiro.
+- **SC-009**: A resposta comercial ao cliente novo tem no máximo 3 frases além da apresentação (4 quando também
+  recusa o preço).
+- **SC-010**: Nenhuma resposta da casa oferece algo da lista "não faz", nem afirma visita ou passo que os dados não
+  trazem.
 
 ## Delta Requirements
 

@@ -352,6 +352,11 @@ class Pedro
             return;
         }
         $resposta = $bloco['resposta'];
+        // Preço só pelo comercial (pedro-comunicacao, FR-020): valor em dinheiro não sai para quem não é da casa.
+        $semValor = false;
+        if (! $interno) {
+            [$resposta, $semValor] = Contexto::semPrecoParaCliente($resposta);
+        }
         // Sem o Gestor, não há setor para onde entregar: vira pedido de atendimento.
         if ($bloco['acao'] === 'encaminhar_setor' && ! $this->canal->viaGestor()) {
             $bloco['acao'] = 'abrir_atendimento';
@@ -416,7 +421,8 @@ class Pedro
             if ($fontes = app(BaseDoSuporte::class)->fontesValidas($bloco['fontes'] ?? [])) {
                 $enviada->update(['fontes' => $fontes]);
             }
-            $p->update(['situacao' => 'respondido', 'acao' => $bloco['acao'], 'resumo' => $bloco['resumo'], 'roteiro_id' => $bloco['roteiro'], 'erro' => $erroDasPartes]);
+            $p->update(['situacao' => 'respondido', 'acao' => $bloco['acao'], 'resumo' => $bloco['resumo'], 'roteiro_id' => $bloco['roteiro'],
+                'erro' => $erroDasPartes ?? ($semValor ? 'valor em dinheiro retirado da resposta ao cliente' : null)]);
             // Resolvido, segundo o cliente: encerra e pede a avaliação, na mensagem seguinte.
             if ($encerrar) {
                 app(Encerramento::class)->encerrar($c->fresh(), null);

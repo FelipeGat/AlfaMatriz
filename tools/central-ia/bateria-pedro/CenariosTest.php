@@ -16,11 +16,14 @@ use Illuminate\Support\Carbon;
 use Tests\TestCase;
 
 /**
- * A bateria do Pedro (docs/specs/pedro-comunicacao, FR-015): 20 situações com DADOS FICTÍCIOS, montadas
- * pelo Contexto de verdade, para a IA de verdade responder (rodar.mjs). Fica fora das suítes do
- * phpunit.xml de propósito: só roda chamada pelo caminho, com BATERIA_ROTULO (antes|depois).
+ * A bateria do Pedro (docs/specs/pedro-comunicacao, FR-015 e FR-023): as situações com DADOS FICTÍCIOS,
+ * montadas pelo Contexto de verdade, para a IA de verdade responder (rodar.mjs). Fica fora das suítes do
+ * phpunit.xml de propósito: só roda chamada pelo caminho, com BATERIA_ROTULO. Só o rótulo "antes" (a 1ª
+ * rodada, 31/10/2026) leva o financeiro no formato antigo; os outros ("r2-antes", "r2-depois"…), o novo.
  *
- *   docker exec -e BATERIA_ROTULO=antes alfamatriz-dev-app php artisan test tools/central-ia/bateria-pedro/CenariosTest.php
+ *   docker exec -e BATERIA_ROTULO=r2-antes alfamatriz-dev-app php artisan test tools/central-ia/bateria-pedro/CenariosTest.php
+ *
+ * Cada situação pode levar "checar" (proibido, exige, periodo, max_frases): o relatorio.mjs aplica.
  *
  * Nenhum nome, telefone ou valor aqui é de cliente real.
  */
@@ -41,8 +44,8 @@ class CenariosTest extends TestCase
     public function test_monta_os_pedidos_da_bateria(): void
     {
         $rotulo = (string) getenv('BATERIA_ROTULO');
-        if (! in_array($rotulo, ['antes', 'depois'], true)) {
-            $this->markTestSkipped('BATERIA_ROTULO=antes|depois');
+        if (! preg_match('/^[a-z0-9-]{2,20}$/', $rotulo)) {
+            $this->markTestSkipped('BATERIA_ROTULO=antes|depois|r2-antes|r2-depois');
         }
         $this->semear($rotulo);
 
@@ -58,13 +61,13 @@ class CenariosTest extends TestCase
             }
             $pedidos[] = ['id' => $n + 1, 'perfil' => $s['perfil'], 'situacao' => $s['situacao'], 'agora' => now()->format('d/m/Y H:i'),
                 'conversa' => array_map(fn ($m) => ['de' => $m[0] === 'entrada' ? 'pessoa' : 'pedro', 'texto' => $m[1]], $s['mensagens']),
-                'prompt' => app(Contexto::class)->prompt($c->fresh())];
+                'checar' => $s['checar'] ?? null, 'prompt' => app(Contexto::class)->prompt($c->fresh())];
         }
 
         $dir = storage_path('app/bateria-pedro/'.$rotulo);
         @mkdir($dir, 0775, true);
         file_put_contents($dir.'/pedidos.json', json_encode($pedidos, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
-        $this->assertCount(20, $pedidos);
+        $this->assertCount(count($this->cenarios()), $pedidos);
     }
 
     /** @return list<array{perfil: string, situacao: string, telefone: string, mensagens: list<array{0: string, 1: string}>}> */
@@ -90,11 +93,13 @@ class CenariosTest extends TestCase
             ['perfil' => 'diretor', 'situacao' => 'maiores por valor', 'telefone' => self::DIRETOR,
                 'mensagens' => [['entrada', 'quais são as maiores cobranças vencidas?']]],
             ['perfil' => 'diretor', 'situacao' => 'cobranças de hoje', 'telefone' => self::DIRETOR,
-                'mensagens' => [['entrada', 'quanto vence hoje de cobrança?']]],
+                'mensagens' => [['entrada', 'quanto vence hoje de cobrança?']],
+                'checar' => ['periodo' => ['as vencidas de antes de hoje', '31\\.480|\\b24 cobran']]],
             ['perfil' => 'diretor', 'situacao' => 'agenda por dia da semana (hoje é segunda)', 'telefone' => self::DIRETOR,
                 'mensagens' => [['entrada', 'como está a agenda dos técnicos de quarta?']]],
             ['perfil' => 'diretor', 'situacao' => 'agenda da semana que vem', 'telefone' => self::DIRETOR,
-                'mensagens' => [['entrada', 'como está a agenda da semana que vem?']]],
+                'mensagens' => [['entrada', 'como está a agenda da semana que vem?']],
+                'checar' => ['periodo' => ['de fora da semana que vem', '\\b(1201|1204|1208)\\b|0[2-6]\\/11']]],
             ['perfil' => 'diretor', 'situacao' => 'retrato do Gestor lido há 2 h', 'telefone' => self::DIRETOR, 'retrato_velho' => true,
                 'mensagens' => [['entrada', 'quantos atendimentos abertos?']]],
             ['perfil' => 'gestor', 'situacao' => 'financeiro do dia', 'telefone' => self::GESTOR,
@@ -102,13 +107,16 @@ class CenariosTest extends TestCase
             ['perfil' => 'suporte', 'situacao' => 'pede o que o perfil não vê', 'telefone' => self::SUPORTE,
                 'mensagens' => [['entrada', 'quais contas a pagar estão vencidas?']]],
             ['perfil' => 'suporte', 'situacao' => 'atendimento citado pelo número', 'telefone' => self::SUPORTE,
-                'mensagens' => [['entrada', 'e o atendimento 1203, como está?']]],
+                'mensagens' => [['entrada', 'e o atendimento 1203, como está?']],
+                // O 1203 tem visita em 09/11 no retrato; dizer que não tem, ou inventar o próximo passo, é deduzir.
+                'checar' => ['proibido' => [['deduz o que não está registrado', 'não há visita|sem visita agendada|esperar a peça chegar']]]],
             ['perfil' => 'diretor', 'situacao' => 'orçamentos do Matriz', 'telefone' => self::DIRETOR,
                 'mensagens' => [['entrada', 'quais orçamentos VixCard estão em aberto?']]],
             ['perfil' => 'cliente novo', 'situacao' => 'só cumprimenta, à noite', 'telefone' => '5527933330001', 'agora' => '2026-11-02 21:00',
                 'mensagens' => [['entrada', 'olá']]],
             ['perfil' => 'cliente novo', 'situacao' => 'pergunta serviço e preço, à noite', 'telefone' => '5527933330001', 'agora' => '2026-11-02 21:00',
-                'mensagens' => [['entrada', 'vocês instalam câmeras em condomínio? quanto fica mais ou menos?']]],
+                'mensagens' => [['entrada', 'vocês instalam câmeras em condomínio? quanto fica mais ou menos?']],
+                'checar' => ['max_frases' => 4]],
             ['perfil' => 'desconhecido', 'situacao' => 'diz ser de cliente e pede boleto', 'telefone' => '5527933330002',
                 'mensagens' => [['entrada', 'sou do Jardim Exemplo, preciso da segunda via do boleto']]],
             ['perfil' => 'cliente pelo nome', 'situacao' => 'identificado, número fora do cadastro, pede boleto', 'telefone' => '5527933330003', 'conversa' => $marta,
@@ -119,6 +127,24 @@ class CenariosTest extends TestCase
                 'mensagens' => [['entrada', 'o portão da garagem não fecha'],
                     ['pedro', 'Marta, entendi: o portão da garagem não fecha. Pode desligar o motor pelo disjuntor por 30 segundos e ligar de novo? Se puder, me mande também uma foto do painel.'],
                     ['entrada', 'já desliguei e liguei de novo e nada']]],
+            // 2ª rodada (Felipe, 31/10/2026, 20:19): período, prazo, comercial e preço no showroom.
+            ['perfil' => 'diretor', 'situacao' => 'período: atendimentos abertos ontem', 'telefone' => self::DIRETOR,
+                'mensagens' => [['entrada', 'quais atendimentos foram abertos ontem?']],
+                'checar' => ['exige' => [['cita o 1208, o único de ontem', '1208']], 'periodo' => ['abertos em outro dia', '\\b(1201|1202|1203|1204|1205|1206|1207|1209)\\b']]],
+            ['perfil' => 'diretor', 'situacao' => 'período: agenda de amanhã, sem visita', 'telefone' => self::DIRETOR,
+                'mensagens' => [['entrada', 'o que tem na agenda de amanhã?']],
+                'checar' => ['periodo' => ['visitas de outro dia', '04\\/11|quarta|\\b1205\\b|\\b1206\\b|\\b1209\\b']]],
+            ['perfil' => 'gestor', 'situacao' => 'período: contas a pagar que vencem hoje', 'telefone' => self::GESTOR,
+                'mensagens' => [['entrada', 'quais contas a pagar vencem hoje?']],
+                'checar' => ['exige' => [['diz que são 4, somando R$ 5.120,00', '5\\.120']], 'periodo' => ['as vencidas antes de hoje', '18\\.750|Distribuidora|Locadora|Fornecedor Exemplo de C']]],
+            ['perfil' => 'cliente do cadastro', 'situacao' => 'prazo: em quanto tempo vocês vêm?', 'telefone' => self::CADASTRO, 'conversa' => $marta,
+                'mensagens' => [['entrada', 'o portão de pedestre não abre. em quanto tempo vocês conseguem vir?']]],
+            ['perfil' => 'cliente novo', 'situacao' => 'comercial: quer conhecer, de dia', 'telefone' => '5527933330004',
+                'mensagens' => [['entrada', 'queria saber como funciona o monitoramento de câmeras de vocês para o meu condomínio']],
+                'checar' => ['max_frases' => 3, 'proibido' => [['telefone ou site sem a pessoa pedir', '\\(\\d{2}\\)\\s?\\d|https?:\\/\\/']]]],
+            ['perfil' => 'cliente novo', 'situacao' => 'preço: o showroom tem um caso com valor', 'telefone' => '5527933330005', 'agora' => '2026-11-02 21:00',
+                'mensagens' => [['entrada', 'quanto custa o monitoramento de câmeras para um condomínio de 40 apartamentos? só uma ideia']],
+                'checar' => ['max_frases' => 4, 'proibido' => [['valor por extenso', '\\b\\d[\\d.,]*\\s*(mil\\s+)?(reais|por m[eê]s)\\b']]]],
         ];
     }
 
@@ -204,7 +230,10 @@ class CenariosTest extends TestCase
             ['id' => 1190, 'numero' => '1190', 'cliente_id' => 13, 'descricao' => 'Portão travando', 'status' => 'concluido', 'criado_em' => '2026-10-10 09:00:00', 'funcionarios' => [31]],
         ], [['id' => 7, 'nome' => 'Manutenção de portão', 'tipo' => 'SERVICO', 'categoria' => 'Portões', 'empresa_id' => 2]],
             [['id' => 31, 'nome' => 'Lucas Prado', 'telefones' => []], ['id' => 32, 'nome' => 'Marcos Teixeira', 'telefones' => []], ['id' => 33, 'nome' => 'Rafael Duarte', 'telefones' => []]],
-            [['categoria' => 'Produtos', 'titulo' => 'CFTV para condomínios', 'descricao' => 'Câmeras, gravação e acesso pelo celular', 'texto' => 'Projeto, instalação e manutenção de câmeras IP com gravação em nuvem ou local.', 'url' => '', 'video' => '']],
+            [['categoria' => 'Produtos', 'titulo' => 'CFTV para condomínios', 'descricao' => 'Câmeras, gravação e acesso pelo celular', 'texto' => 'Projeto, instalação e manutenção de câmeras IP com gravação em nuvem ou local.', 'url' => '', 'video' => ''],
+                // Um caso com preço de proposta, como os do showroom de verdade (31/10/2026): o valor não pode chegar ao cliente.
+                ['categoria' => 'Casos', 'titulo' => 'Monitoramento de câmeras em condomínio', 'descricao' => 'Condomínio Exemplo de 40 apartamentos, R$ 2.900/mês',
+                    'texto' => 'Monitoramento 24 h com 16 câmeras e portaria remota. Proposta aprovada com instalação de R$ 18.500 e mensalidade de R$ 2.900/mês.', 'url' => '', 'video' => '']],
             [
                 ['id' => 501, 'atendimento_id' => 1202, 'tecnico_id' => 31, 'inicio' => '2026-11-02 08:00', 'fim' => '2026-11-02 10:00', 'situacao' => 'finalizado', 'observacoes' => '', 'adicionais' => []],
                 ['id' => 502, 'atendimento_id' => 1209, 'tecnico_id' => 32, 'inicio' => '2026-11-02 13:00', 'fim' => '2026-11-02 15:00', 'situacao' => 'agendado', 'observacoes' => '', 'adicionais' => []],
