@@ -2,7 +2,8 @@
 
 **Feature**: `pedro-inteligencia-operacional`
 **Created**: 2026-10-31
-**Status**: Draft
+**Status**: Planned — FR-011, FR-012 e FR-016 decididos pelo Felipe em 31/10/2026, à noite, e as quatro leituras
+confirmadas às 20:34; plano em `plan.md` (31/10/2026)
 
 ## Contexto
 
@@ -36,7 +37,13 @@ O que existe hoje, conferido no código em 31/10/2026:
 - **Central do Gestor.** Já conta "Chamados parados +2 dias" e "atrasados". O Pedro não usa essa
   regra.
 - **Andamento gravado pelo Pedro.** Só acontece quando ele liga o pedido de um cliente a uma OS
-  aberta (acesso-interno FR-A8). Não existe uma ação de registrar o que alguém relatou.
+  aberta (acesso-interno FR-A8). Não existe uma ação de registrar o que alguém relatou. O autor do
+  andamento no Gestor é sempre a conta do dono do Pedro (o Felipe), e quem pediu vai só no texto
+  (`suporte_gestor_gravar.php`), porque `atendimento_andamentos` não tem campo de origem.
+- **Equipe no Gestor.** O funcionário (`funcionarios`, com `ativo` e `is_tecnico`) pode ter um usuário
+  (`users.funcionario_id`, com `ativo` e exclusão lógica), e o usuário tem perfis (`perfil_user`:
+  admin, administrativo, coordenador, financeiro, comercial, tecnico, funcionario). O retrato já traz
+  os funcionários ativos com telefone, mas não traz usuário nem perfil.
 - **Quem é da casa.** Só quem está na lista de acesso interno é tratado como tal, por decisão do
   Felipe em 21/10/2026 (acesso-interno FR-A10).
   - O reconhecimento pelo telefone do cadastro de funcionários do Gestor foi **retirado de
@@ -55,6 +62,33 @@ O que existe hoje, conferido no código em 31/10/2026:
 
 - Q: Canal para o Pedro acompanhar o que a equipe relata? → A: conversa individual do WhatsApp; grupos
   fora desta frente.
+- Q: Quem registra andamento (FR-011)? → A (Felipe): o técnico **responsável** registra nas OS dele; o
+  técnico **participante** também, quando estiver formalmente vinculado à OS. Técnico sem vínculo com a
+  OS: o Pedro **propõe** o andamento para validação, sem alterar o atendimento. Gestores autorizados
+  acompanham, corrigem e registram conforme as permissões deles. Toda alteração tem rastreabilidade,
+  identificação da origem e proteção contra duplicidade.
+- Q: Como o colaborador é reconhecido (FR-012)? → A (Felipe): a lista da casa continua como
+  reconhecimento inicial, mas a autorização considera o vínculo real com o colaborador, o usuário e o
+  perfil dele no Gestor. "Não quero que a simples presença de um telefone na lista da casa conceda
+  acesso administrativo ou operacional."
+- Q: Onde ficam os POPs (FR-016)? → A (Felipe): os oficiais ficam no Gestor. O Pedro consulta,
+  interpreta, acha lacunas e propõe POPs novos ou revisões; a proposta passa por aprovação humana antes
+  de virar procedimento oficial. O AlfaMatriz continua sendo o ambiente de supervisão e inteligência do
+  Pedro.
+- **Leituras das decisões** (Claude, 31/10/2026; se o Felipe discordar de alguma, muda antes do plano):
+  - **"Formalmente vinculado à OS"** são os três vínculos que o Gestor grava: responsável
+    (`atendimentos.funcionario_id`), técnico adicional (`atendimento_tecnicos`) e técnico de visita não
+    cancelada da OS (`atendimento_visitas.funcionario_id` e `atendimento_visita_tecnicos`).
+  - **"Corrigir" andamento** é registrar um andamento de correção que cita o anterior. O Gestor não tem
+    edição de andamento (só criação e fotos), e reescrever ou apagar o histórico tiraria a
+    rastreabilidade que a mesma decisão pede.
+  - **O vínculo vale para toda linha da lista** (diretor, gestor, suporte e técnico), e não só para o
+    técnico novo: a frase do Felipe fala de acesso "administrativo ou operacional". Isso muda a regra
+    em vigor desde 21/10/2026, em que a linha da lista bastava (acesso-interno FR-A1).
+  - **As propostas esperam no AlfaMatriz.** A proposta de POP e a de andamento sem vínculo ficam
+    pendentes no AlfaMatriz, e só o aprovado chega ao Gestor. Motivo: o app do técnico lista todos os
+    POPs da pasta sem olhar a situação (`Api/V1/TreinamentoController`), então um POP gravado no Gestor
+    como rascunho apareceria para a equipe como se fosse oficial.
 
 ## User Scenarios & Testing
 
@@ -133,8 +167,10 @@ atraso do retrato.
 
 ### User Story 3 - Registrar um andamento relatado (Priority: P2)
 
-Quem pode registrar relata ao Pedro um serviço feito, por texto, áudio ou foto. Exemplo: "troquei a
-placa do portão do Castanheiras, ficou funcionando, segue foto". O Pedro:
+Quem é da casa relata ao Pedro um serviço feito, por texto, áudio ou foto. Exemplo: "troquei a
+placa do portão do Castanheiras, ficou funcionando, segue foto". Quem pode registrar direto (FR-011)
+grava com o "sim"; o técnico sem vínculo com a OS gera uma **proposta**, que só vira andamento depois
+de validada por um gestor (FR-011a). O Pedro:
 
 1. acha a OS relacionada, pelo número citado ou pelo cliente, assunto e responsável;
 2. confere o histórico (story 1);
@@ -172,12 +208,27 @@ quem relatou, e a etapa da OS inalterada.
    vez só.
 7. **Given** a máquina que grava no Gestor fora do ar, **When** a prévia é confirmada, **Then** o
    Pedro avisa que a gravação ficou pendente, sem dizer que gravou, como já faz com atendimentos.
+8. **Given** um técnico reconhecido que não é responsável, adicional nem técnico de visita da OS 812,
+   **When** ele relata um serviço na 812 e confirma a prévia, **Then** nada é gravado na OS, a proposta
+   fica pendente de validação com o relato, as fotos e quem relatou, e o Pedro diz a ele que um gestor
+   vai validar.
+9. **Given** uma proposta pendente, **When** um gestor autorizado a valida, **Then** o Gestor ganha o
+   andamento com o autor (quem relatou), quem validou e a origem; **When** ele a recusa, **Then** nada
+   é gravado e o motivo fica registrado.
+10. **Given** um andamento gravado com um erro, **When** o gestor pede ao Pedro para corrigir,
+    **Then** o Pedro mostra a prévia de um andamento de correção que cita o original (data e autor) e,
+    com o "sim", grava esse andamento novo, sem editar nem apagar o original.
+11. **Given** um andamento gravado pelo Pedro, **When** alguém o abre no Gestor, **Then** ele mostra o
+    autor real (o usuário de quem relatou, e não a conta do dono do Pedro) e a origem "Pedro, pelo
+    WhatsApp".
 
 ---
 
 ### User Story 4 - O técnico fala com o Pedro (Priority: P2)
 
-O técnico escreve ao Pedro do próprio número. O Pedro o reconhece como técnico. A partir daí:
+O técnico escreve ao Pedro do próprio número. O Pedro o reconhece pela lista da casa e confere o
+vínculo dele no Gestor: usuário ativo, com perfil técnico, ligado a um funcionário ativo (FR-012). A
+partir daí:
 
 - mostra a ele as OS abertas em que ele é responsável ou técnico, e as visitas dele;
 - recebe os relatos de serviço dele, pela story 3.
@@ -185,8 +236,8 @@ O técnico escreve ao Pedro do próprio número. O Pedro o reconhece como técni
 Ele não vê financeiro, comercial nem OS de outros técnicos. Também não passa dado de cliente que não
 seja das OS dele.
 
-**Why this priority**: é quem faz o serviço que relata melhor e mais cedo. Depende de como o técnico é
-reconhecido e de ele poder registrar, as duas decisões em aberto.
+**Why this priority**: é quem faz o serviço que relata melhor e mais cedo. Depende do vínculo com o
+Gestor (FR-012), que é a mesma trava das outras linhas da lista.
 
 **Independent Test**: de um número reconhecido como técnico, pedir "minhas OS abertas" e conferir
 contra o Gestor. Depois pedir a OS de outro técnico e o financeiro, e conferir que ambos são negados.
@@ -199,6 +250,11 @@ contra o Gestor. Depois pedir a OS de outro técnico e o financeiro, e conferir 
    que isso não está no que pode consultar para ele.
 3. **Given** um número que diz ser técnico mas não é reconhecido, **When** ele relata um serviço,
    **Then** o Pedro o trata como cliente e não grava nada (acesso-interno FR-A5).
+4. **Given** um número na lista da casa sem vínculo com um usuário ativo do Gestor, **When** ele pede
+   as OS dele ou relata um serviço, **Then** o Pedro não mostra nada interno, não grava nada e diz que
+   o acesso dele ainda não está liberado, sem citar o motivo técnico.
+5. **Given** um técnico cujo usuário foi desativado no Gestor, **When** o retrato seguinte chega,
+   **Then** ele perde o acesso no Pedro sem ninguém mexer na lista da casa.
 
 ---
 
@@ -211,8 +267,10 @@ POP novo ou uma alteração e mostra o texto proposto. Exemplos:
 - o técnico descreveu um passo que o POP não tem;
 - a pergunta não tem POP.
 
-Com o "sim" de quem está na conversa, a proposta vai para **aprovação** de quem é responsável. Ela
-**não vale** como POP até ser aprovada, e o POP publicado não muda até lá.
+Com o "sim" de quem está na conversa, a proposta vai para **aprovação** no AlfaMatriz, onde a supervisão
+do Pedro já mora. Ela **não vale** como POP até ser aprovada, não chega ao Gestor antes disso, e o POP
+publicado não muda até lá. Aprovada, ela é publicada no Gestor: um POP novo ou a alteração do
+existente, com quem aprovou como autor ou editor.
 
 **Why this priority**: é o "identificar melhorias nos POPs e submeter à aprovação" do pedido. Vale
 depois que o Pedro já acompanha a operação (stories 1 a 3), que é de onde nascem as propostas.
@@ -231,6 +289,11 @@ pendente de aprovação, sem mudar o POP publicado.
    lá com o texto proposto, o POP afetado (se houver), quem relatou e a OS de origem.
 4. **Given** uma proposta pendente, **When** alguém pergunta o procedimento, **Then** o Pedro segue o
    POP publicado, não a proposta.
+5. **Given** uma proposta aprovada, **When** a equipe abre a pasta no Gestor (tela ou app), **Then** o
+   POP aparece publicado com o texto aprovado e quem aprovou; a proposta recusada nunca aparece lá.
+6. **Given** uma proposta de alteração do POP X, **When** alguém edita o POP X no Gestor antes da
+   aprovação, **Then** a aprovação mostra que o POP mudou e não sobrescreve: a proposta volta para
+   revisão.
 
 ---
 
@@ -285,6 +348,16 @@ o quarto e conferir que o Pedro aponta a repetição, com os números das OS.
   número fora da lista).
 - **Retrato indisponível ou com mais de 3 h.** A resposta diz a hora da leitura. Sem retrato, o Pedro
   diz que não consegue consultar agora e não responde de memória.
+- **O vínculo muda entre a prévia e o "sim".** A permissão é conferida de novo na hora de gravar. Se o
+  técnico deixou de ser responsável ou participante, o relato vira proposta (FR-011a) em vez de
+  andamento, e o Pedro diz isso.
+- **Visita cancelada.** O técnico de uma visita cancelada da OS não conta como participante.
+- **OS concluída ou cancelada antes da validação.** A validação da proposta não grava e diz por quê.
+- **Linhas da lista que já existem.** Hoje as linhas não têm vínculo com o Gestor. Sem ele, perdem o
+  acesso interno quando a regra nova for publicada (FR-012a); o vínculo de cada uma tem de ser feito
+  antes da publicação.
+- **Quem aprova também relatou.** A pessoa pode aprovar a própria proposta de POP só se for a única
+  aprovadora possível; o registro mostra que foi a mesma pessoa.
 
 ## Fora de escopo
 
@@ -293,7 +366,8 @@ o quarto e conferir que o Pedro aponta a repetição, com os números das OS.
 - **Mensagem por iniciativa do Pedro.** Exemplos: avisar o gestor às 08:00 o que parou, cobrar o
   técnico. Fora da janela de 24 h da última mensagem da pessoa, o WhatsApp não deixa iniciar conversa
   livre. Os avisos diários continuam no resumo do Secretário.
-- **Concluir OS, mudar etapa, apagar ou editar andamento.**
+- **Concluir OS, mudar etapa, apagar ou editar andamento.** A correção pedida pelo Felipe é um
+  andamento novo que cita o anterior (FR-011b), e não uma edição.
 - **Conversa com o Pedro dentro do AlfaMatriz.** A tela Suporte › WhatsApp continua sendo onde a
   equipe vê e assume as conversas.
 - **Ler o conteúdo de documentos** (PDF, planilha).
@@ -330,26 +404,51 @@ o quarto e conferir que o Pedro aponta a repetição, com os números das OS.
 - **FR-007**: A prévia MUST mostrar a OS, o cliente, o texto exato a gravar, quantas fotos vão e quem
   relatou. O Pedro MUST gravar somente depois do "sim" explícito, e somente o que estava na última
   prévia.
-- **FR-008**: O andamento gravado MUST levar o texto, até 10 fotos do relato e a identificação de quem
-  relatou. MUST NOT mudar a etapa nem concluir a OS: concluir continua com o técnico, pelo app
+- **FR-008**: O andamento gravado MUST levar o texto e até 10 fotos do relato. O autor no Gestor MUST
+  ser o usuário de quem relatou, pelo vínculo do FR-012, e não a conta do dono do Pedro. O andamento
+  MUST marcar a origem (o Pedro, pelo WhatsApp) e, quando não for o próprio autor, quem confirmou ou
+  validou. MUST NOT mudar a etapa nem concluir a OS: concluir continua com o técnico, pelo app
   (decisão de 23/10/2026).
 - **FR-009**: A gravação MUST passar pelo mesmo caminho que hoje grava os pedidos do Pedro no Gestor
   (máquina do dono, sem nova tentativa automática), com os mesmos avisos de pendência e falha. Ela
-  MUST ser idempotente: o mesmo "sim" repetido grava uma vez só.
+  MUST ser idempotente: cada prévia confirmada tem uma chave única, e a mesma chave nunca grava duas
+  vezes, mesmo com o "sim" repetido, a máquina reiniciando ou o pedido reenviado.
 - **FR-010**: Antes de propor, o Pedro MUST conferir se há andamento parecido na mesma OS nas últimas
   24 h, inclusive os que ele mesmo gravou e o retrato ainda não trouxe, e perguntar se é outro serviço.
-- **FR-011**: Pode registrar andamento:
-  [NEEDS CLARIFICATION: só diretor e gestor, como na agenda (pedro-dia-do-tecnico FR-017), ou também o
-  técnico, restrito às OS em que ele é responsável ou técnico?]. Quem não pode recebe "isso não está no
-  que posso fazer para você", e o relato não se perde: o Pedro oferece repassá-lo ao responsável da
-  OS.
+- **FR-011**: Pode registrar andamento direto, com prévia e "sim" (Felipe, 31/10/2026):
+  - o técnico **responsável** pela OS;
+  - o técnico **participante formalmente vinculado** à OS: técnico adicional ou técnico de visita não
+    cancelada da OS;
+  - o **gestor autorizado**: colaborador cujo usuário no Gestor pode registrar andamento em qualquer
+    OS. O plano mapeia quais perfis do Gestor são esses.
+
+  Quem não é nenhum dos três nem técnico reconhecido recebe "isso não está no que posso fazer para
+  você", e o relato não se perde: o Pedro oferece repassá-lo ao responsável da OS.
+- **FR-011a**: O técnico reconhecido sem vínculo com a OS MUST receber a mesma prévia, mas o "sim" dele
+  MUST gerar uma **proposta de andamento**, sem gravar nada na OS. A proposta leva a OS, o texto, as
+  fotos, quem relatou e quando. Um gestor autorizado a valida ou recusa no AlfaMatriz. Validada, ela é
+  gravada pelo FR-008, com quem validou; recusada, nada é gravado e o motivo fica registrado.
+- **FR-011b**: O gestor autorizado MUST poder corrigir um andamento com um **andamento de correção**,
+  que cita o original (data e autor), com prévia e "sim". Nenhum andamento é editado nem apagado.
+- **FR-011c**: A permissão MUST ser conferida de novo na hora de gravar, e não só na prévia.
 
 **Técnico**
 
-- **FR-012**: O técnico MUST ser reconhecido pelo número que escreve:
-  [NEEDS CLARIFICATION: pela lista de acesso interno, com um perfil novo "técnico" mantido pelo dono do
-  Pedro, preservando a decisão de 21/10/2026 (acesso-interno FR-A10); ou pelo telefone do cadastro de
-  funcionários ativos do Gestor, revendo aquela decisão?]. O nome que a pessoa diz ser MUST NOT contar.
+- **FR-012**: Quem é da casa MUST ser reconhecido em dois passos (Felipe, 31/10/2026):
+  1. **Reconhecimento:** a lista da casa reconhece o número, como hoje, com um perfil novo
+     **técnico** além de diretor, gestor e suporte.
+  2. **Autorização:** a linha da lista MUST estar vinculada a um usuário **ativo** e não excluído do
+     Gestor. Para o técnico, esse usuário MUST ter o perfil técnico e estar ligado a um funcionário
+     ativo.
+
+  O que o Pedro mostra e faz MUST ser o menor dos dois: o que o perfil da lista permite **e** o que
+  esse usuário pode ver e fazer no Gestor. Vale para toda linha da lista, não só para o técnico. O
+  nome que a pessoa diz ser MUST NOT contar.
+- **FR-012a**: Linha sem vínculo, ou com usuário desativado ou excluído no Gestor, MUST NOT receber
+  dado interno nem fazer ação. O Pedro diz que o acesso ainda não está liberado, sem citar o motivo
+  técnico. A tela Suporte › Pedro MUST mostrar quais linhas estão sem vínculo.
+- **FR-012b**: O vínculo e o perfil MUST ser conferidos a cada retrato do Gestor: usuário desativado
+  ou perfil retirado no Gestor tira o acesso no Pedro sem ninguém mexer na lista da casa.
 - **FR-013**: O técnico reconhecido MUST ver somente:
   - as OS abertas em que é responsável ou técnico;
   - as próprias visitas;
@@ -367,22 +466,33 @@ o quarto e conferir que o Pedro aponta a repetição, com os números das OS.
 - **FR-015**: O Pedro MUST propor um POP novo ou a alteração de um existente quando o relato trouxer
   passo ausente ou contrário ao POP, ou a pergunta não tiver POP. Ele mostra o texto proposto e o envia
   à aprovação só depois do "sim" de quem está na conversa.
-- **FR-016**: A proposta MUST ficar pendente de aprovação e levar o texto proposto, o POP afetado,
-  quem relatou e a OS de origem. Enquanto pendente, ela MUST NOT valer como POP nem mudar o publicado.
-  Base dos POPs e de aprovação:
-  [NEEDS CLARIFICATION: Gestor (Treinamento › Procedimentos), onde a equipe já lê, mas o fluxo de
-  aprovação precisa ser construído; ou Base do suporte do Matriz, que já tem rascunho → validado, mas a
-  equipe do Gestor não vê?].
+- **FR-016**: Os POPs oficiais MUST continuar no Gestor (Treinamento › Procedimentos), e o Pedro MUST
+  consultar só os publicados (Felipe, 31/10/2026). A proposta MUST ficar pendente de aprovação **no
+  AlfaMatriz**, com o texto proposto, o POP afetado e a versão dele na hora da proposta, quem relatou e
+  a OS de origem. Enquanto pendente ou recusada, ela MUST NOT chegar ao Gestor nem valer como POP.
+  Aprovada, ela MUST ser publicada no Gestor como POP novo ou alteração do existente, com quem aprovou
+  como autor ou editor.
+- **FR-016a**: Aprova quem tem, no Gestor, permissão de editar qualquer POP. Hoje é o perfil admin
+  (`TreinamentoProcedimento::podeEditar`: o autor ou um admin).
+- **FR-016b**: Se o POP afetado mudou no Gestor depois da proposta, a aprovação MUST mostrar isso e
+  MUST NOT sobrescrever: a proposta volta para revisão.
 - **FR-017**: O Pedro MUST apontar repetição quando um mesmo assunto voltar no mesmo cliente ou
   equipamento pela terceira vez em 30 dias, citando as OS, e oferecer a proposta de POP (FR-015).
   Esses números são o padrão inicial e podem ser ajustados no clarify.
 
 **Regras que não mudam**
 
-- **FR-018**: Nada desta frente MUST reaparecer para quem não é da casa: número fora da lista (ou do
-  reconhecimento do FR-012) segue o atendimento de cliente e os níveis de identificação.
+- **FR-018**: Nada desta frente MUST reaparecer para quem não é da casa: número fora da lista segue o
+  atendimento de cliente e os níveis de identificação. Número na lista sem vínculo segue o FR-012a.
 - **FR-019**: O Pedro MUST NOT informar preço a cliente nem mostrar boleto ou NF na conversa, também
   quando a informação vier do histórico de uma OS.
+
+**Rastreabilidade**
+
+- **FR-020**: Toda gravação desta frente MUST deixar registro auditável no AlfaMatriz, para andamento,
+  correção, proposta, validação, recusa e POP publicado. O registro guarda quem relatou, quem
+  confirmou ou validou, a conversa e a mensagem de origem, o texto e as fotos enviados, a chave de
+  idempotência e o resultado no Gestor (número do andamento ou do POP, ou o erro).
 
 ### Key Entities
 
@@ -395,7 +505,15 @@ o quarto e conferir que o Pedro aponta a repetição, com os números das OS.
   "parado".
 - **Relato**: a mensagem livre de quem fez ou acompanhou o serviço (texto, áudio, fotos).
 - **Prévia do andamento**: o que será gravado. É o que o "sim" confirma.
-- **Técnico**: funcionário do Gestor que atende OS, reconhecido pelo número (FR-012).
+- **Técnico**: funcionário do Gestor que atende OS, reconhecido pela lista da casa e autorizado pelo
+  usuário dele no Gestor (FR-012).
+- **Vínculo do colaborador**: a ligação de uma linha da lista da casa com um usuário do Gestor. É o
+  vínculo que autoriza, e não o telefone.
+- **Vínculo com a OS**: responsável, técnico adicional ou técnico de visita não cancelada.
+- **Proposta de andamento**: relato confirmado por técnico sem vínculo com a OS, à espera de validação
+  no AlfaMatriz.
+- **Andamento de correção**: andamento novo que corrige um anterior e o cita.
+- **Registro de origem**: a trilha de cada gravação (FR-020).
 - **POP**: procedimento publicado, com título e passos. Pertence a uma empresa e a um segmento.
 - **Proposta de POP**: texto novo ou alteração de um POP, pendente de aprovação, com origem (quem
   relatou, OS).
@@ -427,6 +545,10 @@ o quarto e conferir que o Pedro aponta a repetição, com os números das OS.
   ela.
 - **SC-007**: Em 4 de cada 5 dias da semana de validação, o gestor responde a uma pergunta sobre OS
   parada sem abrir o Gestor.
+- **SC-008**: Zero dado interno ou ação para número da lista sem vínculo ativo com o Gestor, nos
+  testes provocados do roteiro de validação.
+- **SC-009**: Todo andamento gravado pelo Pedro traz no Gestor o autor real e a origem, e tem no
+  AlfaMatriz o registro de quem confirmou ou validou, em 100% dos casos auditados.
 
 ## Delta Requirements
 
@@ -434,6 +556,10 @@ o quarto e conferir que o Pedro aponta a repetição, com os números das OS.
 nova e não altera comportamento ativo documentado nele. As regras do Pedro que ela toca estão em
 `docs/specs/suporte-pedro-whatsapp/` e `docs/specs/pedro-dia-do-tecnico/`, citadas por FR — Claude
 (pedido do Felipe), 2026-10-31
+
+**Muda regra em vigor:** o FR-012 altera o acesso-interno FR-A1 ("quem tem acesso interno é decidido
+só pelo número"). Depois desta frente, o número reconhece e o vínculo com o Gestor autoriza. O
+`acesso-interno.md` precisa ganhar essa nota quando o plano for aprovado.
 
 ## Fontes (conferidas em 31/10/2026)
 
@@ -450,3 +576,12 @@ nova e não altera comportamento ativo documentado nele. As regras do Pedro que 
 - Reconhecimento por funcionário retirado: `docs/specs/suporte-pedro-whatsapp/acesso-interno.md`,
   FR-A10. As funções `DiretorioGestor::daEquipe` e `abertosDoFuncionario` estão sem chamador.
 - Janela do WhatsApp: `SuporteConversa::JANELA_HORAS = 24`.
+- Vínculos com a OS no Gestor: `atendimentos.funcionario_id` (responsável), `atendimento_tecnicos`
+  (adicional), `atendimento_visitas` e `atendimento_visita_tecnicos` (visita). O retrato junta
+  responsável e adicionais num campo só (`funcionarios`), sem dizer quem é o responsável.
+- Equipe e permissão no Gestor: `users.funcionario_id`, `users.ativo`, exclusão lógica em `users`;
+  perfis em `perfil_user` (`User::PERFIS_INTERNOS`); `User::canPermissao(recurso, acao)`.
+- Andamento no Gestor: `atendimento_andamentos` (atendimento, usuário, descrição; sem origem nem chave)
+  e fotos em `atendimento_andamento_fotos`. Não há rota para editar nem apagar andamento.
+- App do técnico: `Api/V1/AtendimentoController::index` lista só as OS em que ele é o responsável.
+  `Api/V1/TreinamentoController` lista os POPs da pasta sem filtrar a situação.
