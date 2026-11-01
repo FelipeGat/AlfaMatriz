@@ -1,4 +1,7 @@
 import { execFile } from 'node:child_process';
+import { readFileSync, unlinkSync, writeFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 
 /**
@@ -6,10 +9,19 @@ import { promisify } from 'node:util';
  * a máquina roda o script de LEITURA pela ponte de produção que o dono já usa
  * (`CENTRAL_IA_GESTOR="programa|ponte|script|pasta"`, no `.env` do runner da
  * pessoa — caminho de máquina nenhum mora neste código, T-374). A `pasta` é o
- * diretório de trabalho da ponte, opcional. Nunca passa `--apply`. A ponte em si não desfaz nada: quem garante a
+ * diretório de trabalho da ponte e o lado WSL da pasta do script, opcional. Nunca passa `--apply`. A ponte em si não desfaz nada: quem garante a
  * leitura é o script (recusa APPLY=1, sessão READ ONLY, transação desfeita).
  */
 const exec = promisify(execFile);
+const AQUI = dirname(fileURLToPath(import.meta.url));
+/**
+ * A ponte roda uma CÓPIA do script instalado, gravada a cada leitura na pasta
+ * do script configurado (como o `suporte.mjs` faz com o do Pedro). Rodar o
+ * arquivo configurado direto deixava a leitura parada na versão em que alguém
+ * o copiou à mão: o instalador atualiza a pasta da máquina, não a da ponte, e
+ * a leitura de 31/10/2026 (contas a pagar com valor) não chegou a rodar.
+ */
+export const COPIA = 'secretario_gestor_ler.php';
 export const MARCA = 'SECRETARIO_GESTOR:';
 const BLOCOS = new Set(['orcamentos_aprovacao', 'orcamentos_elaboracao', 'cobrancas_vencidas', 'cobrancas_hoje', 'pagar_vencendo', 'reunioes_proximo_passo', 'funil_parado']);
 
@@ -39,14 +51,29 @@ export function lerSaida(saida) {
 }
 
 /** @returns {Promise<{ok: true, blocos: object} | {ok: false, erro: string}>} */
-export async function lerGestor(config, { executar = exec } = {}) {
+export async function lerGestor(config, { executar = exec, origem = AQUI, ler = readFileSync, escrever = writeFileSync, apagar = unlinkSync } = {}) {
     const [programa, ponte, script, pasta] = String(config || '').split('|');
     if (!programa || !ponte || !script) return { ok: false, erro: 'CENTRAL_IA_GESTOR incompleto' };
+    // A `pasta` é o lado WSL da pasta do script: é nela que a cópia é gravada. Sem
+    // ela não há onde copiar, e a ponte roda o script configurado, como antes.
+    let alvo = script;
+    let local = null;
+    if (pasta) {
+        const i = Math.max(script.lastIndexOf('\\'), script.lastIndexOf('/'));
+        alvo = i >= 0 ? script.slice(0, i + 1) + COPIA : COPIA;
+        try {
+            local = join(pasta, COPIA);
+            escrever(local, ler(join(origem, 'secretario_gestor.php'), 'utf8'));
+        } catch (e) {
+            // Sem a cópia, nada roda: rodar o arquivo velho seria o defeito de volta.
+            return { ok: false, erro: 'não deu para copiar o script para a ponte — ' + String(e.message).slice(0, 160) };
+        }
+    }
     try {
         // Ponte que roda pelo Python do Windows precisa de cwd numa pasta do
         // Windows, senão resolve o da WSL como UNC e falha: por isso a `pasta`.
         // Só dois argumentos — nunca --apply.
-        const { stdout } = await executar(programa, [ponte, script], {
+        const { stdout } = await executar(programa, [ponte, alvo], {
             cwd: pasta || undefined, timeout: 180000, maxBuffer: 4 * 1024 * 1024 });
         const blocos = lerSaida(stdout);
         return blocos ? { ok: true, blocos } : { ok: false, erro: 'saída da ponte sem o retrato' };
@@ -54,6 +81,8 @@ export async function lerGestor(config, { executar = exec } = {}) {
         // O motivo vai ao log da máquina (código e a última linha de erro), nunca ao servidor.
         const motivo = [e.code, String(e.stderr || '').trim().split(/\r?\n/).pop()].filter(Boolean).join(' · ').slice(0, 200);
         return { ok: false, erro: (e.killed ? 'a ponte passou do tempo' : 'a ponte falhou') + (motivo ? ' — ' + motivo : '') };
+    } finally {
+        if (local) try { apagar(local); } catch {}
     }
 }
 

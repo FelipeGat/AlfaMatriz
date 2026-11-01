@@ -59,6 +59,11 @@ Onde ele roda:
 - O runner o executa por `CENTRAL_IA_GESTOR="programa|ponte|script|pasta"`, no mesmo formato do `CENTRAL_IA_AGENDA`; a `pasta` (cwd da ponte) é opcional e fica na configuração da máquina, nunca no código (T-374).
 - No Felipe: `C:/Python314/python.exe|C:\tmp\run_prod.py|C:\tmp\secretario_gestor.php`, rodando a partir de
   `/mnt/c/tmp` (memória `gestor-alfa-ponte-producao`: caminho Windows e `cwd` em `/mnt/c/tmp`).
+- **A ponte roda uma cópia do script instalado** (31/10/2026). Com a `pasta`, o `gestor.mjs` grava o
+  `secretario_gestor.php` da pasta da máquina como `secretario_gestor_ler.php` na pasta do script configurado,
+  roda essa cópia e a apaga, como o `suporte.mjs` faz com o do Pedro. Antes ele rodava o arquivo configurado, que o
+  instalador não atualiza: o `C:\tmp\secretario_gestor.php` ficou na versão de 17/10, e nem a correção de 22/10
+  nem a leitura de 31/10 (contas a pagar com valor) chegaram a rodar. Sem a `pasta`, roda o configurado, como antes.
 - **Sem `--apply`.** Conferido no `run_prod.py` em 17/10/2026: a ponte **não** desfaz nada sozinha, só passa
 `APPLY=1` com `--apply`. A garantia fica no script, em três camadas: com `APPLY=1` ele recusa rodar; a sessão
 do MySQL é `READ ONLY`, então qualquer escrita falha no banco; e tudo roda numa transação desfeita no fim.
