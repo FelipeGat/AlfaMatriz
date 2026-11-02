@@ -21,6 +21,7 @@ vira comentário na tarefa dele (ou tarefa nova, tipo Bug), e não ajuste no mei
 - [ ] Para os passos A8 a A10: Matriz e Gestor com o Pedro a qualquer hora (31/10/2026, à noite) publicados, o
       MATRIZ antes: com o Gestor antes, a conversa da noite iria a um Pedro que ainda não responde fora do
       horário, e o cliente ficaria 5 min sem resposta até o menu.
+- [ ] Para os passos A11 e A12: a versão com a busca do cliente novo (02/11/2026) publicada. Só o Matriz.
 - [ ] O `.env` de produção do Matriz sem `SUPORTE_PEDRO_INICIO=07:00` (o padrão passou a 08:00). E o
       cabeçalho do menu do Gestor (`whatsapp_configs.menu_mensagem`), se citar 07:00, ajustado à mão.
 
@@ -63,6 +64,18 @@ vira comentário na tarefa dele (ou tarefa nova, tipo Bug), e não ajuste no mei
     consultas agora…"; de um cliente, "Recebi a sua mensagem e ela ficou registrada…", **sem** "fora do
     horário". Fora do horário, com o runner parado, o cliente novo recebe o aviso de fora do horário com o
     plantão.
+11. **Nome curto, um cadastro só** (02/11/2026: "o Pedro não conseguiu identificar o Duque de Caxias"). Do 3269,
+    escreva "sou do Duque de Caxias, o portão não abre" e, quando ele pedir, dê um nome. **Esperado:** ele
+    pergunta se é o "CDC COLEGIO DUQUE DE CAXIAS", só com o nome, sem cidade nem nada do cadastro. Responda
+    **"não"**: confirmar grava o 3269 como contato do CDC no Gestor. Ele pede o nome da empresa ou do condomínio
+    de novo, sem citar outro cliente.
+12. **Nome parecido, mais de um cadastro** (Felipe, 02/11/2026: "fit club, tem duas, uma em Vitória e outra em
+    Cariacica; para mantermos a LGPD, pedir o CNPJ"). Do 3269, escreva "sou da Fit Club, a câmera apagou".
+    **Esperado:** ele pede o CNPJ "para localizar o cadastro", sem citar nome nem cidade, e sem dizer que existe
+    mais de uma. Mande um CNPJ fictício de dígito certo (11.222.333/0001-81): "não localizei o cadastro por esse
+    CNPJ", e nada é confirmado nem é dito qual chegou perto. Diga que não tem o CNPJ: ele passa a um colega.
+    **Não mande pelo 3269 o CNPJ verdadeiro de nenhuma das duas**: confirma o cliente e grava o número como
+    contato dele (o caminho do CNPJ que confere está nos testes automáticos).
 
 ## B. Chamado sempre no Gestor (T-488)
 

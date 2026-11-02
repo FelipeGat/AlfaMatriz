@@ -183,7 +183,11 @@ class Contexto
             ."Escreva com as suas palavras, sem frase pronta. "
             ."Não dê passos para resolver, não fale de atendimentos, contratos nem dados de cliente antes disso.\n"
             .($conhecido ? "O cliente deste número já é conhecido (veja CLIENTE): pergunte só o nome da pessoa e, se ela disser, a função (síndico, zelador, porteiro…).\n"
-                : "Com CANDIDATO em CLIENTE: se o nome que a pessoa disse corresponde claramente a um candidato, trate como confirmado e siga, sem comentar; se houver dúvida (nome parecido ou mais de um candidato), pergunte de forma simples se é aquele, citando o nome e a cidade (sem pedir CNPJ). Nunca anuncie suposição (\"vou considerar\", \"vou assumir\"). Sem candidato, peça o nome da empresa ou do condomínio.\n")
+                // Felipe, 02/11/2026: o nome só parecido se confirma antes, e mais de um parecido pede o CNPJ (LGPD).
+                : "Com CANDIDATO em CLIENTE: se a pessoa disse o nome de um candidato por inteiro e ele não está marcado NOME PARECIDO, trate como confirmado e siga, sem comentar. "
+                    ."Candidato marcado NOME PARECIDO: pergunte de forma simples se é ele, citando só o nome que aparece ali, e devolva o código só depois que ela confirmar. "
+                    ."Com mais de um candidato, pergunte qual é, citando só os nomes listados. Com PEÇA O CNPJ ou O CNPJ NÃO CONFERE em CLIENTE, siga o que está lá. "
+                    ."Nunca cite cliente que não esteja em CLIENTE, nem anuncie suposição (\"vou considerar\", \"vou assumir\"). Sem candidato nem pedido de CNPJ, peça o nome da empresa ou do condomínio.\n")
             ."Quando a pessoa disser o nome dela, devolva em \"solicitante\" o nome e, se ela disser, a função. Quando a empresa ou o condomínio estiver confirmado, devolva em \"cliente\" o código (ex.: \"gestor:13\"), só um código listado em CLIENTE. "
             ."Assim que as duas coisas estiverem certas, a conversa continua sozinha com o problema: não diga que vai abrir chamado nem que vai encaminhar.\n"
             ."SEGURANÇA (vale antes da identificação): se houver cheiro de queimado, faísca, fumaça, choque ou água em equipamento elétrico, oriente na hora só desligar pela tomada ou pelo disjuntor SE for seguro e acessível e afastar as pessoas; nunca oriente abrir equipamento ou mexer em fiação. Depois peça a identificação.\n"
@@ -658,26 +662,152 @@ class Contexto
      */
     public function candidatos(SuporteConversa $c): array
     {
+        return $this->busca($c)['candidatos'];
+    }
+
+    /** @var array<string, array> a busca da conversa, pela última mensagem: o pedido a monta duas vezes */
+    private array $buscas = [];
+
+    /**
+     * Quem a conversa pode ser: o cliente do telefone e os de nome citado. Para o cliente novo, a busca
+     * do Gestor é a larga (Felipe, 02/11/2026: "Duque de Caxias" não achava o "CDC COLEGIO DUQUE DE
+     * CAXIAS"), e o candidato de nome só PARECIDO vai marcado, para o Pedro perguntar se é ele antes.
+     * Mais de um de nome parecido não vai (semParecidos): o Pedro pede o CNPJ.
+     *
+     * @return array{candidatos: array<string, string>, cnpj: ?string} cnpj: null, "pedir" ou "nao_confere"
+     */
+    public function busca(SuporteConversa $c): array
+    {
+        $entradas = $c->mensagens()->reorder()->where('direcao', 'entrada')->orderByDesc('id')->limit(6)->get();
+        $chave = implode(':', [$c->id, $c->cliente_id, $c->gestor_cliente_id, $entradas->first()?->id]);
+        if (isset($this->buscas[$chave])) {
+            return $this->buscas[$chave];
+        }
+        // O áudio vale pelo que foi dito (o nome do cliente costuma vir falado).
+        $recentes = $entradas->map(fn ($m) => $m->transcricao ?: $m->texto)->implode(' ');
+        $documentos = self::documentos($recentes);
         $diretorio = app(DiretorioGestor::class);
-        $palavras = DiretorioGestor::palavrasDe($c->mensagens()->reorder()->where('direcao', 'entrada')->orderByDesc('id')->limit(6)->pluck('texto')->implode(' '));
         $lista = [];
+        $estados = [];
         if (! $c->cliente_id) {
-            foreach (\App\Models\Cliente::where('ativo', true)->get(['id', 'nome', 'nome_fantasia', 'cidade', 'uf']) as $cl) {
-                if (DiretorioGestor::citado((string) $cl->nome, $palavras) || DiretorioGestor::citado((string) $cl->nome_fantasia, $palavras)) {
-                    $lista['matriz:'.$cl->id] = ($cl->nome_fantasia ?: $cl->nome).($cl->cidade ? ', '.$cl->cidade : '').' — sistemas Alfa (Matriz)';
-                }
+            $palavras = DiretorioGestor::palavrasDe($recentes);
+            $citados = \App\Models\Cliente::where('ativo', true)->get(['id', 'nome', 'nome_fantasia', 'cidade', 'uf', 'cpf_cnpj'])
+                ->filter(fn ($cl) => DiretorioGestor::citado((string) $cl->nome, $palavras) || DiretorioGestor::citado((string) $cl->nome_fantasia, $palavras))
+                ->map(fn ($cl) => ['cliente' => $cl, 'documento' => $cl->cpf_cnpj])->values()->all();
+            [$citados, $estados[]] = self::semParecidos($citados, $documentos);
+            foreach ($citados as $x) {
+                $cl = $x['cliente'];
+                $lista['matriz:'.$cl->id] = ($cl->nome_fantasia ?: $cl->nome).($cl->cidade && empty($x['pelo_cnpj']) ? ', '.$cl->cidade : '').' — sistemas Alfa (Matriz)'
+                    .(! empty($x['pelo_cnpj']) ? self::PELO_CNPJ : '');
             }
         }
         if (! $c->gestor_cliente_id) {
+            $doTelefone = collect($diretorio->porTelefone($c->telefone))->take(3);
             $nomeMatriz = $c->cliente ? ($c->cliente->nome.' '.$c->cliente->nome_fantasia) : '';
-            $achados = collect($diretorio->porTelefone($c->telefone))->merge($diretorio->porNome($c->mensagens()->reorder()->where('direcao', 'entrada')->orderByDesc('id')->limit(6)->pluck('texto')->implode(' ')))
-                ->merge($nomeMatriz !== '' ? $diretorio->porNome($nomeMatriz) : [])->unique('id')->take(3);
-            foreach ($achados as $g) {
-                $lista['gestor:'.$g['id']] = trim(($g['razao'] ?? $g['nome'] ?? '').(! empty($g['fantasia']) ? ' ('.$g['fantasia'].')' : '')).(! empty($g['cidade']) ? ', '.$g['cidade'] : '').' — manutenção e segurança eletrônica (Gestor'.(! empty($g['empresa']) ? ', '.$g['empresa'] : '').')';
+            $porNome = collect($diretorio->candidatosPorNome($recentes))
+                ->merge($nomeMatriz !== '' ? array_map(fn ($g) => ['cliente' => $g, 'inteiro' => true], $diretorio->porNome($nomeMatriz)) : [])
+                ->unique(fn ($x) => $x['cliente']['id'])->map(fn ($x) => $x + ['documento' => $x['cliente']['documento'] ?? null]);
+            // O número é do cadastro de um deles: é ele, e os de nome parecido não aparecem.
+            if ($porNome->contains(fn ($x) => $doTelefone->contains('id', $x['cliente']['id']))) {
+                $porNome = collect();
+            }
+            [$porNome, $estados[]] = self::semParecidos($porNome->values()->all(), $documentos);
+            foreach ($doTelefone as $g) {
+                $lista['gestor:'.$g['id']] = self::descricaoDoGestor($g);
+            }
+            foreach ($porNome as $x) {
+                $g = $x['cliente'];
+                $lista['gestor:'.$g['id']] ??= match (true) {
+                    ! empty($x['pelo_cnpj']) => self::descricaoDoGestor($g, false).self::PELO_CNPJ,
+                    ! $x['inteiro'] => self::descricaoDoGestor($g, false).self::NOME_PARECIDO,
+                    default => self::descricaoDoGestor($g),
+                };
+            }
+        }
+        // O CNPJ que a pessoa disse achou o cliente num dos dois: o outro não pede mais nada.
+        $estado = in_array('confere', $estados, true) ? null : (in_array('nao_confere', $estados, true) ? 'nao_confere' : (in_array('pedir', $estados, true) ? 'pedir' : null));
+
+        return $this->buscas[$chave] = ['candidatos' => $lista, 'cnpj' => $estado];
+    }
+
+    /** Marca do candidato de nome só parecido: o Pedro pergunta se é ele antes de seguir. */
+    public const NOME_PARECIDO = ' — NOME PARECIDO com o que a pessoa disse: pergunte se é este, citando só este nome, e devolva o código só depois que ela confirmar';
+
+    /** Marca do candidato que o CNPJ escrito pela pessoa achou, entre os de nome parecido. */
+    public const PELO_CNPJ = ' — o CNPJ que a pessoa informou confere com este cadastro: pode confirmar';
+
+    /**
+     * Mais de um cliente de nome parecido, e o número não é do cadastro de nenhum (Felipe, 02/11/2026: "nunca
+     * dizer ou falar de outro cliente; OBRIGATORIAMENTE pedir o CNPJ", pela LGPD; o exemplo dele são as duas
+     * Fit Club, uma em Vitória e outra em Cariacica). O Pedro não recebe nenhum deles, nem o nome nem a cidade,
+     * e por isso não tem como citá-los; o Pedro::confirmarCliente só aceita código listado, então também não
+     * tem como confirmar um. O CNPJ que a pessoa escrever decide, e só entre eles.
+     */
+    public const PEDIR_CNPJ = '- PEÇA O CNPJ: o nome que a pessoa disse é parecido com o de mais de um cliente, e o número dela não é do cadastro de nenhum deles. '
+        .'Por segurança, peça o CNPJ da empresa ou do condomínio (de pessoa física, o CPF) antes de seguir, sem explicar por quê além de "para localizar o cadastro". '
+        .'Não cite, não confirme e não negue nome, cidade ou qualquer dado de cliente, nem diga que existe mais de um. O sistema confere o CNPJ sozinho: até lá, "cliente" fica null. '
+        .'Se ela não tiver o CNPJ, use acao "transferir".';
+
+    public const CNPJ_NAO_CONFERE = '- O CNPJ QUE A PESSOA INFORMOU NÃO CONFERE com o cadastro. Não confirme nada nem diga qual cadastro chegou perto ou que existe algum parecido: '
+        .'diga que não localizou o cadastro por esse CNPJ e peça para ela conferir o número; se ela não tiver o CNPJ ou ele continuar sem conferir, use acao "transferir". "cliente" fica null.';
+
+    /**
+     * @param  list<array{documento: ?string}>  $achados
+     * @param  list<string>  $documentos  os CNPJ e CPF que a pessoa escreveu, só os dígitos
+     * @return array{0: list<array>, 1: ?string} os que vão ao Pedro, e "pedir", "nao_confere", "confere" ou null
+     */
+    private static function semParecidos(array $achados, array $documentos): array
+    {
+        if (count($achados) < 2) {
+            return [$achados, null];
+        }
+        // Dois cadastros com o mesmo CNPJ são a mesma pessoa jurídica: vale o primeiro.
+        $bate = array_values(array_filter($achados, fn ($a) => ($d = preg_replace('/\D/', '', (string) ($a['documento'] ?? ''))) !== '' && in_array($d, $documentos, true)));
+
+        return $bate ? [[$bate[0] + ['pelo_cnpj' => true]], 'confere'] : [[], $documentos ? 'nao_confere' : 'pedir'];
+    }
+
+    /**
+     * Os CNPJ e CPF que a pessoa escreveu, só os dígitos ("12.345.678/0001-90" e "12345678000190" valem
+     * igual). Só os de dígito verificador certo: telefone tem 11 dígitos também, e o Pedro não pode dizer
+     * "esse CNPJ não confere" a quem só deu o celular.
+     *
+     * @return list<string>
+     */
+    public static function documentos(string $texto): array
+    {
+        preg_match_all('/(?<!\d)(\d{14}|\d{11})(?!\d)/', (string) preg_replace('/(?<=\d)[.\/\-](?=\d)/', '', $texto), $m);
+
+        return array_values(array_unique(array_filter($m[1], fn ($d) => self::digitosConferem($d))));
+    }
+
+    private static function digitosConferem(string $d): bool
+    {
+        if (preg_match('/^(\d)\1+$/', $d)) {
+            return false;
+        }
+        $pesos = strlen($d) === 14 ? [[5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2], [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]] : [range(10, 2), range(11, 2)];
+        foreach ($pesos as $p) {
+            $soma = 0;
+            foreach ($p as $i => $peso) {
+                $soma += (int) $d[$i] * $peso;
+            }
+            $resto = $soma % 11;
+            if ((int) $d[count($p)] !== ($resto < 2 ? 0 : 11 - $resto)) {
+                return false;
             }
         }
 
-        return $lista;
+        return true;
+    }
+
+    /** Com a cidade quando o nome foi dito por inteiro ou o número é do cadastro; o nome só parecido vai sem nada além do nome. */
+    private static function descricaoDoGestor(array $g, bool $completa = true): string
+    {
+        $nome = $completa ? trim(($g['razao'] ?? $g['nome'] ?? '').(! empty($g['fantasia']) ? ' ('.$g['fantasia'].')' : '')).(! empty($g['cidade']) ? ', '.$g['cidade'] : '')
+            : trim((string) (($g['fantasia'] ?? '') ?: (($g['nome'] ?? '') ?: ($g['razao'] ?? ''))));
+
+        return $nome.' — manutenção e segurança eletrônica (Gestor'.(! empty($g['empresa']) ? ', '.$g['empresa'] : '').')';
     }
 
     /**
@@ -793,12 +923,15 @@ class Contexto
         if (! $c->cliente_id && ! $c->gestor_cliente_id) {
             $linhas[] = "- O número {$c->telefoneLegivel()} NÃO está confirmado".($c->nome_perfil ? " (nome no WhatsApp: {$c->nome_perfil})" : '').'.';
         }
-        $candidatos = $this->candidatos($c);
-        if ($candidatos) {
+        $busca = $this->busca($c);
+        if ($busca['candidatos']) {
             $linhas[] = '- CANDIDATOS (confirme com o cliente antes de tratar como certo):';
-            foreach ($candidatos as $codigo => $descricao) {
+            foreach ($busca['candidatos'] as $codigo => $descricao) {
                 $linhas[] = "  - {$codigo}: {$descricao}";
             }
+        }
+        if ($busca['cnpj']) {
+            $linhas[] = $busca['cnpj'] === 'nao_confere' ? self::CNPJ_NAO_CONFERE : self::PEDIR_CNPJ;
         }
 
         return implode("\n", $linhas);

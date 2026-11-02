@@ -121,3 +121,49 @@ pedido inteiro a partir dele:
   traz `telefones` e os e-mails de login do portal com o financeiro liberado.
 - **Os testes** (`tests/Feature/Suporte/PedroNivelDeIdentificacaoTest.php`) conferem cada nível contra a lista do
   que é do nível de cima: trecho novo do pedido que esquecer a regra quebra ali.
+
+## Busca do cliente novo (02/11/2026)
+
+O Felipe escreveu "Duque de Caxias" do número de teste e o Pedro não achou o cliente, cadastrado no Gestor como
+"CDC COLEGIO DUQUE DE CAXIAS". A busca do cliente novo (`DiretorioGestor::porNome`) exigia todas as palavras do
+nome, e "colégio" não foi dito. A busca larga, que acha por parte do nome e por grafia aproximada, só servia a
+quem é da casa. Regras do Felipe na mesma data:
+
+- **Um cadastro só**: o Pedro pergunta "é este?" citando só o nome do cadastro, sem cidade nem nada dele, e o
+  cliente vale depois do "sim". O que o cliente tem continua no nível `pelo_nome` (acima): confirmar pelo nome
+  não abre o cadastro.
+- **Mais de um de nome parecido, e o número fora do cadastro deles**: "nunca dizer ou falar de outro cliente;
+  OBRIGATORIAMENTE pedir o CNPJ" — o exemplo dele são as duas Fit Club, em Vitória e em Cariacica. O Pedro não
+  recebe nenhum dos dois: nem código, nem nome, nem cidade. O `Pedro::confirmarCliente` só aceita código que foi
+  oferecido, então também não tem como confirmar um. O CNPJ que a pessoa escrever decide, e só entre eles.
+- **Número do cadastro**: sem mudança. Se o número é de um dos parecidos, é ele, e os outros não aparecem.
+
+Onde mora:
+
+- `DiretorioGestor::candidatosPorNome` — a busca larga com as travas do cliente novo: o nome só parecido precisa
+  de mais da metade do peso das palavras que o identificam (cada uma pesando pela raridade, e a cidade do próprio
+  cadastro no nome não conta, para a "ACADEMIA FIT CLUB (CARIACICA)" ser a Fit Club); com um nome dito por inteiro,
+  o parecido só fica se casou com as mesmas palavras ("sou a Zuleica do Residencial Atlântico": a Zuleica é a
+  pessoa); só quem pesa ao menos metade do melhor; e palavra de mais de 10 cadastros não é nome ("minha academia").
+  As palavras do problema e da conversa ("portão", "câmera", "quero", "falar") não são nome de cliente, e junção
+  de duas palavras ("Marazul") só vale pelo som, sem letra de diferença.
+- `Contexto::busca` — os candidatos, o candidato marcado `NOME PARECIDO` e o estado do CNPJ (`PEDIR_CNPJ`,
+  `CNPJ_NAO_CONFERE`, `PELO_CNPJ`). O nome é procurado também no áudio transcrito. Vale igual para dois clientes
+  do Matriz de mesmo nome.
+- `Contexto::documentos` — o CNPJ (ou CPF) escrito, com ou sem pontuação, só com dígito verificador certo:
+  celular não vira "esse CNPJ não confere", e o dígito errado faz o Pedro pedir de novo. O CNPJ do cadastro já vem
+  no retrato do Gestor (`documento`); a máquina não mudou.
+
+Conferido no Gestor de produção, só leitura, em 02/11/2026 às 20:14 (`C:\tmp\e597\pedro_busca_cliente_novo_ro.php`,
+a classe nova sobre os cadastros lidos como o retrato lê): "duque de caxias" acha só o CDC (#9, INVEST, no filtro de
+empresas), e a busca antiga não achava nenhum; "fit club" pede o CNPJ, com as duas academias e dois pré-clientes
+"Fitclub" entre os de nome parecido; e 11 frases comuns sem nome de cliente ("minha academia está com o portão
+travado", "quero falar com o financeiro") não trazem ninguém. A busca antiga mandava ao Pedro, para essa mesma
+frase da academia, o nome e a cidade de três academias. Efeito conhecido: nome de bairro que está no nome de
+cadastros ("praia da costa") pede o CNPJ. Dos 141 clientes, 118 têm CNPJ, 20 têm CPF, 1 tem um documento de 12
+dígitos e 2 estão sem: esses três últimos não têm como ser confirmados pelo CNPJ, e o Pedro passa a um colega.
+
+Os testes estão em `tests/Feature/Suporte/PedroBuscaDoClienteNovoTest.php`, com dados fictícios. Com o código
+anterior, 5 dos 8 falham e 1 dá erro (o método novo não existia); os outros dois ("palavra solta" e "número do
+cadastro de um deles") protegem a busca nova.
+

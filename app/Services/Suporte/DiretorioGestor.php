@@ -31,6 +31,7 @@ class DiretorioGestor
             'empresas' => $empresas === null ? null : json_encode(array_values($empresas), JSON_UNESCAPED_UNICODE),
             'created_at' => now(), 'updated_at' => now()]);
         $this->retrato = null;
+        $this->indice = null;
     }
 
     /** @return array{lido_em: ?string, clientes: list<array>, atendimentos: list<array>} */
@@ -202,52 +203,210 @@ class DiretorioGestor
      */
     public function buscarClientes(string $texto, int $limite = 6): array
     {
-        // As palavras do próprio pedido não são nome de cliente.
-        $doPedido = ['abrir', 'abra', 'chamado', 'atendimento', 'registrar', 'registra', 'manutencao', 'limpeza', 'apartamento', 'pedro', 'para', 'favor',
-            'cliente', 'servico', 'condensadora', 'condensadoras', 'condicionado', 'urgente', 'visita', 'tecnica', 'tecnico', 'problema', 'preciso', 'pode'];
-        // Duas palavras seguidas juntas também valem, nos dois sentidos (02/11/2026: o Whisper ouviu "Mar Azul"
-        // e escreveu "Marazul", e o pedido por áudio ficou sem cliente).
-        // Só palavras de nome: "vila velha" junto daria peso a todo cadastro "(VILA VELHA)" (teste da Revizza, 23/10).
-        $juntas = fn (array $p) => collect(array_keys(array_slice($p, 0, -1)))
-            ->reject(fn ($i) => in_array($p[$i], self::VAZIAS, true) || in_array($p[$i + 1], self::VAZIAS, true))
-            ->map(fn ($i) => $p[$i].$p[$i + 1])->values()->all();
-        $palavras = self::palavras($texto);
-        $doTexto = array_flip(array_filter([...$palavras, ...$juntas($palavras)], fn ($p) => mb_strlen($p) >= 4 && ! in_array($p, self::VAZIAS, true) && ! in_array($p, $doPedido, true)));
-        if (! $doTexto) {
-            return [];
-        }
-
-        // Grafia aproximada também vale: "Emanuelly" acha "Emanuelle" (21/10/2026, teste do Wallas).
-        $parecida = function (string $a, string $b): bool {
-            if ($a === $b) {
-                return true;
-            }
-            // Pela pronúncia (22/10/2026: "revissa" é a "Revizza"): ss/zz/z viram s, y vira i, letra dobrada vira uma.
-            $som = fn (string $p) => preg_replace('/(.)\1+/', '$1', strtr(str_replace(['ph', 'qu', 'ch'], ['f', 'c', 'x'], $p), ['z' => 's', 'y' => 'i', 'k' => 'c', 'w' => 'v']));
-            [$a, $b] = [$som($a), $som($b)];
-            $menor = min(strlen($a), strlen($b));
-
-            return $a === $b || ($menor >= 5 && levenshtein($a, $b) <= ($menor >= 8 ? 2 : 1));
-        };
-
-        // Cada palavra pesa pela raridade (23/10/2026: em "revissa em vila velha", os clientes com
-        // "(VILA VELHA)" no nome tomaram as 6 vagas e a Revizza de Vila Velha ficou de fora): a palavra
-        // que só dois cadastros têm decide; a que dezenas têm quase não conta. A cidade citada desempata.
-        $casados = $this->atendidos()->map(function ($c) use ($doTexto, $parecida, $juntas) {
-            $nome = array_unique(collect([$c['fantasia'] ?? null, $c['nome'] ?? null, $c['razao'] ?? null])->filter()
-                ->flatMap(fn ($n) => [...self::palavras((string) $n), ...$juntas(self::palavras((string) $n))])->all());
-            $termos = array_values(array_filter(array_map('strval', array_keys($doTexto)),
-                fn ($t) => collect($nome)->contains(fn ($p) => mb_strlen($p) >= 4 && $parecida($p, $t))));
-
-            return [$c, $termos];
-        })->filter(fn ($par) => $par[1] !== []);
-        $quantos = $casados->flatMap(fn ($par) => $par[1])->countBy();
         // Com todas as palavras do pedido: "vila" é palavra vazia para o nome, mas é metade de "Vila Velha".
         $todas = self::palavras($texto);
         $cidadeCitada = fn ($c) => ($cidade = self::palavras((string) ($c['cidade'] ?? ''))) && ! array_diff($cidade, $todas) ? 0.25 : 0;
 
-        return $casados->map(fn ($par) => [$par[0], collect($par[1])->sum(fn ($t) => 1 / $quantos[$t]) + $cidadeCitada($par[0])])
+        return $this->casados($texto)->map(fn ($x) => [$x['cliente'], $x['pontos'] + $cidadeCitada($x['cliente'])])
             ->sortByDesc(fn ($par) => $par[1])->take($limite)->map(fn ($par) => $par[0])->values()->all();
+    }
+
+    /**
+     * A busca do cliente NOVO, de número fora do cadastro (Felipe, 02/11/2026: o Pedro não achou o "Duque de
+     * Caxias", cadastrado como "CDC COLEGIO DUQUE DE CAXIAS", porque o porNome exige o nome inteiro). É a busca
+     * larga da casa, com travas que a da casa não precisa, porque quem escreve é desconhecido e o Pedro não
+     * pode pôr na boca dele o nome de um cliente que ele não disse:
+     * - sem nome dito por inteiro (o porNome de antes), o parecido só é citado com MAIS da metade do peso das
+     *   palavras que o identificam, cada uma pesando pela raridade: "duque de caxias" traz o CDC, e "minha
+     *   academia" não traz a "ACADEMIA KORPUS" ("academia" e a cidade do próprio cadastro quase não pesam);
+     * - citado um, entra o cadastro que casou com as mesmas palavras e tem nelas ao menos metade do nome:
+     *   "fit club" traz a de Vitória e a "ACADEMIA FIT CLUB (CARIACICA)"; o que casou com outras palavras fica
+     *   de fora: em "sou a Zuleica do Residencial Atlântico", a cliente "ZULEICA MORAES" é a pessoa, e não o cliente;
+     * - no fim, só quem pesa ao menos metade do melhor: "Vila Velha" citado não traz os cadastros "(VILA VELHA)"
+     *   ao lado da Revizza, "colégio duque de caxias" não traz um "COLEGIO UP" pela palavra comum, e
+     *   "Barão de Mauá" traz o colégio, e não o "CONDOMINIO RESIDENCIAL MAUA", que é inteiro só por "Mauá".
+     * - e o melhor precisa ter palavra de até 10 cadastros: "minha academia" não é nome de ninguém.
+     * Sobrar mais de um é nome parecido, e quem decide o que fazer (pedir o CNPJ) é o Contexto.
+     *
+     * @return list<array{cliente: array, inteiro: bool}> inteiro = todas as palavras do nome foram ditas, como no porNome
+     */
+    public function candidatosPorNome(string $texto): array
+    {
+        $palavras = self::palavrasDe($texto);
+        $casados = $this->casados($texto)->map(fn ($x) => $x + ['inteiro' => collect([$x['cliente']['fantasia'] ?? null, $x['cliente']['nome'] ?? null, $x['cliente']['razao'] ?? null])
+            ->contains(fn ($n) => self::citado((string) $n, $palavras))]);
+        // Quem a pessoa citou: o nome dito por inteiro, ou, sem nenhum, o parecido com MAIS da metade do nome.
+        // Citado um, é nome parecido o cadastro que casou com as mesmas palavras e tem nelas ao menos METADE do
+        // nome: com a régua cheia, "academia" deixava de ser rara num retrato pequeno, a "ACADEMIA POWER GYM
+        // (CARIACICA)" (metade) ficava de fora ao lado da "POWER GYM", e a de Vitória ia ao Pedro com nome e
+        // cidade (bateria de 02/11/2026); sem régua nenhuma, "residencial mauá" trazia o "XPT COLEGIO BARAO
+        // DE MAUA", em que "Mauá" é a menor parte. Entre os que ficam, quem decide é o peso, abaixo.
+        $inteiros = $casados->where('inteiro', true);
+        $citados = $inteiros->isNotEmpty() ? $inteiros : $casados->filter(fn ($x) => $x['cobertura'] > 0.5);
+        $ditos = $citados->flatMap(fn ($x) => $x['termos'])->unique()->all();
+        $todos = $casados->filter(fn ($x) => $x['inteiro'] || ($x['cobertura'] >= 0.5 && array_intersect($x['termos'], $ditos) !== []));
+        if ($citados->isEmpty() || $todos->isEmpty()) {
+            return [];
+        }
+        $melhor = $todos->max('pontos');
+        // Palavra que mais de 10 cadastros têm não identifica ninguém ("minha academia", 41 "ACADEMIA …" na
+        // cópia do Gestor): é como não ter candidato, e o Pedro pede o nome, e não o CNPJ.
+        if ($melhor < 0.1) {
+            return [];
+        }
+
+        return $todos->filter(fn ($x) => $x['pontos'] >= $melhor / 2)->sortByDesc('pontos')
+            ->map(fn ($x) => ['cliente' => $x['cliente'], 'inteiro' => $x['inteiro']])->values()->all();
+    }
+
+    /** @var list<array{cliente: array, nomes: list<list<string>>, palavras: list<string>, juntas: list<string>}>|null os nomes já quebrados em palavras, uma vez por retrato */
+    private ?array $indice = null;
+
+    /** @var array<string, int> em quantos cadastros cada palavra que identifica aparece no nome */
+    private array $frequencia = [];
+
+    /** @return list<array{cliente: array, nomes: list<list<string>>, palavras: list<string>, juntas: list<string>}> */
+    private function indice(): array
+    {
+        if ($this->indice === null) {
+            $this->indice = $this->atendidos()->map(function ($c) {
+                $nomes = collect([$c['fantasia'] ?? null, $c['nome'] ?? null, $c['razao'] ?? null])->filter()->map(fn ($n) => self::palavras((string) $n))->values()->all();
+                $quatro = fn (array $ws) => array_values(array_unique(array_filter($ws, fn ($w) => mb_strlen($w) >= 4)));
+
+                return ['cliente' => $c, 'nomes' => $nomes, 'palavras' => $quatro(array_merge(...$nomes)),
+                    'juntas' => $quatro(array_merge(...array_map(fn ($p) => array_column(self::juntas($p), 0), $nomes)))];
+            })->all();
+            $this->frequencia = collect($this->indice)->flatMap(fn ($i) => array_unique(array_merge(...array_map(fn ($p) => self::chaveDoNome($p), $i['nomes']))))->countBy()->all();
+        }
+
+        return $this->indice;
+    }
+
+    /** @param list<string> $p @return list<string> as palavras que identificam o nome (4+ letras, fora "condomínio", "residencial"…) */
+    private static function chaveDoNome(array $p): array
+    {
+        return array_values(array_unique(array_filter($p, fn ($w) => ! in_array($w, self::VAZIAS, true) && mb_strlen($w) >= 4)));
+    }
+
+    /**
+     * Os clientes com palavra do nome no texto, com o peso de cada um e quanto do nome foi dito.
+     *
+     * @return \Illuminate\Support\Collection<int, array{cliente: array, termos: list<string>, pontos: float, cobertura: float}>
+     */
+    private function casados(string $texto): \Illuminate\Support\Collection
+    {
+        // As palavras do próprio pedido não são nome de cliente.
+        $doPedido = ['abrir', 'abra', 'chamado', 'atendimento', 'registrar', 'registra', 'manutencao', 'limpeza', 'apartamento', 'pedro', 'para', 'favor',
+            'cliente', 'servico', 'condensadora', 'condensadoras', 'condicionado', 'urgente', 'visita', 'tecnica', 'tecnico', 'problema', 'preciso', 'pode',
+            // Nem as do problema e do cumprimento, que o cliente novo diz em toda conversa (02/11/2026: "o portão
+            // está travado" trazia o pré-cliente "Portal…", a uma letra de "portão").
+            'portao', 'portoes', 'portaria', 'porteiro', 'camera', 'cameras', 'interfone', 'alarme', 'cerca', 'catraca', 'motor', 'garagem',
+            'travado', 'travada', 'travou', 'quebrado', 'quebrada', 'quebrou', 'parado', 'parada', 'parou', 'funciona', 'funcionando',
+            'abre', 'abrindo', 'fecha', 'fechando', 'desligado', 'desligada', 'apagou', 'apagada', 'apagado', 'imagem', 'defeito', 'conserto',
+            'controle', 'acesso', 'instalar', 'instalacao', 'orcamento', 'financeiro', 'boleto', 'pagamento', 'sindico', 'sindica', 'predio', 'casa', 'nome',
+            // E as da conversa, como no termos() do showroom: "quero" trazia o "SO QUERO 10 CONCURSOS", e "falar", a "FALLER".
+            'quero', 'queria', 'gostaria', 'falar', 'saber', 'sobre', 'minha', 'minhas', 'meus', 'nossa', 'nosso', 'aqui', 'esta', 'estou', 'esse', 'essa',
+            'isso', 'onde', 'quando', 'tambem', 'ainda', 'muito', 'podem', 'fazer', 'tudo', 'voces', 'tenho', 'temos', 'agora', 'hoje', 'ontem', 'amanha',
+            'ajuda', 'ajudar', 'tarde', 'noite', 'obrigado', 'obrigada'];
+        $palavras = self::palavras($texto);
+        $juntasDoTexto = array_column(self::juntas($palavras), 0);
+        $doTexto = array_values(array_map('strval', array_keys(array_flip(array_filter([...$palavras, ...$juntasDoTexto],
+            fn ($p) => mb_strlen($p) >= 4 && ! in_array($p, self::VAZIAS, true) && ! in_array($p, $doPedido, true))))));
+        if (! $doTexto) {
+            return collect();
+        }
+        // Junção só vale com o mesmo som, sem letra de diferença: com a diferença, "academia esta" virava a
+        // "ACADEMIA VITA", "minha academia" a "PENHA ACADEMIA" e "a câmera" a "ACQUA SERRA" (02/11/2026, na
+        // cópia do Gestor) — a palavra longa em comum fazia a junção parecer quase igual.
+        $junta = array_flip(array_diff($juntasDoTexto, $palavras));
+
+        // Cada palavra pesa pela raridade (23/10/2026: em "revissa em vila velha", os clientes com
+        // "(VILA VELHA)" no nome tomaram as 6 vagas e a Revizza de Vila Velha ficou de fora): a palavra
+        // que só dois cadastros têm decide; a que dezenas têm quase não conta. A cidade citada desempata.
+        // Cada palavra de nome é comparada ao texto uma vez só, e não uma vez por cliente que a tem
+        // (02/11/2026: com 4 mil cadastros, a busca levava ~1 s, e o cliente novo a faz a cada mensagem).
+        $bate = [];
+        $termosDe = function (string $w, bool $daJunta = false) use (&$bate, $doTexto, $junta): array {
+            return $bate[($daJunta ? '+' : '').$w] ??= array_values(array_filter($doTexto, fn ($t) => self::parecida($w, $t, $daJunta || isset($junta[$t]))));
+        };
+        $casados = [];
+        foreach ($this->indice() as $i) {
+            $termos = array_values(array_unique(array_merge(...array_map(fn ($w) => $termosDe($w), $i['palavras']), ...array_map(fn ($w) => $termosDe($w, true), $i['juntas']))));
+            if ($termos === []) {
+                continue;
+            }
+            // Quanto do nome foi dito, no melhor dos três (fantasia, nome, razão): a palavra que identifica
+            // vale se a pessoa a disse, ou disse ela junto da vizinha ("Marazul"), e pesa pela raridade, como
+            // na pontuação: "academia" quase não conta, e o nome raro decide. A cidade do próprio cadastro
+            // no nome não conta: "ACADEMIA FIT CLUB (CARIACICA)" é a Fit Club, e quem diz "fit club" disse o nome.
+            $cidade = self::palavras((string) ($i['cliente']['cidade'] ?? ''));
+            $cobertura = 0.0;
+            foreach ($i['nomes'] as $p) {
+                $chave = self::chaveDoNome($p);
+                $chave = array_values(array_diff($chave, $cidade)) ?: $chave;
+                if ($chave === []) {
+                    continue;
+                }
+                $ditas = array_filter($chave, fn ($w) => $termosDe($w) !== []);
+                foreach (self::juntas($p) as [$juntas, $partes]) {
+                    if (mb_strlen($juntas) >= 4 && $termosDe($juntas, true) !== []) {
+                        $ditas = [...$ditas, ...$partes];
+                    }
+                }
+                $peso = fn (array $ws) => array_sum(array_map(fn ($w) => 1 / max(1, $this->frequencia[$w] ?? 1), $ws));
+                $cobertura = max($cobertura, $peso(array_intersect($chave, $ditas)) / $peso($chave));
+            }
+            $casados[] = ['cliente' => $i['cliente'], 'termos' => $termos, 'cobertura' => $cobertura];
+        }
+        $casados = collect($casados);
+        $quantos = $casados->flatMap(fn ($x) => $x['termos'])->countBy();
+
+        return $casados->map(fn ($x) => ['cliente' => $x['cliente'], 'termos' => $x['termos'], 'pontos' => (float) collect($x['termos'])->sum(fn ($t) => 1 / $quantos[$t]), 'cobertura' => $x['cobertura']]);
+    }
+
+    /**
+     * Duas palavras seguidas juntas também valem, nos dois sentidos (02/11/2026: o Whisper ouviu "Mar Azul"
+     * e escreveu "Marazul", e o pedido por áudio ficou sem cliente). Só palavras de nome: "vila velha" junto
+     * daria peso a todo cadastro "(VILA VELHA)" (teste da Revizza, 23/10).
+     *
+     * @param  list<string>  $p
+     * @return list<array{0: string, 1: array{0: string, 1: string}}> a junção e as duas palavras
+     */
+    private static function juntas(array $p): array
+    {
+        $juntas = [];
+        for ($i = 0; $i < count($p) - 1; $i++) {
+            if (! in_array($p[$i], self::VAZIAS, true) && ! in_array($p[$i + 1], self::VAZIAS, true)) {
+                $juntas[] = [$p[$i].$p[$i + 1], [$p[$i], $p[$i + 1]]];
+            }
+        }
+
+        return $juntas;
+    }
+
+    /** Grafia aproximada também vale: "Emanuelly" acha "Emanuelle" (21/10/2026, teste do Wallas). Junção, só pelo som. */
+    private static function parecida(string $a, string $b, bool $junta = false): bool
+    {
+        if ($a === $b) {
+            return true;
+        }
+        [$a, $b] = [self::som($a), self::som($b)];
+        $menor = min(strlen($a), strlen($b));
+
+        return $a === $b || (! $junta && $menor >= 5 && levenshtein($a, $b) <= ($menor >= 8 ? 2 : 1));
+    }
+
+    /** @var array<string, string> o som de cada palavra já vista: a busca compara milhares de nomes a cada mensagem */
+    private static array $sons = [];
+
+    /** Pela pronúncia (22/10/2026: "revissa" é a "Revizza"): ss/zz/z viram s, y vira i, letra dobrada vira uma. */
+    private static function som(string $p): string
+    {
+        if (count(self::$sons) > 50000) {
+            self::$sons = [];
+        }
+
+        return self::$sons[$p] ??= (string) preg_replace('/(.)\1+/', '$1', strtr(str_replace(['ph', 'qu', 'ch'], ['f', 'c', 'x'], $p), ['z' => 's', 'y' => 'i', 'k' => 'c', 'w' => 'v']));
     }
 
     /** O nome aparece no texto? Todas as palavras que identificam o nome precisam estar nele. @param array<string, int> $palavrasDoTexto */
