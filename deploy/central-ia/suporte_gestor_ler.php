@@ -222,7 +222,13 @@ try {
         }
     }
 
-    echo 'SUPORTE_GESTOR:'.json_encode(['clientes' => $clientes, 'atendimentos' => $atendimentos, 'assuntos' => $assuntos, 'equipe' => $equipe, 'showroom' => $showroom, 'visitas' => $visitas, 'orcamentos' => $orcamentos], JSON_UNESCAPED_UNICODE)."\n";
+    // As empresas do grupo com o percentual de NF que o Gestor carimba no orçamento novo (pedro-orcamento,
+    // 02/11/2026): é com ele que a prévia mostra a conta. Gestor antigo, sem o método, manda sem o percentual.
+    $empresasDoGrupo = DB::table('empresas')->orderBy('id')->get(['id', 'nome_fantasia', 'razao_social'])->map(fn ($e) => ['id' => (int) $e->id,
+        'nome' => (string) ($e->nome_fantasia ?: $e->razao_social),
+        'imposto_nf' => method_exists(\App\Models\Orcamento::class, 'percentualImpostoNfVigente') ? (float) \App\Models\Orcamento::percentualImpostoNfVigente((int) $e->id) : null])->all();
+
+    echo 'SUPORTE_GESTOR:'.json_encode(['clientes' => $clientes, 'atendimentos' => $atendimentos, 'assuntos' => $assuntos, 'equipe' => $equipe, 'showroom' => $showroom, 'visitas' => $visitas, 'orcamentos' => $orcamentos, 'empresas' => $empresasDoGrupo], JSON_UNESCAPED_UNICODE)."\n";
 } finally {
     DB::rollBack();
 }

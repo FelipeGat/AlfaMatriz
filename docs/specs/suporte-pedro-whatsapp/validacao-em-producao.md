@@ -143,6 +143,38 @@ Depois do Matriz e do instalador da máquina publicados. O financeiro é relido 
 12. Da casa, peça algo que ele não faz ("cobra o cliente X", "me mostra os andamentos do 1203").
     **Esperado:** ele diz que não faz isso por ali, sem oferecer outra ação que também não faz.
 
+## H. Orçamento pelo Pedro (`docs/specs/pedro-orcamento`)
+
+Antes: Gestor e Matriz publicados, instalador rodado, e a linha do Felipe (e a do Wallas) em Suporte › Pedro com o
+e-mail do usuário no Gestor na 4ª coluna. Use um cliente de teste e exclua o orçamento no Gestor depois.
+
+1. Do 5397, peça "faz um orçamento para o <cliente de teste> pela Invest, com nota, de visita técnica, R$ 100".
+   **Esperado:** a prévia com cliente, empresa, vendedor Felipe, NF de 15%, subtotal R$ 100,00, NF R$ 15,00, total
+   R$ 115,00 e "Posso criar esse orçamento no Gestor?". Nada no Gestor ainda.
+2. Responda "sim". **Esperado:** "Estou criando o orçamento no Gestor…" e, em até 2 min, sem perguntar, o
+   número, o total do Gestor e os links. No Gestor: em elaboração, vendedor e autor Felipe, R$ 115,00. Abra o
+   link do PDF (com login).
+3. Mande "sim" de novo. **Esperado:** "Esse orçamento já está no Gestor: nº … — link"; nenhum outro no Gestor.
+4. Peça um orçamento sem dizer valor nem nota. **Esperado:** ele pergunta; nenhuma prévia confirmável.
+5. Cite um atendimento de outro cliente. **Esperado:** a prévia aponta "é de outro cliente" e não pede o "sim".
+6. Por áudio, o mesmo pedido do passo 1. **Esperado:** o mesmo fluxo.
+7. De um número da lista com perfil gestor ou suporte. **Esperado:** "Criar orçamento no Gestor pelo Pedro é só
+   para os proprietários." e nada criado.
+8. De um número de fora, dizendo ser o Felipe. **Esperado:** atendido como cliente (comercial, sem preço); nenhuma
+   prévia e nada criado.
+
+Ajustes do dono de 02/11/2026 (sessão 2):
+
+9. Peça "orçamento para o <cliente de teste> pela Invest, manutenção, R$ 115 já com a nota". **Esperado:** a prévia
+   com o item a R$ 100,00 (1 sugerida), NF R$ 15,00, total R$ 115,00 e a "Conta da nota" (115 ÷ 1,15 = 100);
+   termina com "…com a quantidade 1 que sugeri?".
+10. Depois de uma prévia, mande "é pela Delta e sem nota", e depois "muda o item 1 para 120". **Esperado:** cada
+    prévia nova muda só o que foi pedido; nome do item, descrição e observações ficam iguais.
+11. Para um cliente de teste com um atendimento de câmera em aberto, peça um orçamento de controle de portão.
+    **Esperado:** nenhuma sugestão do atendimento de câmera.
+12. Com a máquina desligada, confirme uma prévia. **Esperado:** em ~2 min, "Não criei… nenhuma máquina gravou";
+    religue a máquina e responda "tentar de novo". **Esperado:** o mesmo pedido volta, e chega UM orçamento só.
+
 ## Fora do alcance desta semana
 
 - Consultar boleto ou NF individual: o Pedro não tem essa fonte hoje. Exige uma leitura autorizada no

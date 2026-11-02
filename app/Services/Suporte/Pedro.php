@@ -298,6 +298,22 @@ class Pedro
             if ($bloco['acao'] === 'confirmar_agenda' && ! $c->comHumano()) {
                 $bloco['resposta'] = app(AgendaDoTecnico::class)->confirmar($c, $interno);
             }
+            // O orçamento de um proprietário (pedro-orcamento): a prévia é a do sistema, com a conta; a IA só entendeu
+            // o pedido. Sem o bloco, a IA está perguntando o que falta, e a resposta é a dela.
+            if ($bloco['acao'] === 'previa_orcamento' && ! $c->comHumano() && ($bloco['orcamento'] ?? null)) {
+                $bloco['resposta'] = app(OrcamentoDoGestor::class)->previa($c, $interno, $bloco['orcamento']);
+            }
+            if ($bloco['acao'] === 'confirmar_orcamento' && ! $c->comHumano()) {
+                $bloco['resposta'] = app(OrcamentoDoGestor::class)->confirmar($c, $interno);
+            }
+            // A correção leva só o que mudou, e o sistema aplica sobre a última prévia (FR-026); a repetição
+            // reenvia o mesmo pedido, com a mesma chave (FR-023).
+            if ($bloco['acao'] === 'corrigir_orcamento' && ! $c->comHumano() && ($bloco['correcao'] ?? null)) {
+                $bloco['resposta'] = app(OrcamentoDoGestor::class)->corrigir($c, $interno, $bloco['correcao']);
+            }
+            if ($bloco['acao'] === 'repetir_orcamento' && ! $c->comHumano()) {
+                $bloco['resposta'] = app(OrcamentoDoGestor::class)->repetir($c, $interno);
+            }
             $bloco = ['acao' => 'responder', 'cliente' => null, 'sistema' => null, 'destino' => null, 'assunto_id' => null, 'roteiro' => null, 'setor' => null, 'registro' => null] + $bloco;
         }
 
@@ -312,6 +328,11 @@ class Pedro
             $this->reserva($p);
 
             return;
+        }
+        // Prévia e confirmação de agenda e de orçamento são só da casa (pedro-orcamento, FR-019): a ação que a IA
+        // devolver numa conversa de cliente não vale; o texto segue o caminho de qualquer resposta (e a trava de preço).
+        if (! $interno && in_array($bloco['acao'], ['previa_agenda', 'confirmar_agenda', 'previa_orcamento', 'confirmar_orcamento', 'corrigir_orcamento', 'repetir_orcamento'], true)) {
+            $bloco['acao'] = 'responder';
         }
         $identificadaAntes = $c->identificada();
         $clienteAntes = ! $interno && app(Identificacao::class)->ehCliente($c);
@@ -504,6 +525,15 @@ class Pedro
             app(AgendaDoTecnico::class)->concluirLote($m->lote, $this->canal);
             $n++;
         }
+        // Orçamento confirmado que nenhuma máquina pegou (pedro-orcamento): falha, e quem pediu fica sabendo.
+        // updated_at, e não created_at: o "tentar de novo" põe a mesma linha de volta na fila (FR-023).
+        foreach (\App\Models\SuporteGestorOrcamento::with('conversa')->where('situacao', 'pendente')->where('updated_at', '<', $limite)->get() as $o) {
+            if (! $this->desistir($o, 'nenhuma máquina gravou no Gestor')) {
+                continue;
+            }
+            app(OrcamentoDoGestor::class)->concluir($o, $this->canal);
+            $n++;
+        }
         $n += $this->semRetornoDoGestor();
         foreach (SuportePedido::with('conversa')->whereIn('situacao', ['pendente', 'reservado'])->where('created_at', '<', $limite)->get() as $p) {
             $semMaquina = $p->situacao === 'pendente';
@@ -542,6 +572,12 @@ class Pedro
         foreach (\App\Models\SuporteGestorAbertura::with('conversa')->where('situacao', 'reservado')->whereNull('erro')->where('reservado_em', '<', $limite)->get() as $a) {
             if ($this->marcarSemRetorno($a)) {
                 $this->atendimento->semRetornoDoGestor($a, $this->canal);
+                $n++;
+            }
+        }
+        foreach (\App\Models\SuporteGestorOrcamento::with('conversa')->where('situacao', 'reservado')->whereNull('erro')->where('reservado_em', '<', $limite)->get() as $o) {
+            if ($this->marcarSemRetorno($o)) {
+                app(OrcamentoDoGestor::class)->semRetorno($o, $this->canal);
                 $n++;
             }
         }

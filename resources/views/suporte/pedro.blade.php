@@ -27,8 +27,9 @@
                 <form method="POST" action="{{ route('suporte.pedro.acessos') }}" class="grid gap-3 px-4 py-3">
                     @csrf
                     <p class="text-[12.5px] text-ink-mute">Quem escreve de um destes números é atendido como da casa, a qualquer hora, e vê só o que o perfil permite. Vale o número, não o nome que a pessoa diz.
-                        Perfis: <b>diretor</b> (Gestor completo, VixCard no Matriz e o resumo do dia), <b>gestor</b> (Gestor completo: suporte, financeiro e comercial), <b>suporte</b> (só os atendimentos do Gestor).</p>
-                    <label><span class="{{ $rotulo }}">Uma pessoa por linha: telefone | nome | perfil</span>
+                        Perfis: <b>diretor</b> (Gestor completo, VixCard no Matriz e o resumo do dia), <b>gestor</b> (Gestor completo: suporte, financeiro e comercial), <b>suporte</b> (só os atendimentos do Gestor).
+                        A 4ª coluna, opcional, é o e-mail do usuário da pessoa no Gestor: com ela, o diretor também cria orçamento pelo Pedro, como vendedor.</p>
+                    <label><span class="{{ $rotulo }}">Uma pessoa por linha: telefone | nome | perfil | e-mail no Gestor (opcional)</span>
                         <textarea name="acessos_internos" rows="4" maxlength="3000" class="{{ $campo }} font-mono"
                                   placeholder="+55 27 99999-9999 | Felipe | diretor">{{ old('acessos_internos', $acessos) }}</textarea></label>
                     <div><button class="{{ $botao }}">Salvar acessos</button></div>

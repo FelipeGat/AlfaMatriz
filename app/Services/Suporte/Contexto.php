@@ -16,7 +16,9 @@ use Illuminate\Support\Str;
  */
 class Contexto
 {
-    public const BLOCO = '/<<<PEDRO\s*(\{.*\})\s*PEDRO>>>/su';
+    // O fecho tolera letra repetida (02/11/2026, bateria do orçamento: a IA escreveu "PPEDRO>>>" com o JSON
+    // inteiro, e o Pedro responderia "não consegui responder"); o JSON continua tendo de ser válido.
+    public const BLOCO = '/<<<PEDRO\s*(\{.*\})\s*\w*PEDRO>>>/su';
 
     /** @var list<int> */
     private array $fotos = [];
@@ -359,8 +361,10 @@ class Contexto
             ."5. PRÉVIA: antes de registrar, mande o resumo EXATAMENTE neste formato e pergunte se pode abrir:\n"
             ."\"{primeiro nome}, confirmando, o atendimento ficaria assim:\nTítulo: …\nCliente: … (cliente ou pré-cliente, cidade; ou: pré-cliente NOVO)\nEmpresa: …\nAssunto: …\nServiço: …\nTécnico: … (ou: sem técnico)\nAgendamento: dd/mm/aaaa, das HH:MM às HH:MM (ou: sem agendamento)\nAtendimento: novo (ou: vincular ao nº X / reabrir o nº X)\n\nPosso abrir?\"\n"
             ."6. Só depois do \"sim\" use acao \"abrir_atendimento\" com cliente (o código, ou \"novo_pre\" com novo_pre {nome, cidade}), modo, atendimento, empresa_id, assunto_id, titulo, resumo (o serviço, para o técnico), tecnico_id, agendar (true/false), data (AAAA-MM-DD), hora_inicio e hora_fim (HH:MM). Na resposta, diga que está enviando ao Gestor; o número chega em seguida. Se ele mudar algo depois da prévia, mande a prévia de novo.\n"
+            .(AcessoInterno::criaOrcamento($acesso) ? self::CRIAR_ORCAMENTO
+                : 'CRIAR ORÇAMENTO NO GESTOR: se ele pedir, responda exatamente "'.OrcamentoDoGestor::semPermissao($acesso).'" e não monte prévia nem peça os dados.'."\n")
             ."Responda SOMENTE com este bloco, sem nenhum texto fora dele:\n"
-            ."<<<PEDRO\n{\"resposta\": \"o texto que vai para ele\", \"acao\": \"responder|abrir_atendimento|previa_agenda|confirmar_agenda\", \"resumo\": \"o que ele pediu; no registro, a descrição para o técnico\", \"cliente\": \"gestor:ID ou null\", \"modo\": \"novo|vincular|reabrir ou null\", \"atendimento\": \"nº ou null\", \"assunto_id\": \"nº ou null\", \"empresa_id\": \"nº ou null\", \"tecnico_id\": \"nº ou null\", \"responsavel\": \"nome do técnico ou null\", \"agendar\": \"true|false\", \"data\": \"AAAA-MM-DD ou null\", \"hora_inicio\": \"HH:MM ou null\", \"hora_fim\": \"HH:MM ou null\", \"titulo\": \"o título do atendimento ou null\", \"novo_pre\": {\"nome\": \"…\", \"cidade\": \"…\"} ou null, \"agenda\": [lista de paradas, só na previa_agenda] ou null}\nPEDRO>>>",
+            ."<<<PEDRO\n{\"resposta\": \"o texto que vai para ele\", \"acao\": \"responder|abrir_atendimento|previa_agenda|confirmar_agenda".(AcessoInterno::criaOrcamento($acesso) ? '|previa_orcamento|corrigir_orcamento|confirmar_orcamento|repetir_orcamento' : '')."\", \"resumo\": \"o que ele pediu; no registro, a descrição para o técnico\", \"cliente\": \"gestor:ID ou null\", \"modo\": \"novo|vincular|reabrir ou null\", \"atendimento\": \"nº ou null\", \"assunto_id\": \"nº ou null\", \"empresa_id\": \"nº ou null\", \"tecnico_id\": \"nº ou null\", \"responsavel\": \"nome do técnico ou null\", \"agendar\": \"true|false\", \"data\": \"AAAA-MM-DD ou null\", \"hora_inicio\": \"HH:MM ou null\", \"hora_fim\": \"HH:MM ou null\", \"titulo\": \"o título do atendimento ou null\", \"novo_pre\": {\"nome\": \"…\", \"cidade\": \"…\"} ou null, \"agenda\": [lista de paradas, só na previa_agenda] ou null".(AcessoInterno::criaOrcamento($acesso) ? ', "orcamento": {o orçamento, só na previa_orcamento} ou null, "correcao": {só o que mudou, só na corrigir_orcamento} ou null' : '')."}\nPEDRO>>>",
             $this->gravadoNaConversa($c),
             AcessoInterno::oQueFaz($acesso),
             "## DADOS\n".implode("\n\n", app(AcessoInterno::class)->dados($acesso, $recentes)),
@@ -380,13 +384,20 @@ class Contexto
     {
         $desde = now()->subDays(3);
         $situacao = ['pendente' => 'na fila, a máquina ainda não gravou', 'reservado' => 'gravando agora', 'feito' => 'GRAVADO', 'falhou' => 'NÃO gravou'];
-        $linhas = \App\Models\SuporteGestorAbertura::where('conversa_id', $c->id)->where('created_at', '>=', $desde)->orderBy('id')->get()
+        // toBase(): sem nenhuma abertura, o map de uma coleção Eloquent vazia continua Eloquent, e o merge das
+        // linhas de texto quebraria procurando a chave de cada uma.
+        $linhas = \App\Models\SuporteGestorAbertura::where('conversa_id', $c->id)->where('created_at', '>=', $desde)->orderBy('id')->get()->toBase()
             ->map(fn ($a) => '- Atendimento '.($a->modo === 'novo' ? 'novo' : $a->modo.' ao nº '.$a->atendimento_numero).($a->titulo ? ' "'.$a->titulo.'"' : '')
                 .($a->agendar_data ? ', agenda '.$a->agendar_data->format('d/m').' '.$a->hora_inicio.'–'.$a->hora_fim : '')
                 .': '.($situacao[$a->situacao] ?? $a->situacao).($a->numero ? ' (nº '.$a->numero.')' : '').($a->erro ? ' — '.$a->erro : ''))
             ->merge(\App\Models\SuporteGestorAgenda::where('conversa_id', $c->id)->where('created_at', '>=', $desde)->orderBy('id')->get()
                 ->map(fn ($m) => '- Agenda: '.str_replace('_', ' ', $m->tipo).($m->atendimento ? ' no nº '.$m->atendimento : '').($m->inicio ? ', '.substr($m->inicio, 8, 2).'/'.substr($m->inicio, 5, 2).' '.substr($m->inicio, 11).'–'.substr((string) $m->fim, 11) : '')
-                    .': '.($situacao[$m->situacao] ?? $m->situacao).($m->erro ? ' — '.$m->erro : '')));
+                    .': '.($situacao[$m->situacao] ?? $m->situacao).($m->erro ? ' — '.$m->erro : '')))
+            // Os orçamentos confirmados (pedro-orcamento), com o que o Gestor respondeu.
+            ->merge(\App\Models\SuporteGestorOrcamento::where('conversa_id', $c->id)->where('created_at', '>=', $desde)->orderBy('id')->get()
+                ->map(fn ($o) => '- Orçamento "'.Str::limit((string) ($o->pedido['descricao'] ?? ''), 60, '…').'"'
+                    .(isset($o->pedido['total_previa']) ? ', prévia de '.OrcamentoDoGestor::brl((float) $o->pedido['total_previa']) : '')
+                    .': '.app(OrcamentoDoGestor::class)->situacao($o)));
 
         return "## O QUE FOI ENVIADO AO GESTOR NESTA CONVERSA (últimos 3 dias — a fonte da verdade)\n"
             .($linhas->isNotEmpty() ? $linhas->implode("\n") : '- Nada.')
@@ -419,6 +430,33 @@ class Contexto
         ."6. Quando a prévia não tiver Conflitos nem Falta, termine com \"Posso lançar?\". Ao \"sim\", use acao \"confirmar_agenda\" (sem a lista): o sistema grava as visitas e responde com o resultado. "
         ."Atendimento novo (abrir_atendimento) não vai junto: depois do lançamento, siga com ele pelo REGISTRAR ATENDIMENTO, um de cada vez.\n";
 
+    /**
+     * O orçamento pedido por um proprietário (pedro-orcamento; Felipe, 02/11/2026: "nunca inventar
+     * valores, quantidades, serviços, materiais ou informações do cliente"). A IA entende e devolve o
+     * orçamento; a prévia, com a conta, é montada pelo sistema (OrcamentoDoGestor).
+     */
+    private const CRIAR_ORCAMENTO = "CRIAR ORÇAMENTO NO GESTOR (quando ele pedir para fazer, montar, criar ou lançar um orçamento, por texto ou áudio). É administrativo e interno, e os valores vêm DELE:\n"
+        ."1. Entenda (o que ele não disse fica null; a EMPRESA também, mesmo que o cliente seja de uma delas: a prévia pergunta e cita a do cadastro): o CLIENTE (procure em CLIENTES E PRÉ-CLIENTES PARECIDOS; com dois parecidos, pergunte qual; nenhum, diga que não achou e pergunte como proceder — nunca crie cliente nem pré-cliente), "
+        ."a EMPRESA que emite (uma de EMPRESAS, pelo nº), se é COM ou SEM nota fiscal, o ATENDIMENTO relacionado (o número que ele citar, que tem de ser do mesmo cliente), "
+        ."a DESCRIÇÃO (o que é, em uma linha) e os ITENS: nome, se é serviço ou material, quantidade e valor unitário.\n"
+        ."2. NUNCA invente nem complete sozinho valor, quantidade, item, cliente, empresa ou nota, e não reaproveite valor de orçamento antigo. "
+        ."Mande o valor COMO ELE DISSE. Se ele disse que o valor já inclui a nota, marque valor_com_nf true e mande o valor dito (de uma unidade): o SISTEMA tira a nota pela regra do Gestor e mostra a conta — não faça a conta você. "
+        ."Se ele deu só o TOTAL com nota de um orçamento de um item, mande total_com_nf com esse número. "
+        ."A quantidade é inteira: medida (2,5 m) vai na descrição do item. \"um\", \"uma\" ou o item no singular (\"a manutenção\", \"uma visita\", \"o motor\") é quantidade 1; null só quando não dá para saber (num único serviço, o sistema sugere 1).  Valor e quantidade vão como NÚMERO no bloco (1500.5, nunca \"1.500,50\").\n"
+        ."3. Pergunte só o que falta, no máximo duas perguntas por mensagem, e nunca de novo o que ele já respondeu nesta conversa. Se ele citou o atendimento, use a descrição dele na descrição e nas observações do orçamento. "
+        ."Só fale de atendimento em aberto do MESMO assunto do orçamento (portão com portão, câmera com câmera): de outro assunto, não sugira. Se ele disser que não é de nenhum atendimento, mande sem_vinculo true.\n"
+        ."4. Para um orçamento NOVO, use acao \"previa_orcamento\" e o bloco \"orcamento\": {\"cliente\": \"gestor:ID\", \"empresa_id\": nº, \"sem_nf\": true|false|null, \"valor_com_nf\": true|false, \"total_com_nf\": nº ou null, "
+        ."\"atendimento\": \"nº ou null\", \"sem_vinculo\": true|false, \"descricao\": \"…\", \"observacoes\": \"… ou null\", \"validade\": \"AAAA-MM-DD ou null\", \"forma_pagamento\": \"… ou null\", \"prazo_pagamento\": \"… ou null\", "
+        ."\"itens\": [{\"nome\": \"…\", \"tipo\": \"servico|produto\", \"quantidade\": nº ou null, \"valor_unitario\": nº ou null, \"descricao\": \"… ou null\"}]}. "
+        ."O que ele não disse vai null: o SISTEMA monta a prévia com a conta e o que falta, numera os itens e manda a ele; em \"resposta\", só uma frase curta.\n"
+        ."5. CORREÇÃO: depois de uma prévia (completa ou com o que falta), quando ele mudar ou completar algo (\"muda o item 2 para 90\", \"é pela Delta\", \"sem nota\", \"são 4\", \"85 cada\", \"tira o vínculo\"), "
+        ."use acao \"corrigir_orcamento\" e o bloco \"correcao\" SÓ com o que mudou: {\"empresa_id\": nº, \"sem_nf\": true|false, \"valor_com_nf\": true|false, \"total_com_nf\": nº, \"descricao\": \"…\", \"observacoes\": \"…\", "
+        ."\"atendimento\": \"nº\" ou \"nenhum\", \"itens\": [{\"item\": nº do item na prévia, e só os campos que mudam}, {\"item\": nº, \"remover\": true}, {um item novo, sem \"item\"}]}. "
+        ."O que não vier fica como está na prévia. Não use previa_orcamento para corrigir.\n"
+        ."6. Ao \"sim\" para a prévia, use acao \"confirmar_orcamento\" (sem o bloco): o sistema envia ao Gestor, acompanha e manda o número e o link quando o Gestor confirmar. "
+        ."Se um orçamento não foi criado ou ficou sem confirmação e ele pedir para tentar de novo, use acao \"repetir_orcamento\": o sistema reenvia o MESMO pedido, sem criar outro. "
+        ."Nunca diga que criou: o número chega pelo sistema.\n";
+
     /** As paradas da prévia do dia, só com os campos conhecidos e no formato certo; até 15. @return list<array> */
     private static function paradas(mixed $lista): array
     {
@@ -435,6 +473,82 @@ class Contexto
             'hora_inicio' => $hora($p['hora_inicio'] ?? null), 'hora_fim' => $hora($p['hora_fim'] ?? null),
             'observacao' => $texto($p['observacao'] ?? null, 300), 'motivo' => $texto($p['motivo'] ?? null, 300),
         ])->values()->all();
+    }
+
+    /**
+     * O orçamento que a IA entendeu (pedro-orcamento), só com os campos conhecidos e no formato certo.
+     * Valor e quantidade só como número: "R$ 1.500" em texto vira null, e a prévia pergunta — o
+     * sistema não adivinha se o ponto é de milhar ou de decimal.
+     */
+    private static function orcamento(mixed $o): ?array
+    {
+        if (! is_array($o)) {
+            return null;
+        }
+        $texto = fn ($v, int $max) => is_scalar($v) && filled($v) && $v !== 'null' ? mb_substr(trim((string) $v), 0, $max) : null;
+        $numero = fn ($v) => is_int($v) || is_float($v) || (is_string($v) && is_numeric(trim($v))) ? (float) $v : null;
+        $simNao = fn ($v) => is_bool($v) ? $v : (is_string($v) && in_array(mb_strtolower($v), ['true', 'false'], true) ? $v === 'true' : null);
+        $tipo = fn ($v) => match (mb_strtolower(Str::ascii(trim((string) $v)))) { 'servico' => 'servico', 'produto', 'material' => 'produto', default => null };
+
+        return [
+            'cliente' => $texto($o['cliente'] ?? null, 30),
+            'total_com_nf' => ($t = $numero($o['total_com_nf'] ?? null)) !== null && $t > 0 ? $t : null,
+            'sem_vinculo' => $simNao($o['sem_vinculo'] ?? null) === true,
+            'empresa_id' => is_numeric($o['empresa_id'] ?? null) ? (int) $o['empresa_id'] : null,
+            'sem_nf' => $simNao($o['sem_nf'] ?? null),
+            'valor_com_nf' => $simNao($o['valor_com_nf'] ?? null) === true,
+            'atendimento' => $texto($o['atendimento'] ?? null, 10) !== null ? (preg_replace('/\D/', '', (string) $o['atendimento']) ?: null) : null,
+            'descricao' => $texto($o['descricao'] ?? null, 255),
+            'observacoes' => $texto($o['observacoes'] ?? null, 2000),
+            'validade' => preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) ($o['validade'] ?? '')) ? $o['validade'] : null,
+            'forma_pagamento' => $texto($o['forma_pagamento'] ?? null, 255),
+            'prazo_pagamento' => $texto($o['prazo_pagamento'] ?? null, 255),
+            'itens' => collect(is_array($o['itens'] ?? null) ? array_slice($o['itens'], 0, 60) : [])->filter(fn ($i) => is_array($i))->map(fn ($i) => [
+                'nome' => $texto($i['nome'] ?? null, 255), 'tipo' => $tipo($i['tipo'] ?? null),
+                'quantidade' => $numero($i['quantidade'] ?? null), 'valor_unitario' => $numero($i['valor_unitario'] ?? null),
+                'descricao' => $texto($i['descricao'] ?? null, 1000),
+            ])->values()->all(),
+        ];
+    }
+
+    /**
+     * A correção da prévia (pedro-orcamento, FR-026): só os campos que vieram, no formato certo; o que
+     * vier fora do formato some, e a prévia continua como estava naquele campo.
+     */
+    private static function correcao(mixed $c): ?array
+    {
+        if (! is_array($c)) {
+            return null;
+        }
+        $texto = fn ($v, int $max) => is_scalar($v) && filled($v) && $v !== 'null' ? mb_substr(trim((string) $v), 0, $max) : null;
+        $numero = fn ($v) => is_int($v) || is_float($v) || (is_string($v) && is_numeric(trim($v))) ? (float) $v : null;
+        $simNao = fn ($v) => is_bool($v) ? $v : (is_string($v) && in_array(mb_strtolower($v), ['true', 'false'], true) ? $v === 'true' : null);
+        $tipo = fn ($v) => match (mb_strtolower(Str::ascii(trim((string) $v)))) { 'servico' => 'servico', 'produto', 'material' => 'produto', default => null };
+        $atendimento = $texto($c['atendimento'] ?? null, 10);
+        $semVinculo = $atendimento !== null && in_array(mb_strtolower(Str::ascii($atendimento)), ['nenhum', 'sem', 'sem vinculo', '0'], true);
+
+        $r = array_filter([
+            'empresa_id' => is_numeric($c['empresa_id'] ?? null) ? (int) $c['empresa_id'] : null,
+            'sem_nf' => $simNao($c['sem_nf'] ?? null),
+            'valor_com_nf' => $simNao($c['valor_com_nf'] ?? null),
+            'total_com_nf' => ($t = $numero($c['total_com_nf'] ?? null)) !== null && $t > 0 ? $t : null,
+            'descricao' => $texto($c['descricao'] ?? null, 255),
+            'observacoes' => $texto($c['observacoes'] ?? null, 2000),
+            'validade' => preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) ($c['validade'] ?? '')) ? $c['validade'] : null,
+            'forma_pagamento' => $texto($c['forma_pagamento'] ?? null, 255),
+            'prazo_pagamento' => $texto($c['prazo_pagamento'] ?? null, 255),
+            'atendimento' => $semVinculo ? 'nenhum' : ($atendimento !== null ? (preg_replace('/\D/', '', $atendimento) ?: null) : null),
+            'sem_vinculo' => $simNao($c['sem_vinculo'] ?? null) === true ? true : null,
+            'itens' => collect(is_array($c['itens'] ?? null) ? array_slice($c['itens'], 0, 60) : [])->filter(fn ($i) => is_array($i))->map(fn ($i) => array_filter([
+                'item' => is_numeric($i['item'] ?? null) && (int) $i['item'] > 0 ? (int) $i['item'] : null,
+                'remover' => $simNao($i['remover'] ?? null) === true ? true : null,
+                'nome' => $texto($i['nome'] ?? null, 255), 'tipo' => $tipo($i['tipo'] ?? null),
+                'quantidade' => $numero($i['quantidade'] ?? null), 'valor_unitario' => $numero($i['valor_unitario'] ?? null),
+                'descricao' => $texto($i['descricao'] ?? null, 1000),
+            ], fn ($v) => $v !== null))->filter()->values()->all() ?: null,
+        ], fn ($v) => $v !== null);
+
+        return $r ?: null;
     }
 
     /** O bloco da resposta, validado; null se veio fora do formato. @return array{resposta: string, acao: string, resumo: string, sistema: ?string, cliente: ?string, destino: ?string, assunto_id: ?int, roteiro: ?int, setor: ?string, fontes: list<int>, registro: ?array}|null */
@@ -492,7 +606,7 @@ class Contexto
     {
         $b = preg_match(self::BLOCO, $texto, $m) ? json_decode($m[1], true) : null;
         $resposta = is_array($b) ? trim((string) ($b['resposta'] ?? '')) : '';
-        if ($resposta === '' || ! in_array($b['acao'] ?? null, ['responder', 'abrir_atendimento', 'encaminhar_setor', 'transferir', 'encerrar', 'previa_agenda', 'confirmar_agenda'], true)) {
+        if ($resposta === '' || ! in_array($b['acao'] ?? null, ['responder', 'abrir_atendimento', 'encaminhar_setor', 'transferir', 'encerrar', 'previa_agenda', 'confirmar_agenda', 'previa_orcamento', 'confirmar_orcamento', 'corrigir_orcamento', 'repetir_orcamento'], true)) {
             return null;
         }
         $setor = in_array($b['setor'] ?? null, ['comercial', 'financeiro'], true) ? $b['setor'] : null;
@@ -523,6 +637,8 @@ class Contexto
             'hora_fim' => preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', (string) ($b['hora_fim'] ?? '')) ? $b['hora_fim'] : null,
             'titulo' => $texto($b['titulo'] ?? null) !== null ? mb_substr(trim((string) $b['titulo']), 0, 120) : null,
             'agenda' => $b['acao'] === 'previa_agenda' ? self::paradas($b['agenda'] ?? null) : null,
+            'orcamento' => $b['acao'] === 'previa_orcamento' ? self::orcamento($b['orcamento'] ?? null) : null,
+            'correcao' => $b['acao'] === 'corrigir_orcamento' ? self::correcao($b['correcao'] ?? null) : null,
             'novo_pre' => is_array($b['novo_pre'] ?? null) && filled($b['novo_pre']['nome'] ?? null)
                 ? ['nome' => mb_substr(trim((string) $b['novo_pre']['nome']), 0, 150), 'cidade' => mb_substr(trim((string) ($b['novo_pre']['cidade'] ?? '')), 0, 100)] : null,
             // As notas da base que ele diz ter usado ("12" e "nota 12" também valem); o Pedro::concluir confere que existem (T-476).

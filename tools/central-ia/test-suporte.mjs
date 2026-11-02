@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, readFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { atenderSuporte, gravarAberturas, gravarAgenda, gravarContatoNoGestor, gravarContatos, gravarNoGestor, naPonte, PONTE_PRESA_MS, pontePresa, responderComIa } from '../../deploy/central-ia/suporte.mjs';
+import { atenderSuporte, gravarAberturas, gravarAgenda, gravarContatoNoGestor, gravarContatos, gravarNoGestor, gravarOrcamentoNoGestor, gravarOrcamentos, naPonte, PONTE_PRESA_MS, pontePresa, responderComIa } from '../../deploy/central-ia/suporte.mjs';
 
 const chamadas = [];
 const executar = async (bin, args, entrada, cwd) => {
@@ -167,3 +167,46 @@ console.log('PASSOU: suporte — gravação no Gestor com --apply e sem repetir;
     ]);
 }
 console.log('PASSOU: suporte — contato identificado gravado no Gestor com --apply e o upsert combinado; resultado e falha voltam ao Matriz.');
+
+// Orçamento de um proprietário (pedro-orcamento): o pedido vai no script, com --apply e sem nova
+// tentativa; número, total e links voltam ao Matriz; a recusa do Gestor também; ponte presa não reserva.
+{
+    const pasta = mkdtempSync(join(tmpdir(), 'ponte-'));
+    let script = '';
+    let argumentos = [];
+    let vezes = 0;
+    const orcamento = { id: 12, chave: 'o41-20261103100000', autor_email: 'felipe@gestor.local', cliente_id: 501, empresa_id: 3, sem_nf: false,
+        itens: [{ nome: 'Manutenção do motor', tipo: 'servico', quantidade: 1, valor_unitario: 450 }] };
+    const r = await gravarOrcamentoNoGestor(`py|C:\\tmp\\run_prod.py|C:\\tmp\\secretario_gestor.php|${pasta}`, orcamento, { executar: async (programa, args) => {
+        vezes++;
+        argumentos = args;
+        script = readFileSync(join(pasta, 'pedro_gestor_orcamento.php'), 'utf8');
+        return { stdout: 'ruído\nSUPORTE_ORCAMENTO:{"ok":true,"id":991,"numero":"045/2026","empresa":"INVEST","valor_total":517.5,"imposto_nf_percentual":15,"sem_nf":false,"ja_estava":false,"link":"https://g/orcamentos/991","pdf":"https://g/orcamentos/991/imprimir","ensaio":false}\n' };
+    } });
+    assert.equal(r.numero, '045/2026');
+    assert.equal(argumentos.at(-1), '--apply');
+    assert.equal(argumentos[1], 'C:\\tmp\\pedro_gestor_orcamento.php', 'o script vai na pasta da ponte, do lado do Windows');
+    assert.ok(script.includes(`base64_decode('${Buffer.from(JSON.stringify(orcamento)).toString('base64')}')`), 'o pedido entra no lugar do marcador');
+    assert.ok(script.includes('OrcamentoPeloPedro'), 'a regra é a do Gestor');
+    assert.ok(!existsSync(join(pasta, 'pedro_gestor_orcamento.php')), 'o script não fica na pasta da ponte');
+    const semResposta = await gravarOrcamentoNoGestor(`py|s|C:\\tmp\\a.php|${pasta}`, orcamento, { executar: async () => { vezes++; return { stdout: '' }; } });
+    assert.deepEqual(semResposta, { ok: false, erro: 'a ponte não devolveu resposta — conferir no Gestor antes de repetir' });
+    assert.equal(vezes, 2, 'sem nova tentativa: a ponte pode ter gravado');
+
+    const enviados = [];
+    const api = async (rota, corpo) => { enviados.push([rota, corpo]); return rota === 'suporte/gestor/orcamentos' ? { status: 200, json: { orcamentos: [orcamento, { ...orcamento, id: 13 }] } } : { status: 200 }; };
+    let vez = 0;
+    await gravarOrcamentos('cfg', 'wsl', { api, presa: () => false, gravar: async () => (++vez === 1
+        ? { ok: true, id: 991, numero: '045/2026', empresa: 'INVEST', valor_total: 517.5, imposto_nf_percentual: 15, link: 'https://g/orcamentos/991', pdf: 'https://g/orcamentos/991/imprimir', ja_estava: false }
+        : { ok: false, erro: 'o atendimento nº 812 é de outro cliente' }) });
+    assert.deepEqual(enviados.slice(1), [
+        ['suporte/gestor/orcamentos/12', { maquina: 'wsl', ok: true, orcamento_id: 991, numero: '045/2026', empresa: 'INVEST', valor_total: 517.5, imposto_nf_percentual: 15,
+            link: 'https://g/orcamentos/991', pdf: 'https://g/orcamentos/991/imprimir', ja_estava: false }],
+        ['suporte/gestor/orcamentos/13', { maquina: 'wsl', ok: false, erro: 'o atendimento nº 812 é de outro cliente' }],
+    ]);
+    const pedidos = [];
+    assert.deepEqual(await gravarOrcamentos('cfg', 'wsl', { api: async rota => { pedidos.push(rota); return { status: 200, json: { orcamentos: [orcamento] } }; }, presa: () => true }),
+        { status: 200, feitos: 0, adiado: true });
+    assert.deepEqual(pedidos, [], 'com a ponte presa, nem pede a lista (pedir é reservar)');
+}
+console.log('PASSOU: suporte — orçamento gravado no Gestor com --apply e sem repetir; número, total e links voltam ao Matriz; ponte presa não reserva.');

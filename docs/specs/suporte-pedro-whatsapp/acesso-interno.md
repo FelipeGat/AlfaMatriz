@@ -15,6 +15,10 @@ Telegram". O Pedro "não pode se confundir: tem que ter certeza de que sou eu, p
 
 - **FR-A1, identificação pelo número.** Quem tem acesso interno é decidido só pelo número que escreve, numa lista da
   tela Suporte › Pedro, com uma linha por pessoa: `telefone | nome | perfil`.
+  - A 4ª coluna, opcional, é o e-mail do usuário da pessoa no Gestor (`pedro-orcamento`, 02/11/2026): com ela, o
+    diretor cria orçamento pelo Pedro, como vendedor. O número reconhece; o vínculo com o usuário do Gestor
+    autoriza — o começo do FR-012 da `pedro-inteligencia-operacional`, por enquanto só para o orçamento. O e-mail
+    não vai ao pedido à IA, e o Gestor confere na gravação que o usuário está ativo e cria orçamento pela tela.
   - O número do WhatsApp vem assinado pela Meta, e o repasse do Gestor também é assinado. O nome que a pessoa diz
     ser não conta.
   - Só a conta dona do Pedro (`services.suporte_pedro.conta`) edita a lista; quem só vê o Pedro não vê os números.

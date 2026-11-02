@@ -52,6 +52,9 @@ class Maquinas
         'documentos.mjs',
         // O Pedro, atendente do suporte no WhatsApp (suporte-pedro-whatsapp): vaga própria, sem ferramentas.
         'suporte.mjs', 'suporte_gestor_ler.php', 'suporte_gestor_gravar.php', 'suporte_gestor_contato.php',
+        // A agenda dos técnicos (pedro-dia-do-tecnico) ficou fora desta lista e foi copiada à mão em 23/10/2026;
+        // o orçamento dos proprietários (pedro-orcamento) entra junto, para os dois chegarem pelo instalador.
+        'suporte_gestor_agenda.php', 'suporte_gestor_orcamento.php',
     ];
 
     public function podeConectar(User $user): bool

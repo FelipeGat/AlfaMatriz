@@ -18,7 +18,7 @@ class DiretorioGestor
 
     private ?array $retrato = null;
 
-    public function gravar(string $maquina, string $lidoEm, array $clientes, array $atendimentos, array $assuntos = [], array $equipe = [], array $showroom = [], array $visitas = [], array $orcamentos = []): void
+    public function gravar(string $maquina, string $lidoEm, array $clientes, array $atendimentos, array $assuntos = [], array $equipe = [], array $showroom = [], array $visitas = [], array $orcamentos = [], ?array $empresas = null): void
     {
         DB::table('suporte_gestor_retrato')->delete();
         DB::table('suporte_gestor_retrato')->insert(['maquina' => $maquina, 'lido_em' => $lidoEm, 'clientes' => json_encode(array_values($clientes), JSON_UNESCAPED_UNICODE),
@@ -27,6 +27,8 @@ class DiretorioGestor
             'showroom' => json_encode(array_values($showroom), JSON_UNESCAPED_UNICODE),
             'visitas' => json_encode(array_values($visitas), JSON_UNESCAPED_UNICODE),
             'orcamentos' => json_encode(array_values($orcamentos), JSON_UNESCAPED_UNICODE),
+            // Null: a máquina ainda não manda as empresas (pedro-orcamento); a prévia sai sem o percentual de NF.
+            'empresas' => $empresas === null ? null : json_encode(array_values($empresas), JSON_UNESCAPED_UNICODE),
             'created_at' => now(), 'updated_at' => now()]);
         $this->retrato = null;
     }
@@ -41,7 +43,8 @@ class DiretorioGestor
                 'equipe' => $r ? (array) json_decode((string) ($r->equipe ?? '[]'), true) : [],
                 'showroom' => $r ? (array) json_decode((string) ($r->showroom ?? '[]'), true) : [],
                 'visitas' => $r ? (array) json_decode((string) ($r->visitas ?? '[]'), true) : [],
-                'orcamentos' => $r ? (array) json_decode((string) ($r->orcamentos ?? '[]'), true) : []];
+                'orcamentos' => $r ? (array) json_decode((string) ($r->orcamentos ?? '[]'), true) : [],
+                'empresas' => $r && ($r->empresas ?? null) !== null ? (array) json_decode((string) $r->empresas, true) : null];
         }
 
         return $this->retrato;
@@ -101,6 +104,26 @@ class DiretorioGestor
     public function cliente(int $id): ?array
     {
         return collect($this->retrato()['clientes'])->first(fn ($c) => (int) ($c['id'] ?? 0) === $id);
+    }
+
+    /**
+     * As empresas do grupo com o percentual de NF do orçamento novo (pedro-orcamento). Sem a lista no
+     * retrato (máquina antiga), as que aparecem nos clientes, sem percentual.
+     *
+     * @return array<int, array{id: int, nome: string, imposto_nf: ?float}>
+     */
+    public function empresas(): array
+    {
+        $r = $this->retrato();
+        $lista = $r['empresas'] ?? null;
+        if ($lista === null) {
+            $lista = collect($r['clientes'] ?? [])->filter(fn ($c) => ! empty($c['empresa_id']) && ! empty($c['empresa']))
+                ->map(fn ($c) => ['id' => (int) $c['empresa_id'], 'nome' => (string) $c['empresa'], 'imposto_nf' => null])->all();
+        }
+
+        return collect($lista)->filter(fn ($e) => ! empty($e['id']) && filled($e['nome'] ?? null))
+            ->mapWithKeys(fn ($e) => [(int) $e['id'] => ['id' => (int) $e['id'], 'nome' => (string) $e['nome'],
+                'imposto_nf' => isset($e['imposto_nf']) && is_numeric($e['imposto_nf']) ? (float) $e['imposto_nf'] : null]])->sortKeys()->all();
     }
 
     /** Os orçamentos em aberto do cliente (id negativo = pré-cliente). @return list<array> */
@@ -182,7 +205,14 @@ class DiretorioGestor
         // As palavras do próprio pedido não são nome de cliente.
         $doPedido = ['abrir', 'abra', 'chamado', 'atendimento', 'registrar', 'registra', 'manutencao', 'limpeza', 'apartamento', 'pedro', 'para', 'favor',
             'cliente', 'servico', 'condensadora', 'condensadoras', 'condicionado', 'urgente', 'visita', 'tecnica', 'tecnico', 'problema', 'preciso', 'pode'];
-        $doTexto = array_flip(array_filter(self::palavras($texto), fn ($p) => mb_strlen($p) >= 4 && ! in_array($p, self::VAZIAS, true) && ! in_array($p, $doPedido, true)));
+        // Duas palavras seguidas juntas também valem, nos dois sentidos (02/11/2026: o Whisper ouviu "Mar Azul"
+        // e escreveu "Marazul", e o pedido por áudio ficou sem cliente).
+        // Só palavras de nome: "vila velha" junto daria peso a todo cadastro "(VILA VELHA)" (teste da Revizza, 23/10).
+        $juntas = fn (array $p) => collect(array_keys(array_slice($p, 0, -1)))
+            ->reject(fn ($i) => in_array($p[$i], self::VAZIAS, true) || in_array($p[$i + 1], self::VAZIAS, true))
+            ->map(fn ($i) => $p[$i].$p[$i + 1])->values()->all();
+        $palavras = self::palavras($texto);
+        $doTexto = array_flip(array_filter([...$palavras, ...$juntas($palavras)], fn ($p) => mb_strlen($p) >= 4 && ! in_array($p, self::VAZIAS, true) && ! in_array($p, $doPedido, true)));
         if (! $doTexto) {
             return [];
         }
@@ -203,8 +233,9 @@ class DiretorioGestor
         // Cada palavra pesa pela raridade (23/10/2026: em "revissa em vila velha", os clientes com
         // "(VILA VELHA)" no nome tomaram as 6 vagas e a Revizza de Vila Velha ficou de fora): a palavra
         // que só dois cadastros têm decide; a que dezenas têm quase não conta. A cidade citada desempata.
-        $casados = $this->atendidos()->map(function ($c) use ($doTexto, $parecida) {
-            $nome = array_unique(self::palavras(implode(' ', array_filter([$c['fantasia'] ?? null, $c['nome'] ?? null, $c['razao'] ?? null]))));
+        $casados = $this->atendidos()->map(function ($c) use ($doTexto, $parecida, $juntas) {
+            $nome = array_unique(collect([$c['fantasia'] ?? null, $c['nome'] ?? null, $c['razao'] ?? null])->filter()
+                ->flatMap(fn ($n) => [...self::palavras((string) $n), ...$juntas(self::palavras((string) $n))])->all());
             $termos = array_values(array_filter(array_map('strval', array_keys($doTexto)),
                 fn ($t) => collect($nome)->contains(fn ($p) => mb_strlen($p) >= 4 && $parecida($p, $t))));
 

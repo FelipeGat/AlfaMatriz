@@ -33,7 +33,7 @@ class SuporteConhecimentoController extends Controller
         abort_unless($this->dono($request), 403);
         $texto = (string) $request->validate(['acessos_internos' => ['nullable', 'string', 'max:3000']])['acessos_internos'];
         if ($ruins = \App\Services\Suporte\AcessoInterno::linhasInvalidas($texto)) {
-            return back()->withInput()->withErrors(['acessos_internos' => 'Linha não entendida (use telefone | nome | diretor, gestor ou suporte): '.$ruins[0]]);
+            return back()->withInput()->withErrors(['acessos_internos' => 'Linha não entendida (use telefone | nome | diretor, gestor ou suporte | e-mail no Gestor, opcional): '.$ruins[0]]);
         }
         $conhecimento->gravarAjuste(\App\Services\Suporte\AcessoInterno::AJUSTE, $texto);
         // O Gestor decide Pedro ou menu antes de a mensagem chegar aqui: sem a lista lá, quem

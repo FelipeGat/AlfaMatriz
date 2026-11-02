@@ -68,6 +68,7 @@ class SuportePedroRunnerController extends Controller
             'lido_em' => ['required', 'date'],
             'clientes' => ['present', 'array', 'max:20000'], 'atendimentos' => ['present', 'array', 'max:20000'],
             'equipe' => ['nullable', 'array', 'max:500'], 'assuntos' => ['nullable', 'array', 'max:2000'], 'showroom' => ['nullable', 'array', 'max:500'], 'visitas' => ['nullable', 'array', 'max:5000'], 'orcamentos' => ['nullable', 'array', 'max:5000'],
+            'empresas' => ['sometimes', 'array', 'max:50'],
         ]);
         $d['clientes'] = $this->itens('clientes', $d['clientes'], [
             'id' => ['required', 'integer'],
@@ -102,7 +103,10 @@ class SuportePedroRunnerController extends Controller
         $d['orcamentos'] = $this->itens('orcamentos', $d['orcamentos'] ?? [], ['id' => ['required', 'integer'], 'numero' => ['nullable', 'string', 'max:30'],
             'cliente_id' => ['nullable', 'integer'], 'atendimento_id' => ['nullable', 'integer'], 'status' => ['nullable', 'string', 'max:40'],
             'descricao' => ['nullable', 'string', 'max:200'], 'agendado_para' => ['nullable', 'date_format:Y-m-d']]);
-        $diretorio->gravar($maquina, \Illuminate\Support\Carbon::parse($d['lido_em'])->setTimezone(config('app.timezone'))->toDateTimeString(), $d['clientes'], $d['atendimentos'], $d['assuntos'] ?? [], $d['equipe'] ?? [], $d['showroom'] ?? [], $d['visitas'], $d['orcamentos']);
+        // As empresas com o percentual de NF (pedro-orcamento); ausente = máquina antiga, e a prévia sai sem o percentual.
+        $empresas = array_key_exists('empresas', $d) ? $this->itens('empresas', $d['empresas'], ['id' => ['required', 'integer'], 'nome' => ['required', 'string', 'max:120'],
+            'imposto_nf' => ['nullable', 'numeric', 'min:0', 'max:100']]) : null;
+        $diretorio->gravar($maquina, \Illuminate\Support\Carbon::parse($d['lido_em'])->setTimezone(config('app.timezone'))->toDateTimeString(), $d['clientes'], $d['atendimentos'], $d['assuntos'] ?? [], $d['equipe'] ?? [], $d['showroom'] ?? [], $d['visitas'], $d['orcamentos'], $empresas);
 
         return response()->json(['ok' => true, 'clientes' => count($d['clientes'])]);
     }
@@ -181,6 +185,44 @@ class SuportePedroRunnerController extends Controller
         $m->update($d['ok'] ? ['situacao' => 'feito', 'erro' => null, 'resultado' => array_filter(['visita_id' => $d['visita_id'] ?? null, 'numero' => $d['numero'] ?? null, 'ja_estava' => $d['ja_estava'] ?? null], fn ($v) => $v !== null)]
             : ['situacao' => 'falhou', 'erro' => mb_substr((string) ($d['erro'] ?? 'o Gestor não gravou'), 0, 300)]);
         $agenda->concluirLote($m->lote, $canal);
+
+        return response()->json(['ok' => true]);
+    }
+
+    /** Até 3 orçamentos confirmados, reservados para esta máquina (pedro-orcamento, contrato runner-orcamento §1). */
+    public function orcamentos(Request $request): JsonResponse
+    {
+        $this->maquina($request);
+        $this->exigirConta($request);
+        $lista = DB::transaction(function () {
+            $o = \App\Models\SuporteGestorOrcamento::where('situacao', 'pendente')->orderBy('id')->lockForUpdate()->limit(3)->get();
+            foreach ($o as $x) {
+                $x->update(['situacao' => 'reservado', 'reservado_em' => now()]);
+            }
+
+            return $o;
+        });
+
+        return response()->json(['orcamentos' => $lista->map(fn ($o) => ['id' => $o->id, 'chave' => $o->chave] + (array) $o->pedido)->values()]);
+    }
+
+    public function orcamentoFeito(Request $request, int $orcamento, \App\Services\Suporte\OrcamentoDoGestor $servico, CanalWhatsApp $canal): JsonResponse
+    {
+        $this->maquina($request);
+        $this->exigirConta($request);
+        $d = $request->validate(['ok' => ['required', 'boolean'], 'erro' => ['nullable', 'string', 'max:300'], 'orcamento_id' => ['nullable', 'integer'],
+            'numero' => ['nullable', 'string', 'max:30'], 'empresa' => ['nullable', 'string', 'max:120'], 'valor_total' => ['nullable', 'numeric'],
+            'imposto_nf_percentual' => ['nullable', 'numeric'], 'link' => ['nullable', 'string', 'max:300'], 'pdf' => ['nullable', 'string', 'max:300'],
+            'ja_estava' => ['nullable', 'boolean']]);
+        $o = \App\Models\SuporteGestorOrcamento::with('conversa')->whereKey($orcamento)->where('situacao', 'reservado')->firstOrFail();
+        // Só link do próprio Gestor vai à conversa: o resultado vem da máquina, e não de quem escreve no WhatsApp.
+        $doGestor = fn ($u) => is_string($u) && preg_match('#^https?://[^\s]+/orcamentos/\d+(/imprimir)?$#', $u) ? $u : null;
+        $o->update($d['ok'] ? ['situacao' => 'feito', 'erro' => null, 'resultado' => ['id' => $d['orcamento_id'] ?? null, 'numero' => $d['numero'] ?? null,
+            'empresa' => $d['empresa'] ?? null, 'valor_total' => isset($d['valor_total']) ? (float) $d['valor_total'] : null,
+            'imposto_nf_percentual' => isset($d['imposto_nf_percentual']) ? (float) $d['imposto_nf_percentual'] : null,
+            'link' => $doGestor($d['link'] ?? null), 'pdf' => $doGestor($d['pdf'] ?? null), 'ja_estava' => (bool) ($d['ja_estava'] ?? false)]]
+            : ['situacao' => 'falhou', 'erro' => mb_substr((string) ($d['erro'] ?? 'o Gestor não gravou'), 0, 300)]);
+        $servico->concluir($o->fresh('conversa'), $canal);
 
         return response()->json(['ok' => true]);
     }

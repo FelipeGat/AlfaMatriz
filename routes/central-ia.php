@@ -40,6 +40,8 @@ Route::prefix('api/central-ia/runner')
         // pedro-dia-do-tecnico: as mudanças da agenda dos técnicos que a máquina grava no Gestor.
         Route::post('suporte/gestor/agenda', [\App\Http\Controllers\SuportePedroRunnerController::class, 'agenda'])->name('suporte.runner.agenda');
         Route::post('suporte/gestor/agenda/{mudanca}', [\App\Http\Controllers\SuportePedroRunnerController::class, 'agendaFeita'])->whereNumber('mudanca')->name('suporte.runner.agenda-feita');
+        Route::post('suporte/gestor/orcamentos', [\App\Http\Controllers\SuportePedroRunnerController::class, 'orcamentos'])->name('suporte.runner.orcamentos');
+        Route::post('suporte/gestor/orcamentos/{orcamento}', [\App\Http\Controllers\SuportePedroRunnerController::class, 'orcamentoFeito'])->whereNumber('orcamento')->name('suporte.runner.orcamento-feito');
         Route::post('suporte/gestor/aberturas/{abertura}', [\App\Http\Controllers\SuportePedroRunnerController::class, 'aberturaFeita'])->whereNumber('abertura')->name('suporte.runner.abertura-feita');
         // Os contatos identificados que a máquina grava no Gestor (T-478/T-479).
         Route::post('suporte/gestor/contatos', [\App\Http\Controllers\SuportePedroRunnerController::class, 'contatos'])->name('suporte.runner.contatos');

@@ -272,6 +272,50 @@ export async function gravarContatoNoGestor(config, contato, { executar = execP 
     }
 }
 
+/**
+ * UM orçamento pedido por um proprietário e confirmado com o "sim" (pedro-orcamento, contrato §2),
+ * com --apply. Sem nova tentativa: a ponte pode cair DEPOIS de gravar; a chave da prévia faz o
+ * Gestor devolver o mesmo orçamento se o pedido voltar.
+ */
+export async function gravarOrcamentoNoGestor(config, orcamento, { executar = execP } = {}) {
+    const [programa, script, arquivoWin, pasta] = String(config || '').split('|');
+    if (!programa || !script || !arquivoWin || !pasta) throw new Error('CENTRAL_IA_GESTOR incompleto');
+    const nome = 'pedro_gestor_orcamento.php';
+    const local = join(pasta, nome);
+    const dados = Buffer.from(JSON.stringify(orcamento), 'utf8').toString('base64');
+    writeFileSync(local, readFileSync(join(AQUI, 'suporte_gestor_orcamento.php'), 'utf8').replace("'__DADOS__'", `'${dados}'`));
+    try {
+        const { stdout } = await executar(programa, [script, `${arquivoWin.replace(/[\\/][^\\/]*$/, '')}\\${nome}`, '--apply'],
+            { cwd: pasta, timeout: 180000, maxBuffer: 4 * 1024 * 1024 });
+        const l = String(stdout).split(/\r?\n/).find(x => x.startsWith('SUPORTE_ORCAMENTO:'));
+        if (!l) return { ok: false, erro: 'a ponte não devolveu resposta — conferir no Gestor antes de repetir' };
+        return JSON.parse(l.slice('SUPORTE_ORCAMENTO:'.length));
+    } catch (e) {
+        return { ok: false, erro: `a ponte falhou (${String(e.message).slice(0, 120)}) — conferir no Gestor antes de repetir` };
+    } finally {
+        try { unlinkSync(local); } catch {}
+    }
+}
+
+/** Os orçamentos confirmados que o Matriz deixou para esta máquina (pedro-orcamento). */
+export async function gravarOrcamentos(config, maquina, { api, gravar = gravarOrcamentoNoGestor, log = () => {}, presa = pontePresa }) {
+    if (presa()) { log('suporte: ponte presa — os orçamentos ficam no Matriz, sem reservar'); return { status: 200, feitos: 0, adiado: true }; }
+    const r = await api('suporte/gestor/orcamentos', { maquina });
+    if (r.status !== 200) return { status: r.status, feitos: 0 };
+    let feitos = 0;
+    for (const o of r.json?.orcamentos || []) {
+        const g = await naPonte(() => gravar(config, o));
+        const envio = await api(`suporte/gestor/orcamentos/${o.id}`, { maquina, ok: !!g.ok, ...(g.ok
+            ? { orcamento_id: g.id ?? null, numero: g.numero ? String(g.numero) : null, empresa: g.empresa ? String(g.empresa).slice(0, 120) : null,
+                valor_total: typeof g.valor_total === 'number' ? g.valor_total : null, imposto_nf_percentual: typeof g.imposto_nf_percentual === 'number' ? g.imposto_nf_percentual : null,
+                link: g.link ? String(g.link).slice(0, 300) : null, pdf: g.pdf ? String(g.pdf).slice(0, 300) : null, ja_estava: !!g.ja_estava }
+            : { erro: String(g.erro || 'falhou').slice(0, 300) }) });
+        log(`suporte: orçamento ${g.ok ? `nº ${g.numero}${g.ja_estava ? ' (já estava)' : ''}` : `não gravou (${g.erro})`} → ${envio.status}`);
+        feitos++;
+    }
+    return { status: 200, feitos };
+}
+
 /** Os contatos identificados que o Matriz deixou para esta máquina gravar no Gestor. */
 export async function gravarContatos(config, maquina, { api, gravar = gravarContatoNoGestor, log = () => {} }) {
     const r = await api('suporte/gestor/contatos', { maquina });

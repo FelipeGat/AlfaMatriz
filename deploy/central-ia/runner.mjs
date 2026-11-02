@@ -28,7 +28,7 @@ import { transcrever, whisperInstalado } from './transcricao.mjs';
 import { hora as horaDoGestor, lerGestor } from './gestor.mjs';
 import { hora as horaDaAgenda, lerAgenda as lerAgendaGoogle } from './agenda-google.mjs';
 import { aplicarAlteracoes, configuracao as pastasDeDocumentos, espelhar as espelharDocumentos } from './documentos.mjs';
-import { atenderSuporte, gravarAberturas, gravarAgenda, gravarContatos, lerGestorParaPedro, naPonte } from './suporte.mjs';
+import { atenderSuporte, gravarAberturas, gravarAgenda, gravarContatos, gravarOrcamentos, lerGestorParaPedro, naPonte } from './suporte.mjs';
 import { acompanharAcesso, ESTADO_INICIAL, ritmoDaConsulta, acessoEfetivo, agendaSemIa, arquivoDeMemoria, CITA_CREDENCIAL, configDoQuadro, decisaoSemConfirmacao, dentroDe, exigeConfirmacao, instrucaoDoQuadro, modeloArgs, pedeDeploy, permissoes, regraCstk, regraEfetiva, VARIAVEL_DO_QUADRO } from './politica.mjs';
 
 // Chats já confirmados nesta máquina (vale 12 h; chave servidor + conta +
@@ -1142,6 +1142,9 @@ while (!parar) {
                 .then(r => {
                     if (r.status === 403 || r.status === 404 || r.status === 405 || r.status === 422) suportePausadoAte = Date.now() + 3600_000;
                     if (r.id) log(`suporte: pedido #${r.id} ${r.erro ? 'falhou (' + r.erro + ')' : 'respondido'} em ${Math.round(r.ms / 1000)} s`);
+                    // A resposta pode ter sido o "sim" de um orçamento ou de um atendimento (pedro-orcamento,
+                    // FR-023): grava no ciclo seguinte, sem esperar a volta de 20 s. A pausa de 1 h (403/404) fica.
+                    if (r.id && !r.erro && proximaGravacao - Date.now() <= 20_000) proximaGravacao = 0;
                 })
                 .catch(e => { log('suporte: erro', e.message); suportePausadoAte = Date.now() + 15_000; })
                 .finally(() => { atendendoSuporte = false; });
@@ -1173,6 +1176,8 @@ while (!parar) {
                 .then(async r => {
                     if (r.status === 403 || r.status === 404) { proximaGravacao = Date.now() + 3600_000; return; }
                     await gravarAgenda(cfg.gestor, cfg.maquina, { api, log });
+                    // Os orçamentos que um proprietário confirmou (pedro-orcamento).
+                    await gravarOrcamentos(cfg.gestor, cfg.maquina, { api, log });
                     // Os contatos identificados pelo Pedro (T-478/T-479).
                     await gravarContatos(cfg.gestor, cfg.maquina, { api, log });
                 })

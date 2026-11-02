@@ -34,19 +34,37 @@ class AcessoInterno
      */
     public const RETRATO_VELHO_MINUTOS = 30;
 
-    /** @return list<array{telefone: string, nome: string, perfil: string}> as linhas válidas da lista */
+    /**
+     * As linhas válidas da lista. A 4ª coluna, opcional, é o e-mail do usuário da pessoa no Gestor
+     * (pedro-orcamento, 02/11/2026): é ele que liga a linha à pessoa de verdade, e não só ao número —
+     * o FR-012 da pedro-inteligencia-operacional ("a lista reconhece; o vínculo autoriza").
+     *
+     * @return list<array{telefone: string, nome: string, perfil: string, gestor_email: ?string}>
+     */
     public function lista(): array
     {
         $linhas = [];
         foreach (preg_split('/\R/', app(Conhecimento::class)->ajuste(self::AJUSTE)) ?: [] as $l) {
-            [$tel, $nome, $perfil] = array_pad(array_map('trim', explode('|', $l, 3)), 3, '');
-            $perfil = mb_strtolower($perfil);
-            if (CanalWhatsApp::chave($tel) && $nome !== '' && isset(self::PERFIS[$perfil])) {
-                $linhas[] = ['telefone' => $tel, 'nome' => $nome, 'perfil' => $perfil];
+            [$tel, $nome, $perfil, $email] = self::colunas($l);
+            if (CanalWhatsApp::chave($tel) && $nome !== '' && isset(self::PERFIS[$perfil]) && ($email === '' || self::emailValido($email))) {
+                $linhas[] = ['telefone' => $tel, 'nome' => $nome, 'perfil' => $perfil, 'gestor_email' => $email !== '' ? $email : null];
             }
         }
 
         return $linhas;
+    }
+
+    /** @return array{0: string, 1: string, 2: string, 3: string} telefone, nome, perfil (minúsculo) e e-mail do Gestor */
+    private static function colunas(string $linha): array
+    {
+        [$tel, $nome, $perfil, $email] = array_pad(array_map('trim', explode('|', $linha, 4)), 4, '');
+
+        return [$tel, $nome, mb_strtolower($perfil), mb_strtolower($email)];
+    }
+
+    private static function emailValido(string $email): bool
+    {
+        return filter_var($email, FILTER_VALIDATE_EMAIL) !== false;
     }
 
     /** As linhas que não foram entendidas, para a tela avisar em vez de ignorar calada. @return list<string> */
@@ -56,9 +74,9 @@ class AcessoInterno
             if ($l === '') {
                 return false;
             }
-            [$tel, $nome, $perfil] = array_pad(array_map('trim', explode('|', $l, 3)), 3, '');
+            [$tel, $nome, $perfil, $email] = self::colunas($l);
 
-            return ! CanalWhatsApp::chave($tel) || $nome === '' || ! isset(self::PERFIS[mb_strtolower($perfil)]);
+            return ! CanalWhatsApp::chave($tel) || $nome === '' || ! isset(self::PERFIS[$perfil]) || ($email !== '' && ! self::emailValido($email));
         }));
     }
 
@@ -79,7 +97,7 @@ class AcessoInterno
         return $canal->viaGestor() ? $canal->numerosInternosAoGestor($this->chaves()) : null;
     }
 
-    /** @return array{telefone: string, nome: string, perfil: string}|null */
+    /** @return array{telefone: string, nome: string, perfil: string, gestor_email: ?string}|null */
     public function deQuem(string $telefone): ?array
     {
         $chave = CanalWhatsApp::chave($telefone);
@@ -91,6 +109,16 @@ class AcessoInterno
     public static function alteraAgenda(array $acesso): bool
     {
         return in_array($acesso['perfil'] ?? '', ['diretor', 'gestor'], true);
+    }
+
+    /**
+     * Criar orçamento no Gestor (pedro-orcamento, FR-001): só os proprietários — perfil diretor com a
+     * linha ligada ao usuário do Gestor, que vira o vendedor. Quem decide é o código; o Gestor ainda
+     * confere, na gravação, que esse usuário cria orçamento pela tela.
+     */
+    public static function criaOrcamento(array $acesso): bool
+    {
+        return ($acesso['perfil'] ?? '') === 'diretor' && filled($acesso['gestor_email'] ?? null);
     }
 
     public static function ve(array $acesso, string $o): bool
@@ -118,7 +146,15 @@ class AcessoInterno
         if (self::ve($acesso, 'diretor')) {
             $faz[] = 'mostrar o resumo do dia e os orçamentos em aberto do Matriz';
         }
+        if (self::criaOrcamento($acesso)) {
+            $faz[] = 'criar orçamento no Gestor (cliente ou pré-cliente que já existe, empresa, com ou sem NF, itens e valores que ele disser, ligado a um atendimento do cliente), sempre depois da prévia e do "sim"; '
+                .'tirar a nota de um valor dito já com NF; corrigir a prévia por partes; mandar o número e o link quando o Gestor criar; repetir o envio que falhou sem criar outro';
+        }
         $naoFaz = ['ver andamentos ou o histórico de uma OS', 'concluir ou mudar a etapa de um atendimento', 'criar tarefa no quadro',
+            ...(self::criaOrcamento($acesso) ? [] : [self::ve($acesso, 'diretor')
+                ? 'criar orçamento no Gestor ainda não: falta ligar a linha dele na lista do Pedro ao usuário dele no Gestor (o e-mail)'
+                : 'criar orçamento no Gestor (só os proprietários)']),
+            'editar, aprovar, enviar ao cliente ou excluir orçamento',
             'mandar mensagem, cobrar ou ligar para cliente, técnico ou fornecedor', 'mandar boleto ou nota fiscal', 'pagar, baixar ou renegociar conta',
             'editar cadastro de cliente', 'criar ou mudar POP'];
 
@@ -185,15 +221,14 @@ class AcessoInterno
             : "## CLIENTES E PRÉ-CLIENTES DO GESTOR PARECIDOS COM O QUE FOI ESCRITO\n- Nenhum combina: pergunte o nome como está no Gestor ou ofereça criar um PRÉ-CLIENTE novo (cliente \"novo_pre\").";
 
         return $lista
-            ."\n## EMPRESAS\n".collect($this->empresas())->map(fn ($nome, $id) => "- {$id}: {$nome}\n  Assuntos: ".collect($d->assuntosPara(['id' => 0, 'empresa_id' => $id]))->take(25)->map(fn ($a) => $a['id'].' '.$a['nome'])->implode('; '))->implode("\n")
+            ."\n## EMPRESAS\n".collect($d->empresas())->map(fn ($e, $id) => "- {$id}: {$e['nome']}".($e['imposto_nf'] !== null ? ' (NF no orçamento: '.rtrim(rtrim(number_format($e['imposto_nf'], 2, ',', ''), '0'), ',').'%)' : '')."\n  Assuntos: ".collect($d->assuntosPara(['id' => 0, 'empresa_id' => $id]))->take(25)->map(fn ($a) => $a['id'].' '.$a['nome'])->implode('; '))->implode("\n")
             ."\n## EQUIPE (técnicos: use o nº em tecnico_id)\n".$equipe->map(fn ($f) => '- '.$f['id'].': '.$f['nome'])->implode("\n");
     }
 
-    /** As empresas do Gestor, como aparecem no retrato (a de cada cliente). @return array<int, string> */
+    /** As empresas do Gestor: as do retrato (pedro-orcamento) ou, sem elas, as dos clientes. @return array<int, string> */
     public function empresas(): array
     {
-        return collect(app(DiretorioGestor::class)->retrato()['clientes'] ?? [])->filter(fn ($c) => ! empty($c['empresa_id']) && ! empty($c['empresa']))
-            ->mapWithKeys(fn ($c) => [(int) $c['empresa_id'] => (string) $c['empresa']])->sortKeys()->all();
+        return collect(app(DiretorioGestor::class)->empresas())->map(fn ($e) => $e['nome'])->all();
     }
 
     /** Todos os abertos do Gestor, e os citados pelo número (qualquer etapa). */
