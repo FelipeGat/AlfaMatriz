@@ -46,13 +46,15 @@ comunicada" (FR-012).
 | mudancas | json | nullable | no tipo `mudanca`, a lista classificada (Decision 3) |
 | texto | text | nullable | o texto exato (livre) ou o corpo preenchido (modelo), por parte |
 | partes | tinyint | default 1 | |
+| partes_enviadas | tinyint | default 0 | quantas partes a Meta já aceitou: a nova tentativa manda só as que faltam (Fase 3, migração `2026_11_03_120000`) |
+| previa | boolean | default false | linha da "Prévia agora": não conta como comunicada (Fase 4, mesma migração) |
 | canal | enum `livre`, `modelo` | nullable | nulo quando nada foi enviado |
 | modelo | string(60) | nullable | nome do modelo usado |
 | numero | string(20) | nullable | wa_id para onde saiu; apagado na retenção (Decision 20) |
 | situacao | enum `preparada`, `aceita`, `entregue`, `lida`, `falha`, `ensaio`, `sem_envio`, `pendente` | NOT NULL | ver transições |
 | pendencia | string(30) | nullable | o motivo quando `pendente` (ver acima, mais `sem_modelo`) |
 | tentativas | tinyint | default 0 | até 3 (FR-026) |
-| proxima_tentativa_em | datetime | nullable | |
+| proxima_tentativa_em | datetime | nullable | quando a linha volta à fila: a nova tentativa, o alerta adiado, ou o prazo de retomada da `preparada` (10 min), para o envio que caiu no meio |
 | wamid | string(120) | nullable, único | da tentativa mais recente; liga ao webhook |
 | erro_codigo | string(20) | nullable | código da Meta |
 | erro | string(500) | nullable | título/mensagem da Meta ou da nossa recusa |
@@ -62,8 +64,17 @@ comunicada" (FR-012).
 - Único (FR-029-INFRA-IDEMP): `(destinatario_id, dia_agenda, tipo, versao, modo)`.
 - Índices: `(dia_agenda, tipo)`, `(situacao, proxima_tentativa_em)`.
 - **Versão comunicada** de (destinatário, dia, modo) = a linha mais recente de tipo `programacao` ou `mudanca` com
-  situação `aceita`, `entregue`, `lida` ou `sem_envio` (no modo `ensaio`, também `ensaio`).
-- `Prunable`: com mais de 365 dias, `numero` e `texto` viram nulos (Decision 20).
+  situação `aceita`, `entregue`, `lida` ou `sem_envio` (no modo `ensaio`, também `ensaio`), que não seja prévia.
+- **`versao` por tipo** (implementação, 03/11/2026): na programação, o sha256 da programação canônica; na mudança, o
+  sha256 do id da linha comunicada mais a versão da programação nova — a agenda que vai de A a B, volta a A e vai
+  de novo a B precisa de três avisos, e a chave só da programação nova barraria o terceiro; no relatório, o sha256
+  do conteúdo contado; no alerta, o da mensagem que abriu a sequência.
+- **`programacao` por tipo**: os compromissos comunicados (programação e mudança, a base da comparação); no
+  relatório, o que foi contado (linhas, visitas, técnicos, conflitos, pendências); no alerta, quem escreveu, o texto e
+  se pediu para parar. É daí que a mensagem é remontada a cada tentativa.
+- `Prunable`: com mais de 365 dias, `numero` e `texto` viram nulos (Decision 20); no alerta, `programacao` também
+  (é onde está o que o técnico escreveu). A linha fica: `prune()` sobrescrito, e o `model:prune` agendado só com
+  `--model=AgendaAviso`, às 03:20.
 
 ### State Transitions
 
@@ -78,6 +89,11 @@ pendente    (não enviada por motivo de pendência; não muda)
 ```
 
 A situação só avança (`lida` não volta a `entregue`). `falha` com 3 tentativas é final.
+
+A `preparada` do envio real tem sempre prazo: nasce com o de retomada, e quem vai à Meta conta a tentativa e o
+renova antes da chamada. Se o processo cai no meio, ela fica `preparada` com o prazo vencido e a fila a retoma como
+mais uma tentativa; a 3ª interrompida vira `falha` (`Não reenviado: a última tentativa foi interrompida…`). A parte
+que estava saindo pode ter chegado — o mesmo risco da Meta que não responde (`conexao`), que também tenta de novo.
 
 ## Entity: AgendaVerificacao (`agenda_verificacoes`)
 

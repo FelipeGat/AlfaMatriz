@@ -152,6 +152,23 @@ class PedroNoGestorTest extends TestCase
         $this->assertSame(0, SuportePedido::count());
     }
 
+    /**
+     * A resposta do técnico à mensagem automática da agenda (pedro-agenda-automatica, FR-021, tarefa
+     * 6.4.1): o Gestor já respondeu a frase fixa e repassa a conversa ainda em `aguardando_menu`, mas com
+     * `com_pedro` falso. O Pedro daqui não muda — só registra, e nada vai à IA.
+     */
+    public function test_resposta_do_tecnico_da_agenda_chega_sem_o_pedro_e_nao_vai_a_ia(): void
+    {
+        $this->repasse('vou chegar às 10h', 'wamid.1', $this->estado('aguardando_menu', false))->assertOk();
+        $this->repasse('o portão está fechado', 'wamid.2', $this->estado('aguardando_menu', false))->assertOk();
+
+        $c = SuporteConversa::sole();
+        $this->assertSame(['gestor', 'aguardando_menu'], [$c->situacao, $c->gestor_setor]);
+        $this->assertSame(['vou chegar às 10h', 'o portão está fechado'], $c->mensagens()->orderBy('id')->pluck('texto')->all());
+        $this->assertSame(0, SuportePedido::count());
+        $this->assertSame([], $this->pedidosAoGestor);
+    }
+
     public function test_encaminhar_ao_financeiro_responde_e_entrega_ao_setor(): void
     {
         $this->identificada();

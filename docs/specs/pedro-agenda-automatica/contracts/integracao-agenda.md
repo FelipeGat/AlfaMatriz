@@ -108,11 +108,14 @@ Nada novo nesse sentido: alertas vão por WhatsApp (Decision 15) e a supervisão
   fora do formato `AAAA-MM-DD`.
 - **Prévia do relatório**: até a Fase 5 (o relatório), `{"tipo":"relatorio"}` recebe 422
   `{"motivo":"tipo_indisponivel"}`. A aba deve traduzir como "a prévia do relatório ainda não existe no Gestor".
+  *Superado na Fase 5*: a prévia do relatório existe; o 422 só volta com um Gestor anterior a ela.
 - **`ligada` em produção antes da Fase 3** (o envio de verdade): a porta aceita, `envio_real` sai `true`, e o ciclo
   não manda nada — a verificação do dia fica sem `concluida_em`, com `erro` = "O envio real ainda não existe nesta
   versão do Gestor: nada foi enviado…". Roda de verdade quando o envio chegar, se ainda for o mesmo dia.
+  *Superado na Fase 3*: com `ligada` em produção, o envio é real.
 - **Verificações nos modos ensaio e real, até as Fases 4 e 5**: só a da programação (16:30). Com o modo
   `desligada`, as três (manhã, programação, relatório) registram que o ciclo rodou.
+  *Superado nas Fases 4 e 5*: em ensaio e no real, as três rodam.
 - **Incluir de novo** o mesmo funcionário no mesmo papel devolve a linha como está, mesmo com outro
   `consentimento`: registrar consentimento é a porta 4.
 - **Destinatários no `estado`**: todos, ativos e desativados, ordenados por papel e nome.
@@ -141,3 +144,34 @@ O lado do Matriz: `app/Services/Suporte/AgendaAutomatica.php` (cliente), `Suport
 - **Chaves**: o cliente fica só com as chaves deste contrato em cada objeto. Chave a mais (um número inteiro, por
   exemplo) não passa dele; chave que falta aparece como "sem dado", e não como o null que quer dizer "sem número".
 - **Prévia**: a aba manda sempre o `dia` (hoje ou amanhã, escolhido na tela), sem depender do padrão do Gestor.
+
+## Decidido nas Fases 3 a 6 (03/11/2026)
+
+O lado do Gestor, sem commit até o QA e a autorização: `Envio`, `Comparacao`, `Relatorio` e `RespostaDoTecnico` em
+`app/Services/WhatsApp/AgendaAutomatica/`, o envio com resultado no `WhatsAppCloudService`, a situação no
+`WhatsappWebhookController::processarStatus`, o desvio no `MenuBot` e a migração `2026_11_03_120000` (duas colunas
+em `agenda_avisos`, só acrescentadas). **Nenhuma porta mudou de formato**: a aba do Matriz não precisa de versão nova.
+
+- **O que a porta 6 passa a mostrar**: `canal` e `modelo` vêm preenchidos também no ensaio e na pendência — dizem
+  como a mensagem sairia (a janela de 24 h só lê o banco). No ensaio sem a janela aberta, o `texto` é o do modelo,
+  preenchido, e não o livre: é o que a pessoa receberia. `situacao` ganha os valores do envio real (`preparada`,
+  `aceita`, `entregue`, `lida`, `falha`), que já estavam no contrato; `pendencia` ganha `sem_modelo`.
+- **`tentativas` e `erro`**: `erro_codigo` é o código da Meta (`131042`, por exemplo) ou um nosso:
+  `conexao` (a Meta não respondeu), `sem_id` (aceitou sem o identificador), `lista_modelos` (a lista de modelos não
+  veio), `sem_numero_pedro` (não há número do Pedro ativo) e `http_<status>` (recusa sem o corpo de erro). A falha
+  que não volta mais diz o motivo no `erro` ("Não reenviado: …"), seguido da última falha.
+- **Modelos no `estado`**: continua só lendo o cache, sem chamar a Meta. O envio, antes de cada modelo, busca a
+  lista vencida e a guarda no mesmo cache (10 min), então a aba passa a ver `conferido` também depois de um envio.
+- **Prévia** (porta 7): as linhas ficam marcadas como prévia no Gestor e não contam como programação comunicada;
+  a verificação das 16:30 que acha a mesma linha a assume. A prévia do relatório conta as pendências pelos avisos do
+  modo em que a agenda está (no envio real, quem a Meta aceitou).
+- **Alerta** (`tipo: alerta`): uma linha por gestor, com o nome de quem escreveu, o texto (sem quebra de linha, até
+  300) e se ele pediu para parar. Nasce `preparada` no webhook e sai no ciclo do minuto seguinte.
+- **Sem porta nova**: o "parar" aparece no destinatário (`parou_em`) e no alerta; registrar consentimento de novo
+  pela porta 4 o desfaz, como já estava.
+- **Depois da rodada 1 do QA (03/11)**, sem mudar formato de porta: (1) a linha `preparada` que ficou parada porque
+  o processo caiu no meio volta sozinha em 10 min, como mais uma tentativa; a 3ª interrompida aparece como `falha`
+  com o `erro` começando por "Não reenviado: a última tentativa foi interrompida antes de a Meta responder." —
+  `tentativas` passa a contar a tentativa quando ela começa, e não quando volta; (2) o relatório pelo modelo não
+  corta mais o resumo: conflitos e pendências são repartidos entre as partes, cada um uma vez; (3) a resposta fixa
+  recusada pela Meta também segura a sequência de 2 min, e por isso não gera alerta a cada mensagem.

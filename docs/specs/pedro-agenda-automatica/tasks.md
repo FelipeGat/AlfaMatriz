@@ -99,8 +99,8 @@ Ref: FR-007, FR-008, FR-025, FR-028-INFRA-SCHED, FR-029-INFRA-IDEMP, FR-030-INFR
 - [x] 1.6.3 Modo `desligada`: só registra a linha da verificação com modo `desligada` (prova de que o agendador do host roda), sem aviso nenhum
 - [x] 1.6.4 Verificação das 16:30 em ensaio: um aviso `programacao` com situação `ensaio` e o texto exato por técnico com visita; `sem_envio` para quem não tem visita (FR-008); `pendente` com o motivo para quem tem pendência
 - [x] 1.6.5 Linha do aviso criada antes de qualquer envio, com a chave única; serialização por destinatário com `lockForUpdate` dentro de transação
-- [~] 1.6.6 "Prévia agora" (programação ou relatório de hoje ou amanhã) sempre em ensaio, em qualquer modo, sem mexer na versão comunicada real
-  - Feita a da programação. A do relatório depende do relatório: a porta 7 responde 422 `tipo_indisponivel` até a 5.2.5.
+- [x] 1.6.6 "Prévia agora" (programação ou relatório de hoje ou amanhã) sempre em ensaio, em qualquer modo, sem mexer na versão comunicada real
+  - Feita a da programação na Fase 1; a do relatório entrou com a 5.2.5 (03/11). As linhas da prévia ficam marcadas (`agenda_avisos.previa`) e não contam como comunicadas (4.1.3).
 - [x] 1.6.7 Testes: verificação perdida das 16:20 às 18:40 roda uma vez às 18:41; perdida às 21:00 sai na hora; dois ciclos simultâneos geram uma linha só; desligada não cria aviso; ensaio não chama a Meta
 
 ### 1.7 Portas da integração Matriz → Gestor `[A]`
@@ -194,52 +194,64 @@ Ref: constituição do Matriz V e VII
 
 Ref: FR-024; Decision 8
 
-- [ ] 3.1.1 Método novo no `WhatsAppCloudService` que devolve o wamid ou o código e o título do erro da Meta
-- [ ] 3.1.2 `enviarTexto`, `enviarTemplate` e `postMessage` intactos para o menu, a cobrança e a integração
-- [ ] 3.1.3 Testes com `Http::fake`: aceite, recusa 400 com `error.code`/`error.message` e falha de rede
+- [x] 3.1.1 Método novo no `WhatsAppCloudService` que devolve o wamid ou o código e o título do erro da Meta
+- [x] 3.1.2 `enviarTexto`, `enviarTemplate` e `postMessage` intactos para o menu, a cobrança e a integração
+- [x] 3.1.3 Testes com `Http::fake`: aceite, recusa 400 com `error.code`/`error.message` e falha de rede
 
 ### 3.2 Livre ou modelo, e as travas `[C]`
 
 Ref: FR-004, FR-022, FR-027; Decisions 6, 7, 13, 17; SC-006
 
-- [ ] 3.2.1 `AgendaAutomatica\Envio`: janela pela conversa mais recente do contato com a chave do celular (`WhatsappConversa::janelaAberta()`); fecha em menos de 5 min → modelo
-- [ ] 3.2.2 Conferência do modelo antes de cada uso: nome, idioma `pt_BR`, número de variáveis e categoria UTILITY; ausente, diferente ou MARKETING vira `pendente/sem_modelo` e nada sai fora da janela
-  - Vindo da Fase 1: o `estado` só lê a lista do cache da tela (`conferido`). Com a consulta à Meta liberada aqui, decidir se ele volta a buscar a lista quando o cache venceu.
-- [ ] 3.2.3 Só quem criou a linha `preparada` chama a Meta; envio real só com `envioReal()`; `nunca_enviar` checado de novo na hora do envio
-- [ ] 3.2.4 Grava canal, modelo, número, texto por parte, wamid e `enviado_em`; a mensagem não entra em `whatsapp_mensagens` nem cria conversa (FR-023)
-- [ ] 3.2.5 Testes: janela aberta vai livre com quebra de linha; fechada vai modelo; modelo recategorizado não sai; `ligada` em `local` não chama a Meta; chave de `nunca_enviar` nunca recebe; reexecução não chama de novo
+- [x] 3.2.1 `AgendaAutomatica\Envio`: janela pela conversa mais recente do contato com a chave do celular (`WhatsappConversa::janelaAberta()`); fecha em menos de 5 min → modelo
+- [x] 3.2.2 Conferência do modelo antes de cada uso: nome, idioma `pt_BR`, número de variáveis e categoria UTILITY; ausente, diferente ou MARKETING vira `pendente/sem_modelo` e nada sai fora da janela
+  - Vindo da Fase 1: o `estado` só lê a lista do cache da tela (`conferido`). Decidido em 03/11: o `estado` continua sem chamar a Meta (abrir a aba não custa chamada externa); quem busca a lista vencida é o envio, antes de cada modelo, e guarda no mesmo cache (10 min) — o que também atualiza a aba. Lista vazia não é guardada: a Meta devolve vazio quando falha, e vira `falha` com nova tentativa, e não "sem modelo".
+  - O texto gravado é o do modelo como a Meta o aprovou, preenchido; no ensaio e na pendência, o do código. O canal (livre/modelo) é decidido também no ensaio, pela janela, que só lê o banco: a supervisão mostra o que sairia de fato.
+- [x] 3.2.3 Só quem criou a linha `preparada` chama a Meta; envio real só com `envioReal()`; `nunca_enviar` checado de novo na hora do envio
+- [x] 3.2.4 Grava canal, modelo, número, texto por parte, wamid e `enviado_em`; a mensagem não entra em `whatsapp_mensagens` nem cria conversa (FR-023)
+  - Coluna nova `partes_enviadas` (migração `2026_11_03_120000`, só acrescenta): a parte que falha para o envio, e a nova tentativa manda só o que faltou. O wamid guardado é o da última parte.
+- [x] 3.2.5 Testes: janela aberta vai livre com quebra de linha; fechada vai modelo; modelo recategorizado não sai; `ligada` em `local` não chama a Meta; chave de `nunca_enviar` nunca recebe; reexecução não chama de novo
 
 ### 3.3 Tentativas `[A]`
 
 Ref: FR-026; Decision 10; quickstart, cenário 5
 
-- [ ] 3.3.1 Até 3 tentativas na mesma linha: a 2ª 5 min e a 3ª 15 min depois da anterior, pelo ciclo de minuto
-- [ ] 3.3.2 No silêncio, a tentativa espera o fim dele; depois da 3ª, `falha` definitiva, sem reenvio no dia seguinte
-- [ ] 3.3.3 Testes: recusa na chamada até a falha final; `failed` do webhook entra no mesmo caminho
+- [x] 3.3.1 Até 3 tentativas na mesma linha: a 2ª 5 min e a 3ª 15 min depois da anterior, pelo ciclo de minuto
+- [x] 3.3.2 No silêncio, a tentativa espera o fim dele; depois da 3ª, `falha` definitiva, sem reenvio no dia seguinte
+  - Também não sai a tentativa de programação ou mudança que já tem uma linha mais nova do mesmo destinatário e dia (a nova diz tudo, e a velha estaria vencida), nem a de um dia que já passou. O texto é remontado a cada tentativa: "amanhã" vira "hoje" depois da meia-noite.
+- [x] 3.3.3 Testes: recusa na chamada até a falha final; `failed` do webhook entra no mesmo caminho
 
 ### 3.4 Situação pelo webhook `[A]`
 
 Ref: FR-024, FR-028; Decision 9
 
-- [ ] 3.4.1 `processarStatus`: sem mensagem pelo wamid em `whatsapp_mensagens`, procura o aviso da agenda pelo mesmo wamid
-- [ ] 3.4.2 Situação só avança (`aceita` → `entregue` → `lida`); `read` sem `delivered` vale como lida; `failed` grava o código e o título de `errors[0]`
-- [ ] 3.4.3 Testes: cada status, fora de ordem, e que o caminho das mensagens de conversa não mudou
+- [x] 3.4.1 `processarStatus`: sem mensagem pelo wamid em `whatsapp_mensagens`, procura o aviso da agenda pelo mesmo wamid
+- [x] 3.4.2 Situação só avança (`aceita` → `entregue` → `lida`); `read` sem `delivered` vale como lida; `failed` grava o código e o título de `errors[0]`
+  - `failed` só vale para a linha `aceita`, e agenda a próxima tentativa (5/15 min) só da última parte.
+- [x] 3.4.3 Testes: cada status, fora de ordem, e que o caminho das mensagens de conversa não mudou
 
 ### 3.5 Retenção de 365 dias `[M]`
 
 Ref: FR-024; Decision 20 (confirmada)
 
-- [ ] 3.5.1 `AgendaAviso` com `Prunable`: com mais de 365 dias, `numero` e `texto` viram nulos e ficam tipo, dia, situação e contagens
-- [ ] 3.5.2 Agendar o `model:prune` do `AgendaAviso` uma vez por dia em `routes/console.php` (hoje o Gestor não agenda nenhum `model:prune`)
-- [ ] 3.5.3 Teste: aviso de 366 dias perde número e texto; de 364 dias fica igual
+- [x] 3.5.1 `AgendaAviso` com `Prunable`: com mais de 365 dias, `numero` e `texto` viram nulos e ficam tipo, dia, situação e contagens
+- [x] 3.5.2 Agendar o `model:prune` do `AgendaAviso` uma vez por dia em `routes/console.php` (hoje o Gestor não agenda nenhum `model:prune`)
+  - `dailyAt('03:20')`, só com `--model=AgendaAviso`. A retenção apaga o dado, não a linha (`prune()` sobrescrito); no alerta, apaga também o que o técnico escreveu, que mora em `programacao`.
+- [x] 3.5.3 Teste: aviso de 366 dias perde número e texto; de 364 dias fica igual
 
 ### 3.6 Fechamento da Fase 3 `[A]`
 
 Ref: constituição do Gestor III e V
 
-- [ ] 3.6.1 `pint` e a suíte `Integracao` do WhatsApp sem regressão (cobrança, menu e integração)
-- [ ] 3.6.2 QA independente (Copilot) até `APROVADO`
-- [ ] 3.6.3 Pedir autorização para o commit e a publicação, com o modo continuando `desligada`
+- [x] 3.6.1 `pint` e a suíte `Integracao` do WhatsApp sem regressão (cobrança, menu e integração)
+  - 03/11, depois da rodada 1 do QA: agenda automática 184 de 184 (7 testes novos, que falham no código da rodada 1); `--filter="Whatsapp|Pedro|AgendaTecnica|Menu|Cobranca|Webhook"` 331 de 331; `Integracao` inteira 1.487 passaram e 8 falharam (as mesmas do `PopAnexoFalhaGravacaoTest`); `Unit` 145 de 145; `pint --test` limpo. Sete defeitos plantados no código novo, um de cada vez, derrubaram cada um o seu teste.
+  - 03/11 (Fases 3 a 6 juntas): agenda automática 177 de 177; `--filter="Whatsapp|Pedro|AgendaTecnica|Menu|Cobranca|Webhook"` 331 de 331; `Integracao` inteira 1.480 passaram e 8 falharam (as do `PopAnexoFalhaGravacaoTest`, sem a extensão de imagem no container, que já falhavam); `Unit` 145 de 145; `pint --test` limpo nos 19 arquivos. Seis defeitos plantados, um de cada vez, derrubaram cada um o seu teste.
+- [x] 3.6.2 QA independente (Copilot) até `APROVADO`
+  - Pedido em 03/11, junto das Fases 4, 5 e 6, com o escopo em `.qa-diff-agenda-automatica.md` (seção "Fases 3 a 6").
+  - Rodada 1 (03/11): REPROVADO — a linha gravada `preparada` ficava sem `proxima_tentativa_em` se o processo caísse antes de terminar o envio, e nunca mais saía. Corrigido: a linha `preparada` do envio real nasce com o prazo de retomada (`Envio::RETOMAR_MINUTOS`, 10 min), quem vai à Meta conta a tentativa e renova o prazo ANTES da chamada, e a fila retoma a `preparada` vencida (até a 3ª; a 3ª interrompida vira `falha` com `Envio::INTERROMPIDO`). Um aviso que quebra na fila não derruba o ciclo. No silêncio, a mudança retomada espera a manhã; a programação e o relatório, não (Decision 11). Rodada 2 pedida.
+  - Rodada 2 (03/11): APROVADO para a Fase 3.
+- [x] 3.6.3 Pedir autorização para o commit e a publicação, com o modo continuando `desligada`
+  - Autorizado em 03/11, para as Fases 3 a 6 juntas. Commit `ba5d37ec` no Gestor, só com os 22 arquivos do escopo do QA (no `routes/console.php`, só o bloco do `model:prune`; o do `whatsapp:avisos-cliente` é da outra sessão e ficou fora). Antes, a suíte rodou numa cópia limpa (`HEAD` + só a fase), num container à parte: agenda automática 190 de 190; `Unit` 145 de 145; `Integracao` 1.375 passaram e 12 falharam — 8 do `PopAnexoFalhaGravacaoTest` (sem a extensão de imagem) e 4 do `FaturamentoFinalNaoBaixaValorTest`, que falham igual no `HEAD` puro.
+  - Publicado pelo `gestor-publicar-main.sh` em 03/11 às 10:54, com a migração `2026_11_03_120000` (lote 158); o ponto de volta é o `52d1ce51`. Conferido pela ponte, só leitura: HEAD `ba5d37ec`, as duas colunas novas em `agenda_avisos`, o ciclo de minuto e o `model:prune` só do `AgendaAviso` (03:20) no agendador, a configuração sem linha (vale `desligada`), nenhum destinatário nem aviso, e nenhum erro novo no log.
 
 ---
 
@@ -249,36 +261,42 @@ Ref: constituição do Gestor III e V
 
 Ref: FR-012, FR-013, FR-016; Decision 3
 
-- [ ] 4.1.1 `AgendaAutomatica\Comparacao`: pareia o comunicado com o atual por atendimento (dois do mesmo atendimento no dia, pela ordem de início)
-- [ ] 4.1.2 Classificação da tabela da Decision 3: nova visita, horário mudou, remarcada, cancelada, saiu da sua agenda; em atendimento ou finalizada não é mudança
-- [ ] 4.1.3 Versão comunicada = a última linha do mesmo modo com `aceita`, `entregue`, `lida` ou `sem_envio` (no ensaio, também `ensaio`); falha não conta
-  - Achado na Fase 1: a "Prévia agora" grava linhas `ensaio` de programação. Decidir se elas contam como comunicadas no modo ensaio (hoje contariam), para a prévia das 10:00 não virar "mudança" de ensaio antes das 16:30.
-- [ ] 4.1.4 Testes: cada linha da tabela; troca de responsável (quem saiu e quem entrou); reagendamento pelo `definirVisitas` vira "horário mudou", e não "cancelada + nova"; mudança só em observação não gera nada
+- [x] 4.1.1 `AgendaAutomatica\Comparacao`: pareia o comunicado com o atual por atendimento (dois do mesmo atendimento no dia, pela ordem de início)
+- [x] 4.1.2 Classificação da tabela da Decision 3: nova visita, horário mudou, remarcada, cancelada, saiu da sua agenda; em atendimento ou finalizada não é mudança
+- [x] 4.1.3 Versão comunicada = a última linha do mesmo modo com `aceita`, `entregue`, `lida` ou `sem_envio` (no ensaio, também `ensaio`); falha não conta
+  - Achado na Fase 1: a "Prévia agora" grava linhas `ensaio` de programação. Decidido em 03/11: não contam. Coluna nova `previa` (mesma migração da 3.2.4); a verificação que acha a linha da prévia com a mesma chave a assume (`previa` = falso).
+- [x] 4.1.4 Testes: cada linha da tabela; troca de responsável (quem saiu e quem entrou); reagendamento pelo `definirVisitas` vira "horário mudou", e não "cancelada + nova"; mudança só em observação não gera nada
+  - Remarcada só quando a visita do mesmo atendimento noutro dia foi criada ou mexida depois do aviso: quem vai ao mesmo atendimento todo dia e sai de um deles ouve "saiu", e não "remarcada". Mudança que não aparece na mensagem (cliente renomeado) vira linha `sem_envio`, que só move a comunicada.
+  - A versão da mudança amarra a comunicada e a programação nova (sha256 de id da comunicada + versão nova): a agenda que vai de A para B, volta a A e vai de novo a B gera três avisos.
 
 ### 4.2 Estabilidade e silêncio `[A]`
 
 Ref: FR-014, FR-015; Decisions 2, 11
 
-- [ ] 4.2.1 `agenda_observacoes`: a mudança só sai com a mesma versão vista há 2 min ou mais
-- [ ] 4.2.2 Mudança desfeita antes disso volta a ser igual à comunicada e não gera nada
-- [ ] 4.2.3 Entre `silencio_inicio` e `manha` não sai aviso de mudança nem tentativa
-- [ ] 4.2.4 Testes do cenário 2 do quickstart: nada às 17:10 e 17:11, aviso às 17:13; cancelamento às 22:00 só às 06:30
+- [x] 4.2.1 `agenda_observacoes`: a mudança só sai com a mesma versão vista há 2 min ou mais
+- [x] 4.2.2 Mudança desfeita antes disso volta a ser igual à comunicada e não gera nada
+- [x] 4.2.3 Entre `silencio_inicio` e `manha` não sai aviso de mudança nem tentativa
+- [x] 4.2.4 Testes do cenário 2 do quickstart: nada às 17:10 e 17:11, aviso às 17:13; cancelamento às 22:00 só às 06:30
+  - A mudança presa numa pendência (sem consentimento, por exemplo) sai quando a pendência acaba: a linha `pendente` com a mesma chave vira envio.
 
 ### 4.3 Verificação da manhã `[A]`
 
 Ref: FR-014; US2
 
-- [ ] 4.3.1 Às 06:30, só as mudanças da programação de hoje ainda não avisadas
-- [ ] 4.3.2 Quem não recebeu programação na véspera e tem visita hoje recebe o aviso de nova visita
-- [ ] 4.3.3 Testes: nada a avisar não manda mensagem; o que já foi avisado à noite não se repete
+- [x] 4.3.1 Às 06:30, só as mudanças da programação de hoje ainda não avisadas
+- [x] 4.3.2 Quem não recebeu programação na véspera e tem visita hoje recebe o aviso de nova visita
+- [x] 4.3.3 Testes: nada a avisar não manda mensagem; o que já foi avisado à noite não se repete
 
 ### 4.4 Fechamento da Fase 4 `[A]`
 
 Ref: SC-003; constituição do Gestor III
 
-- [ ] 4.4.1 Teste de ponta no ciclo: mudança gravada sai em até 10 min (SC-003)
-- [ ] 4.4.2 `pint` e QA independente (Copilot) até `APROVADO`
-- [ ] 4.4.3 Pedir autorização para o commit e a publicação
+- [x] 4.4.1 Teste de ponta no ciclo: mudança gravada sai em até 10 min (SC-003)
+- [x] 4.4.2 `pint` e QA independente (Copilot) até `APROVADO`
+  - `pint` limpo; QA pedido em 03/11 com as Fases 3, 5 e 6. Rodada 1: APROVADO para a Fase 4, sem achado. Vai à rodada 2 junto das outras, porque a fila de tentativas (Fase 3) mudou.
+  - Rodada 2 (03/11): APROVADO para a Fase 4.
+- [x] 4.4.3 Pedir autorização para o commit e a publicação
+  - Junto da Fase 3: commit `ba5d37ec`, publicado em 03/11 (ver 3.6.3).
 
 ---
 
@@ -288,28 +306,34 @@ Ref: SC-003; constituição do Gestor III
 
 Ref: FR-017 a FR-019; Decision 18
 
-- [ ] 5.1.1 `AgendaAutomatica\Relatorio`: visitas distintas e técnicos distintos (uma visita com dois técnicos conta 1 visita e 2 técnicos)
-- [ ] 5.1.2 Conflito: o mesmo técnico em duas visitas com horários sobrepostos (o horário individual do adicional), nomeado com técnico, horários e nºs
-- [ ] 5.1.3 Pendências: visita sem responsável, técnico com visita sem aviso aceito (com o motivo) e falha de leitura da agenda
-- [ ] 5.1.4 Testes do cenário 3 do quickstart: os totais batem com a agenda (SC-004)
+- [x] 5.1.1 `AgendaAutomatica\Relatorio`: visitas distintas e técnicos distintos (uma visita com dois técnicos conta 1 visita e 2 técnicos)
+- [x] 5.1.2 Conflito: o mesmo técnico em duas visitas com horários sobrepostos (o horário individual do adicional), nomeado com técnico, horários e nºs
+- [x] 5.1.3 Pendências: visita sem responsável, técnico com visita sem aviso aceito (com o motivo) e falha de leitura da agenda
+  - O relatório conta a agenda inteira, e não só os destinatários: o técnico fora da lista aparece como "não está na lista de destinatários". Os compromissos de cada técnico são os do `Programacao::doTecnico`, os mesmos que ele recebe.
+- [x] 5.1.4 Testes do cenário 3 do quickstart: os totais batem com a agenda (SC-004)
 
 ### 5.2 Formato e envio `[A]`
 
 Ref: FR-017, FR-020; `contracts/mensagens.md`
 
-- [ ] 5.2.1 Uma linha por técnico; técnicos com exatamente os mesmos compromissos ficam numa linha só
-- [ ] 5.2.2 Dia sem visitas: uma linha só dizendo isso (FR-020)
-- [ ] 5.2.3 Partes acima de 1024 e um relatório por gestor destinatário ativo, sem reenvio ao rodar de novo
-- [ ] 5.2.4 Testes: agrupamento, dia vazio, partição e idempotência
-- [ ] 5.2.5 Prévia do relatório na porta 7 (`tipo: relatorio`), que até aqui responde 422 `tipo_indisponivel`
+- [x] 5.2.1 Uma linha por técnico; técnicos com exatamente os mesmos compromissos ficam numa linha só
+- [x] 5.2.2 Dia sem visitas: uma linha só dizendo isso (FR-020)
+- [x] 5.2.3 Partes acima de 1024 e um relatório por gestor destinatário ativo, sem reenvio ao rodar de novo
+- [x] 5.2.4 Testes: agrupamento, dia vazio, partição e idempotência
+- [x] 5.2.5 Prévia do relatório na porta 7 (`tipo: relatorio`), que até aqui responde 422 `tipo_indisponivel`
 
 ### 5.3 Fechamento da Fase 5 `[A]`
 
 Ref: constituição do Gestor III
 
-- [ ] 5.3.1 `pint` e a suíte da agenda automática inteira
-- [ ] 5.3.2 QA independente (Copilot) até `APROVADO`
-- [ ] 5.3.3 Pedir autorização para o commit e a publicação
+- [x] 5.3.1 `pint` e a suíte da agenda automática inteira
+- [x] 5.3.2 QA independente (Copilot) até `APROVADO`
+  - Pedido em 03/11 com as Fases 3, 4 e 6.
+  - Rodada 1 (03/11): REPROVADO — o resumo do modelo era cortado em 300, e com detalhes suficientes conflitos e pendências deixavam de ser nomeados (FR-019). Corrigido: as linhas e os conflitos e pendências são repartidos JUNTOS pelas partes (`Mensagens::emPartesDoRelatorio`), cada um uma vez, com as contagens em todas; nada é cortado, e os tetos por item (linha 600, pendência e conflito 200) garantem que a parte sempre cabe em 1024. O livre segue a mesma regra. Achado junto: a visita sem responsável e sem técnico fazia o livre dizer "não há visita na agenda" e sumir com a pendência — agora o dia só é "vazio" sem linha, conflito nem pendência. Rodada 2 pedida.
+  - Rodada 2 (03/11): REPROVADO — com zero visitas e a pendência de falha de leitura, o relatório ainda dizia "não há visita na agenda" (no livre e em {{2}} do modelo). Corrigido em `Mensagens::diaVazio`, a única regra do dia vazio para as duas formas: sem visita, linha, conflito nem pendência. Sem visita e com conflito ou pendência, sai "nenhuma visita encontrada" (texto novo, proposta em `contracts/mensagens.md`). Testes: 5 casos nas duas formas e o caso pelo ciclo (a programação falha às 16:30 e às 17:00); falham no código da rodada 2. Rodada 3 pedida.
+  - Rodada 3 (03/11): APROVADO — a regra do dia vazio é a mesma nos dois formatos, e as regressões pedidas passaram.
+- [x] 5.3.3 Pedir autorização para o commit e a publicação
+  - Junto da Fase 3: commit `ba5d37ec`, publicado em 03/11 (ver 3.6.3).
 
 ---
 
@@ -321,36 +345,44 @@ Ref: constituição do Gestor III
 
 Ref: FR-021, FR-023; Decision 14; SC-007
 
-- [ ] 6.1.1 `AgendaAutomatica\RespostaDoTecnico`, chamada no `MenuBot::processarNaConversa` logo depois do caso `suporte_no_matriz`, só em `aguardando_menu`
-- [ ] 6.1.2 Vale para técnico destinatário ativo (pela chave do celular) que **não** está na lista da casa (`pedroInterno`); quem está na lista segue com o Pedro
-- [ ] 6.1.3 Zera `com_pedro_desde` (o repasse leva `com_pedro = false` e o Matriz não chama a IA) e responde a frase fixa pelo `enviarSistema`, uma por sequência e no máximo uma a cada 2 min
-- [ ] 6.1.4 Testes do cenário 6: nenhum menu; o `whatsapp:pedro-tempo-limite` não pega a conversa; mais duas mensagens em 1 min não geram resposta nova; o Felipe destinatário gestor segue com o Pedro
-- [ ] 6.1.5 `WhatsappPedroTest` e os testes do menu sem regressão
+- [x] 6.1.1 `AgendaAutomatica\RespostaDoTecnico`, chamada no `MenuBot::processarNaConversa` logo depois do caso `suporte_no_matriz`, só em `aguardando_menu`
+- [x] 6.1.2 Vale para técnico destinatário ativo (pela chave do celular) que **não** está na lista da casa (`pedroInterno`); quem está na lista segue com o Pedro
+- [x] 6.1.3 Zera `com_pedro_desde` (o repasse leva `com_pedro = false` e o Matriz não chama a IA) e responde a frase fixa pelo `enviarSistema`, uma por sequência e no máximo uma a cada 2 min
+  - Só com o envio real ligado (antes disso nenhum técnico recebeu mensagem automática), no número do Pedro, e para técnico com consentimento; quem já pediu para parar volta a ser atendido como qualquer pessoa, a não ser que mande "parar" de novo.
+  - Achado na implementação: se a Meta recusa a frase fixa, o `whatsapp:pedro-tempo-limite` reenviaria o MENU (`reenviarMenuQueFalhou`). Fechado: a conversa do técnico da agenda não recebe o menu de reserva.
+- [x] 6.1.4 Testes do cenário 6: nenhum menu; o `whatsapp:pedro-tempo-limite` não pega a conversa; mais duas mensagens em 1 min não geram resposta nova; o Felipe destinatário gestor segue com o Pedro
+- [x] 6.1.5 `WhatsappPedroTest` e os testes do menu sem regressão
 
 ### 6.2 Alerta aos gestores `[A]`
 
 Ref: FR-021; Decision 15 (confirmada: WhatsApp, com o 4º modelo `agenda_alerta`)
 
-- [ ] 6.2.1 Aviso `alerta` para cada gestor destinatário ativo, um por sequência (chave: a primeira mensagem da sequência)
-- [ ] 6.2.2 Livre na janela, `agenda_alerta` fora dela, pelo mesmo `Envio` da Fase 3
-- [ ] 6.2.3 Testes: nome do técnico e texto sem quebra de linha, cortado em 300; uma sequência gera um alerta por gestor
+- [x] 6.2.1 Aviso `alerta` para cada gestor destinatário ativo, um por sequência (chave: a primeira mensagem da sequência)
+  - A linha nasce no webhook, `preparada` e adiada; quem manda é o ciclo do minuto seguinte, fora da trava da conversa e sem atrasar a resposta à Meta. O alerta não espera o silêncio (o técnico acabou de escrever). O técnico que também é gestor não recebe alerta da própria mensagem.
+- [x] 6.2.2 Livre na janela, `agenda_alerta` fora dela, pelo mesmo `Envio` da Fase 3
+- [x] 6.2.3 Testes: nome do técnico e texto sem quebra de linha, cortado em 300; uma sequência gera um alerta por gestor
 
 ### 6.3 "Parar" `[C]`
 
 Ref: FR-006; Decisions 14, 19
 
-- [ ] 6.3.1 Texto normalizado (minúsculas, sem acento e sem pontuação) igual a `parar` grava `parou_em` e responde a confirmação
-- [ ] 6.3.2 O alerta aos gestores diz que ele pediu para parar
-- [ ] 6.3.3 A programação seguinte vira `pendente/parou`; voltar a receber só com o administrador registrando consentimento de novo
-- [ ] 6.3.4 Testes: "Parar.", "PARAR" e "parar!" valem; "não vou parar agora" não vale; consentimento novo limpa `parou_em`
+- [x] 6.3.1 Texto normalizado (minúsculas, sem acento e sem pontuação) igual a `parar` grava `parou_em` e responde a confirmação
+- [x] 6.3.2 O alerta aos gestores diz que ele pediu para parar
+- [x] 6.3.3 A programação seguinte vira `pendente/parou`; voltar a receber só com o administrador registrando consentimento de novo
+- [x] 6.3.4 Testes: "Parar.", "PARAR" e "parar!" valem; "não vou parar agora" não vale; consentimento novo limpa `parou_em`
 
 ### 6.4 Fechamento da Fase 6 `[C]`
 
 Ref: constituição do Gestor III e V
 
-- [ ] 6.4.1 No Matriz, conferir por teste que a conversa repassada com `com_pedro = false` não vai à IA (o Pedro do Matriz não muda)
-- [ ] 6.4.2 `pint` e QA independente (Copilot) até `APROVADO`
-- [ ] 6.4.3 Pedir autorização para o commit e a publicação; só depois disso a Fase 7 pode ligar envio a técnico
+- [x] 6.4.1 No Matriz, conferir por teste que a conversa repassada com `com_pedro = false` não vai à IA (o Pedro do Matriz não muda)
+  - `PedroNoGestorTest::test_resposta_do_tecnico_da_agenda_chega_sem_o_pedro_e_nao_vai_a_ia` (03/11). Com o defeito plantado (tratar `aguardando_menu` como "com o Pedro"), ele falha.
+- [x] 6.4.2 `pint` e QA independente (Copilot) até `APROVADO`
+  - `pint` limpo; QA pedido em 03/11 com as Fases 3, 4 e 5.
+  - Rodada 1 (03/11): REPROVADO — a resposta fixa recusada pela Meta não segurava a próxima, então cada mensagem do técnico virava mais uma chamada e mais um alerta a cada gestor. Corrigido: qualquer resposta tentada nos últimos 2 min segura a sequência, chegando ou não (FR-021: uma resposta e um aviso por sequência); a sequência seguinte tenta de novo. Rodada 2 pedida.
+  - Rodada 2 (03/11): APROVADO para a Fase 6.
+- [x] 6.4.3 Pedir autorização para o commit e a publicação; só depois disso a Fase 7 pode ligar envio a técnico
+  - Junto da Fase 3: commit `ba5d37ec`, publicado em 03/11 (ver 3.6.3). A resposta do técnico está no ar; ligar o envio continua dependendo da Fase 7.
 
 ---
 
@@ -363,16 +395,23 @@ Fora do código. Cada passo só com autorização expressa do Felipe.
 Ref: `contracts/mensagens.md`; Decision 7; FR-022
 
 - [ ] 7.1.1 O dono aprova os textos dos quatro modelos (`agenda_programacao`, `agenda_mudanca`, `agenda_relatorio`, `agenda_alerta`)
+  - Em 03/11/2026 o dono viu a prévia do `agenda_programacao` preenchido e autorizou o envio: esse texto está aprovado. Faltam os outros três.
 - [ ] 7.1.2 Com autorização, criar os quatro na Meta: UTILITY, `pt_BR`, só corpo, com os exemplos de cada variável
+  - `agenda_programacao` criado em 03/11/2026 às 08:15, com o corpo de `Mensagens::corpoDoModelo` e exemplos fictícios. Faltam os outros três.
 - [ ] 7.1.3 Acompanhar a aprovação e a categoria; se a Meta recusar ou recategorizar, ajustar só o texto fixo e submeter de novo
+  - `agenda_programacao`: APPROVED, UTILITY, às 08:20 de 03/11/2026, sem recategorização.
 - [ ] 7.1.4 Conferir na aba que os quatro aparecem como aprovados, UTILITY e com as variáveis certas
+- [ ] 7.1.5 Forma de pagamento da conta na Meta regularizada, pelo dono: o `health_status` da conta tem de voltar a `AVAILABLE`
+  - Em 03/11/2026 a conta estava `BLOCKED` com o erro 141006 ("There is an error with the payment method. This will block business initiated conversations."). Os 4 envios avulsos do `agenda_programacao` daquele dia foram aceitos pela API e recusados na entrega com o 131042 ("Business eligibility payment issue"). Nos 45 dias anteriores, nenhuma mensagem fora da janela de 24 h foi entregue, e o 131042 aparece no registro do webhook desde 03/07/2026. Sem isto, nenhuma mensagem iniciada pela empresa sai, nem por modelo.
 
 ### 7.2 Cadastros e números `[C]`
 
 Ref: FR-003, FR-004; spec, tabela dos números e Edge Cases
 
-- [ ] 7.2.1 Confirmar com o dono se os números de Cristiano e Vitor do documento são os atuais (o cadastro tem os finais 5943 e 2012)
+- [x] 7.2.1 Confirmar com o dono se os números de Cristiano e Vitor do documento são os atuais (o cadastro tem os finais 5943 e 2012)
+  - O dono corrigiu os dois cadastros em 03/11/2026 (Cristiano final 0122, Vitor final 1951), com os números do documento.
 - [ ] 7.2.2 Alefe: cadastrar o celular pessoal dele, e não o 6889 do plantão
+  - Em 03/11/2026 o dono cadastrou o 6889 no Alefe. A programação dele chega a quem estiver com o aparelho do plantão.
 - [ ] 7.2.3 Wallas: celular no cadastro de funcionário (o que também o liga ao usuário do Gestor no Pedro)
 - [ ] 7.2.4 Correção pela tela do Gestor, pelo dono; ou pela ponte, mostrando antes o que muda e gravando só com autorização escrita
 - [ ] 7.2.5 `AGENDA_NUNCA_ENVIAR` com a chave do 3269 no `.env` de produção do Gestor, pelo dono
@@ -437,8 +476,8 @@ os passos 7.1.1 (aprovar os textos) e 7.2.1 a 7.2.3 (cadastros) não dependem de
 | 4 - Gestor: mudanças | 4 | 14 | A |
 | 5 - Gestor: relatório das 17:00 | 3 | 12 | A |
 | 6 - Gestor: resposta do técnico e parar | 4 | 15 | C, A |
-| 7 - Ativação com o dono | 4 | 20 | C, A |
-| **Total** | **33** | **146** | - |
+| 7 - Ativação com o dono | 4 | 21 | C, A |
+| **Total** | **33** | **147** | - |
 
 ## Escopo Coberto
 

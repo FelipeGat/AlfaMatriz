@@ -117,6 +117,14 @@ Agenda de {{1}}: {{2}}. Resumo: {{3}}. Pedro — Grupo Soluções
 | {{2}} | `Cristiano: 09:00–10:00 Praia Branca (nº 837); 10:00–18:00 Castanheiras (nº 776) • Alefe e Vitor: 08:00–18:00 VD Cariacica (nº 832)` |
 | {{3}} | `4 visitas, 4 técnicos, 0 conflitos, 1 pendência (Alefe: sem número)` |
 
+Acima de 1024, as linhas ({{2}}) e os conflitos e pendências (em {{3}}, depois das contagens) são repartidos juntos
+pelas partes, cada um uma vez; as contagens vão em todas, e nada é cortado (FR-019). A parte que só leva conflitos e
+pendências diz em {{2}}: `as visitas estão nas outras partes` **[PROPOSTA]**. Há visita, mas nenhuma com técnico (a
+sem responsável, que vai nas pendências): `nenhum técnico na agenda` **[PROPOSTA]**, no modelo e no livre. Nenhuma
+visita lida, mas com conflito ou pendência a nomear — a falha de leitura da agenda: `nenhuma visita encontrada`
+**[PROPOSTA]**, também nas duas formas. O dia só sai como "não há visita na agenda" sem visita, linha, conflito nem
+pendência: com a falha de leitura, dizer que o dia está livre seria afirmar o que a agenda pode não ter mostrado.
+
 Risco: a Meta pode achar a proporção de variáveis alta (erro 2388293, sem número na doc). Se recusar, a saída é mais
 texto fixo, sem mudar o código (o código só preenche as variáveis).
 
