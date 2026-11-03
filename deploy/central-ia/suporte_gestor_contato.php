@@ -47,11 +47,15 @@ try {
     $nome = mb_substr($nome, 0, 120);
     $papel = mb_substr(trim((string) ($d['papel'] ?? '')), 0, 60);
 
+    // A hora sai do Laravel do Gestor (APP_TIMEZONE, Brasília), como ele grava em toda tela.
+    // O NOW() do MySQL dava UTC, e o "visto em" do cliente aparecia 3h adiantado (T-479).
+    $agora = now()->format('Y-m-d H:i:s');
+
     DB::beginTransaction();
     DB::statement('INSERT INTO cliente_contatos_identificados (cliente_id, nome, papel, telefone, telefone_chave, origem, visto_em, created_at, updated_at) '
-        ."VALUES (?, ?, ?, ?, ?, 'whatsapp', NOW(), NOW(), NOW()) "
+        ."VALUES (?, ?, ?, ?, ?, 'whatsapp', ?, ?, ?) "
         .'ON DUPLICATE KEY UPDATE telefone = VALUES(telefone), visto_em = VALUES(visto_em), updated_at = VALUES(updated_at), deleted_at = NULL',
-        [(int) $cliente, $nome, $papel !== '' ? $papel : null, $digitos, $chave]);
+        [(int) $cliente, $nome, $papel !== '' ? $papel : null, $digitos, $chave, $agora, $agora, $agora]);
     $linha = DB::table('cliente_contatos_identificados')->where('cliente_id', (int) $cliente)->where('telefone_chave', $chave)->first(['id', 'nome', 'papel']);
     $r = ['ok' => true, 'id' => (int) $linha->id, 'nome' => (string) $linha->nome, 'papel' => (string) ($linha->papel ?? '')];
     if ($aplicar) {
