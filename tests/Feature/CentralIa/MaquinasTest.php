@@ -336,6 +336,12 @@ class MaquinasTest extends TestCase
                 $e = $execucao(CentralIaExecucao::EXECUTANDO, ['runner_id' => $runner->id, 'iniciada_em' => now()]);
                 $agentes->confirmacao($ana, $runner, $e->id, ['estado' => 'aguardando']);
             },
+            // T-566: a pessoa digita o código enquanto o runner pergunta pela
+            // confirmação — o evento gravado trava a conta (chave estrangeira).
+            'confirmar' => function () use ($execucao, $ana, $runner, $agentes) {
+                $e = $execucao(CentralIaExecucao::EXECUTANDO, ['runner_id' => $runner->id, 'iniciada_em' => now(), 'confirmacao' => ['estado' => 'aguardando']]);
+                $agentes->confirmar($ana, $e->id, '123456', 'web');
+            },
             'interromperOrfas' => function () use ($execucao, $ana, $runner, $agentes) {
                 $execucao(CentralIaExecucao::EXECUTANDO, ['runner_id' => $runner->id, 'iniciada_em' => now()->subMinutes(5)]);
                 $agentes->interromperOrfas($ana, $runner, now(), []);

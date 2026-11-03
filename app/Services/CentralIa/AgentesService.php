@@ -1014,6 +1014,12 @@ class AgentesService
         }
 
         return DB::transaction(function () use ($user, $id, $codigo, $origem) {
+            // A conta antes, como em `confirmacao`. O evento gravado abaixo
+            // aponta para a conta (chave estrangeira), e o MySQL trava a linha
+            // dela em modo compartilhado; travando só a execução primeiro, o
+            // runner perguntando pela confirmação no mesmo instante (que já
+            // tem a conta e espera a execução) fechava o ciclo — T-566.
+            User::whereKey($user->id)->lockForUpdate()->first();
             $e = CentralIaExecucao::where('user_id', $user->id)->whereKey($id)->lockForUpdate()->firstOrFail();
             if (! $e->aguardandoConfirmacao()) {
                 throw ValidationException::withMessages(['codigo' => 'Este pedido não está esperando confirmação.']);
