@@ -11,7 +11,7 @@ class SuporteGestorAgenda extends Model
     protected $table = 'suporte_gestor_agenda';
 
     protected $fillable = ['conversa_id', 'chave', 'lote', 'tipo', 'visita_id', 'atendimento', 'tecnico_id', 'inicio', 'fim', 'esperado',
-        'motivo', 'observacao', 'pedido_por', 'situacao', 'resultado', 'erro', 'reservado_em'];
+        'motivo', 'observacao', 'pedido_por', 'autor_email', 'situacao', 'resultado', 'erro', 'reservado_em'];
 
     protected function casts(): array
     {

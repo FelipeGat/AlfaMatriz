@@ -97,12 +97,27 @@ class AcessoInterno
         return $canal->viaGestor() ? $canal->numerosInternosAoGestor($this->chaves()) : null;
     }
 
-    /** @return array{telefone: string, nome: string, perfil: string, gestor_email: ?string}|null */
+    /**
+     * A linha da lista deste número, com o usuário do Gestor de quem escreve. A 4ª coluna vale
+     * quando preenchida; sem ela, o usuário vem do cadastro de funcionário do Gestor que tem este
+     * número (bugfix de 02/11/2026: o Pedro pediu o e-mail ao Felipe, e o Gestor já ligava o celular
+     * dele ao funcionário e ao usuário). Quem decide se o usuário pode é o Gestor, na gravação.
+     *
+     * @return array{telefone: string, nome: string, perfil: string, gestor_email: ?string, gestor_email_de: ?string}|null
+     */
     public function deQuem(string $telefone): ?array
     {
         $chave = CanalWhatsApp::chave($telefone);
+        $linha = $chave ? collect($this->lista())->first(fn ($p) => CanalWhatsApp::chave($p['telefone']) === $chave) : null;
+        if (! $linha) {
+            return null;
+        }
+        if ($linha['gestor_email'] !== null) {
+            return $linha + ['gestor_email_de' => 'lista'];
+        }
+        $usuario = app(DiretorioGestor::class)->daEquipe($telefone)['usuario'] ?? null;
 
-        return $chave ? collect($this->lista())->first(fn ($p) => CanalWhatsApp::chave($p['telefone']) === $chave) : null;
+        return ['gestor_email' => $usuario, 'gestor_email_de' => $usuario ? 'cadastro' : null] + $linha;
     }
 
     /** Lançar, corrigir e cancelar visitas da agenda: só diretor e gestor (pedro-dia-do-tecnico, FR-017). */
@@ -152,7 +167,7 @@ class AcessoInterno
         }
         $naoFaz = ['ver andamentos ou o histórico de uma OS', 'concluir ou mudar a etapa de um atendimento', 'criar tarefa no quadro',
             ...(self::criaOrcamento($acesso) ? [] : [self::ve($acesso, 'diretor')
-                ? 'criar orçamento no Gestor ainda não: falta ligar a linha dele na lista do Pedro ao usuário dele no Gestor (o e-mail)'
+                ? 'criar orçamento no Gestor ainda não: falta ligar o número dele ao usuário dele no Gestor (o celular no cadastro de funcionário)'
                 : 'criar orçamento no Gestor (só os proprietários)']),
             'editar, aprovar, enviar ao cliente ou excluir orçamento',
             'mandar mensagem, cobrar ou ligar para cliente, técnico ou fornecedor', 'mandar boleto ou nota fiscal', 'pagar, baixar ou renegociar conta',

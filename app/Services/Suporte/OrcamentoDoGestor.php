@@ -32,7 +32,9 @@ class OrcamentoDoGestor
 
     public const SO_PROPRIETARIOS = 'Criar orçamento no Gestor pelo Pedro é só para os proprietários.';
 
-    public const SEM_VINCULO = 'Para eu criar orçamento no Gestor, a sua linha na lista do Pedro (Suporte › Pedro) precisa do e-mail do seu usuário no Gestor: é ele que vira o vendedor.';
+    /** Bugfix de 02/11/2026: o caminho é o celular no cadastro de funcionário, e não pedir o e-mail a quem escreve. */
+    public const SEM_VINCULO = 'Para eu criar orçamento no Gestor, preciso saber quem você é lá: ponha este celular no seu cadastro de funcionário do Gestor (o funcionário ligado ao seu usuário), '
+        .'ou o e-mail do seu usuário na sua linha da lista do Pedro (Suporte › Pedro). É o seu usuário que vira o vendedor.';
 
     /** A falha que não diz se o Gestor gravou: a ponte caiu ou não respondeu (suporte.mjs). */
     private const INCERTO = 'conferir no Gestor';

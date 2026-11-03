@@ -291,8 +291,9 @@ class Pedro
                 $bloco['resposta'] .= "\n\n".$registro;
             }
             // O dia do técnico (pedro-dia-do-tecnico, FASE 2): a prévia é conferida e guardada; nada vai ao Gestor ainda.
+            // A lista é a do sistema, com o total (bugfix de 02/11/2026); da IA fica só o que ela entendeu e perguntou.
             if ($bloco['acao'] === 'previa_agenda' && ! $c->comHumano()) {
-                $bloco['resposta'] .= app(AgendaDoTecnico::class)->previa($c, $interno, (array) ($bloco['agenda'] ?? []));
+                $bloco['resposta'] = trim(rtrim($bloco['resposta'])."\n\n".app(AgendaDoTecnico::class)->previa($c, $interno, (array) ($bloco['agenda'] ?? [])));
             }
             // O "sim" da prévia (FASE 4): a resposta é a do sistema, que sabe o que entrou na fila.
             if ($bloco['acao'] === 'confirmar_agenda' && ! $c->comHumano()) {
@@ -518,7 +519,11 @@ class Pedro
             $n++;
         }
         // Mudança de agenda que nenhuma máquina pegou (pedro-dia-do-tecnico): falha, e quem pediu recebe o resumo.
-        foreach (\App\Models\SuporteGestorAgenda::where('situacao', 'pendente')->where('created_at', '<', $limite)->get() as $m) {
+        // Lote em andamento não: a máquina grava 5 por volta, e as últimas de uma semana inteira esperam mais que o
+        // prazo na fila com ela trabalhando (bugfix de 02/11/2026). Vale o que ela fez do lote no prazo.
+        // Andando = a máquina reservou ou respondeu algo do lote no prazo (reservado_em só ela preenche: a falha daqui não conta).
+        $andando = \App\Models\SuporteGestorAgenda::whereNotNull('reservado_em')->where('updated_at', '>=', $limite)->distinct()->pluck('lote')->all();
+        foreach (\App\Models\SuporteGestorAgenda::where('situacao', 'pendente')->where('created_at', '<', $limite)->whereNotIn('lote', $andando)->get() as $m) {
             if (! $this->desistir($m, 'nenhuma máquina gravou no Gestor')) {
                 continue;
             }

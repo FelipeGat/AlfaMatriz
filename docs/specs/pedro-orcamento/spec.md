@@ -267,7 +267,9 @@ orçamentos.
 
 - **FR-001**: O sistema MUST permitir criar orçamento pelo Pedro somente a quem está na lista de
   acesso interno com o perfil de diretor E com a linha ligada ao seu usuário no Gestor; a decisão é
-  do sistema, não da IA, e vale para a prévia e para a confirmação.
+  do sistema, não da IA, e vale para a prévia e para a confirmação. A ligação é a 4ª coluna, quando
+  preenchida, ou o cadastro de funcionário do Gestor com o mesmo celular (bugfix de 02/11/2026,
+  `pedro-dia-do-tecnico` FR-019): o Pedro não pede e-mail na conversa.
 - **FR-002**: O Gestor MUST conferir, na hora de gravar, que o usuário ligado está ativo, é
   funcionário e tem o perfil que cria orçamento pela tela; senão recusa com o motivo.
 - **FR-003**: O vendedor do orçamento MUST ser o usuário de quem pediu, sem pergunta; e o orçamento

@@ -35,7 +35,12 @@ try {
         throw new RuntimeException('o Gestor ainda não tem o serviço de visitas — publicar o Gestor antes');
     }
     $servico = app(AtendimentoVisitaService::class);
-    $autor = User::where('email', (string) ($d['autor_email'] ?? ''))->value('id');
+    // O autor é quem pediu ao Pedro (bugfix de 02/11/2026), e o Gestor confere de novo aqui: sem usuário
+    // ativo, não grava — gravar sem autor, ou no de outra pessoa, apagaria quem fez a mudança.
+    $autor = User::where('email', (string) ($d['autor_email'] ?? ''))->where('ativo', true)->value('id');
+    if (! $autor) {
+        throw new RuntimeException('quem pediu não tem usuário ativo no Gestor'.(($d['autor_email'] ?? '') !== '' ? ' com o e-mail '.$d['autor_email'] : ''));
+    }
     [$inicio, $fim] = [$hora($d['inicio'] ?? null), $hora($d['fim'] ?? null)];
     $tecnico = (int) ($d['tecnico_id'] ?? 0);
 

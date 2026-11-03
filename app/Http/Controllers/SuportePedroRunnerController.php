@@ -88,8 +88,10 @@ class SuportePedroRunnerController extends Controller
             'empresa_id' => ['nullable', 'integer'], 'assunto_id' => ['nullable', 'integer'],
             'funcionarios' => ['nullable', 'array', 'max:20'], 'funcionarios.*' => ['integer'],
         ]);
+        // "usuario": o e-mail do usuário do Gestor ligado ao funcionário (bugfix de 02/11/2026); ausente = máquina antiga.
+        // Só texto aqui: um e-mail estranho no cadastro de alguém não pode derrubar o retrato inteiro — quem usa confere.
         $d['equipe'] = $this->itens('equipe', $d['equipe'] ?? [], ['id' => ['required', 'integer'], 'nome' => ['required', 'string', 'max:255'],
-            'telefones' => ['nullable', 'array', 'max:5'], 'telefones.*' => ['string', 'max:40']]);
+            'telefones' => ['nullable', 'array', 'max:5'], 'telefones.*' => ['string', 'max:40'], 'usuario' => ['sometimes', 'nullable', 'string', 'max:255']]);
         $d['assuntos'] = $this->itens('assuntos', $d['assuntos'] ?? [], ['id' => ['required', 'integer'], 'nome' => ['required', 'string', 'max:255'],
             'tipo' => ['nullable', 'string', 'max:60'], 'categoria' => ['nullable', 'string', 'max:120'], 'empresa_id' => ['nullable', 'integer']]);
         $d['showroom'] = $this->itens('showroom', $d['showroom'] ?? [], ['categoria' => ['nullable', 'string', 'max:120'], 'titulo' => ['required', 'string', 'max:255'],
@@ -172,7 +174,8 @@ class SuportePedroRunnerController extends Controller
 
         return response()->json(['mudancas' => $lista->map(fn ($m) => ['id' => $m->id, 'chave' => $m->chave, 'tipo' => $m->tipo, 'visita_id' => $m->visita_id,
             'atendimento' => $m->atendimento, 'tecnico_id' => $m->tecnico_id, 'inicio' => $m->inicio, 'fim' => $m->fim, 'esperado' => $m->esperado,
-            'motivo' => $m->motivo, 'observacao' => $m->observacao, 'pedido_por' => $m->pedido_por, 'autor_email' => config('services.suporte_pedro.conta')])->values()]);
+            // O autor é quem pediu (bugfix de 02/11/2026); a conta do Pedro só para o que foi confirmado antes disso.
+            'motivo' => $m->motivo, 'observacao' => $m->observacao, 'pedido_por' => $m->pedido_por, 'autor_email' => $m->autor_email ?: config('services.suporte_pedro.conta')])->values()]);
     }
 
     public function agendaFeita(Request $request, int $mudanca, \App\Services\Suporte\AgendaDoTecnico $agenda, CanalWhatsApp $canal): JsonResponse

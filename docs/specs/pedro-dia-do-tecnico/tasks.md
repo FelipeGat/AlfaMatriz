@@ -129,6 +129,35 @@ Ref: spec.md FR-013
 
 ---
 
+## FASE 5 - Bugfix de 02/11/2026 (conversa real do Felipe)
+
+### 5.1 Nada cortado em silêncio `[A]`
+- [x] 5.1.1 `Contexto::paradas` sem o teto de 15; `AgendaDoTecnico::LIMITE` (40) recusa dizendo (FR-018)
+- [x] 5.1.2 Prévia e resultado montados pelo sistema, com o total e as falhas nomeadas (FR-006, FR-012)
+- [x] 5.1.3 `Pedro::vencidos` não dá como falha o lote que a máquina ainda está gravando (FR-018)
+
+### 5.2 Mensagem inteira `[A]`
+- [x] 5.2.1 `Contexto::MENSAGEM_INTEIRA` (4.096) no lugar do corte de 1.200 (FR-020)
+
+### 5.3 Usuário do Gestor pelo celular do cadastro `[A]`
+- [x] 5.3.1 `suporte_gestor_ler.php`: o e-mail do usuário ativo de cada funcionário (`equipe.usuario`)
+- [x] 5.3.2 `AcessoInterno::deQuem`: 4ª coluna, senão o cadastro (FR-019); o orçamento usa o mesmo
+
+### 5.4 Autor real `[C]`
+- [x] 5.4.1 Migração `2026_11_02_210000`: `suporte_gestor_agenda.autor_email`
+- [x] 5.4.2 Prévia e "sim" exigem o usuário de quem pede; o runner manda o autor dele (FR-014)
+- [x] 5.4.3 `suporte_gestor_agenda.php` recusa autor sem usuário ativo no Gestor
+
+### 5.5 Aviso dito uma vez `[M]`
+- [x] 5.5.1 Visita não citada e sem choque "fica como está", e não volta na prévia seguinte (FR-007)
+
+### 5.6 Testes `[A]`
+- [x] 5.6.1 `PedroAgendaCorrecoesTest` (10, falham no código antigo) e os da agenda ajustados ao formato novo
+- [x] 5.6.2 Bateria `AgendaCenariosTest` com a IA real, antes e depois (dados fictícios)
+- [x] 5.6.3 Scripts do Gestor no `gestor_alfa_test`: autor gravado, repetição sem duplicar, autor inativo recusado
+- [x] 5.6.4 Publicar: tag do Matriz (com migração), depois o instalador da máquina; o Gestor não muda
+- [ ] 5.6.5 Validar em produção: roteiro, bloco D, passos 5 a 8
+
 ## Matriz de Dependencias
 
 ```mermaid

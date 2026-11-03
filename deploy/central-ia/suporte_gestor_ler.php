@@ -113,11 +113,21 @@ try {
 
     // A equipe (Felipe, 20/10/2026): funcionário ativo com telefone, para o Pedro
     // reconhecer quem é da casa e oferecer ajuda com os atendimentos em nome dela.
+    // O usuário ativo de cada funcionário (bugfix de 02/11/2026): é ele que liga o número da lista
+    // do Pedro à pessoa no Gestor — o Felipe não precisa dizer o e-mail. Dois usuários no mesmo
+    // funcionário não ligam nenhum: escolher um seria adivinhar quem pediu.
+    $usuarios = [];
+    if (Schema::hasColumn('users', 'funcionario_id')) {
+        foreach (DB::table('users')->whereNotNull('funcionario_id')->where('ativo', 1)->whereNull('deleted_at')->where('tipo', '!=', 'cliente')->get(['funcionario_id', 'email']) as $u) {
+            $usuarios[$u->funcionario_id][] = (string) $u->email;
+        }
+    }
     $equipe = [];
     foreach (DB::table('funcionarios')->where('ativo', 1)->whereNull('deleted_at')->whereNull('data_demissao')->get(['id', 'nome', 'celular', 'telefone']) as $f) {
         $fones = array_values(array_filter([(string) $f->celular, (string) $f->telefone], fn ($t) => strlen(preg_replace('/\D/', '', $t)) >= 10));
         if ($fones) {
-            $equipe[] = ['id' => (int) $f->id, 'nome' => (string) $f->nome, 'telefones' => $fones];
+            $equipe[] = ['id' => (int) $f->id, 'nome' => (string) $f->nome, 'telefones' => $fones]
+                + (count($usuarios[$f->id] ?? []) === 1 ? ['usuario' => $usuarios[$f->id][0]] : []);
         }
     }
     // A agenda dos técnicos (pedro-dia-do-tecnico, 23/10/2026): as visitas de 7 dias para trás a 14

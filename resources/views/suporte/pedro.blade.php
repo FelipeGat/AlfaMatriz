@@ -28,7 +28,8 @@
                     @csrf
                     <p class="text-[12.5px] text-ink-mute">Quem escreve de um destes números é atendido como da casa, a qualquer hora, e vê só o que o perfil permite. Vale o número, não o nome que a pessoa diz.
                         Perfis: <b>diretor</b> (Gestor completo, VixCard no Matriz e o resumo do dia), <b>gestor</b> (Gestor completo: suporte, financeiro e comercial), <b>suporte</b> (só os atendimentos do Gestor).
-                        A 4ª coluna, opcional, é o e-mail do usuário da pessoa no Gestor: com ela, o diretor também cria orçamento pelo Pedro, como vendedor.</p>
+                        O usuário da pessoa no Gestor vem do cadastro de funcionário que tem o mesmo celular; é ele que fica como autor das visitas e como vendedor do orçamento que o diretor cria pelo Pedro.
+                        A 4ª coluna, opcional, é o e-mail desse usuário, para quando o celular não está no cadastro: preenchida, ela vale.</p>
                     <label><span class="{{ $rotulo }}">Uma pessoa por linha: telefone | nome | perfil | e-mail no Gestor (opcional)</span>
                         <textarea name="acessos_internos" rows="4" maxlength="3000" class="{{ $campo }} font-mono"
                                   placeholder="+55 27 99999-9999 | Felipe | diretor">{{ old('acessos_internos', $acessos) }}</textarea></label>

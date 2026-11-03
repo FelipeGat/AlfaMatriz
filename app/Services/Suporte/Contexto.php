@@ -426,12 +426,15 @@ class Contexto
         ."2. Para cada parada, procure o que já existe: as visitas do técnico na AGENDA DOS TÉCNICOS e, em CLIENTES PARECIDOS, os atendimentos e os orçamentos em aberto do cliente. Mostre o que achou. "
         ."3. Proponha por parada um tipo: \"reagendar_visita\" (acertar o horário de uma visita que já existe: visita_id), \"criar_visita\" (visita nova num atendimento que já existe: atendimento = nº), "
         ."\"cancelar_visita\" (visita que não aconteceu: visita_id e motivo) ou \"abrir_atendimento\" (cliente sem atendimento para isso: cliente = código, ou \"novo_pre\"). "
-        ."4. Aponte CONFLITOS (o mesmo técnico em dois lugares no mesmo horário; visita agendada no dia que o relato não menciona) e LACUNAS (fim que falta — havendo parada seguinte, proponha o início dela como fim e peça confirmação —, cliente não encontrado, atendimento que não ficou claro). "
-        ."NÃO decida conflito nem lacuna sozinho: pergunte, uma ou duas perguntas por mensagem, até fechar. Não proponha nada sobre almoço ou jornada: isso é do ponto do RH. "
-        ."5. Sempre que mandar a prévia, use acao \"previa_agenda\" com a lista \"agenda\": "
+        ."4. Aponte CONFLITOS (o mesmo técnico em dois lugares no mesmo horário) e LACUNAS (fim que falta — havendo parada seguinte, proponha o início dela como fim e peça confirmação —, cliente não encontrado, atendimento que não ficou claro). "
+        ."Visita que já está na agenda, que ele não citou e que não choca com o horário fica como está: não pergunte por ela. "
+        ."NÃO decida conflito nem lacuna sozinho: pergunte, uma ou duas perguntas por mensagem, até fechar, e NUNCA de novo o que ele já respondeu nesta conversa. Não proponha nada sobre almoço ou jornada: isso é do ponto do RH. "
+        ."5. Sempre que mandar a prévia, use acao \"previa_agenda\" com a lista \"agenda\" com TODAS as paradas, sem resumir nem cortar — UMA parada por técnico (dois técnicos no mesmo lugar são duas paradas): "
         ."[{\"tipo\": \"…\", \"visita_id\": nº ou null, \"atendimento\": \"nº ou null\", \"cliente\": \"gestor:ID, novo_pre ou null\", \"tecnico_id\": nº, \"data\": \"AAAA-MM-DD\", \"hora_inicio\": \"HH:MM ou null\", \"hora_fim\": \"HH:MM ou null\", \"observacao\": \"o que foi feito e o resultado\", \"motivo\": \"só para cancelar\"}]. "
-        ."Prévia no texto: \"{nome}, o dia do {técnico} em dd/mm ficaria assim:\" e uma linha por parada (• HH:MM às HH:MM — cliente — nº — o que muda), depois \"Conflitos:\" e \"Falta:\" se houver. As visitas entram como AGENDADAS: o técnico finaliza pelo app. "
-        ."6. Quando a prévia não tiver Conflitos nem Falta, termine com \"Posso lançar?\". Ao \"sim\", use acao \"confirmar_agenda\" (sem a lista): o sistema grava as visitas e responde com o resultado. "
+        ."O SISTEMA confere cada parada no Gestor e monta a prévia (por dia, com o cliente, o nº, os técnicos e o total), os conflitos e o \"Posso lançar?\". "
+        ."Por isso, em \"resposta\" NÃO liste as paradas, NÃO conte as visitas e NÃO escreva \"Posso lançar?\": só o que você entendeu das respostas dele, em uma ou duas frases, e, se ainda faltar algo, a pergunta — deixe null, na parada, o campo que depende dela (atendimento, horário). "
+        ."As visitas entram como AGENDADAS: o técnico finaliza pelo app. "
+        ."6. Ao \"sim\", use acao \"confirmar_agenda\" (sem a lista): o sistema grava as visitas e responde com o resultado. "
         ."Atendimento novo (abrir_atendimento) não vai junto: depois do lançamento, siga com ele pelo REGISTRAR ATENDIMENTO, um de cada vez.\n";
 
     /**
@@ -461,13 +464,17 @@ class Contexto
         ."Se um orçamento não foi criado ou ficou sem confirmação e ele pedir para tentar de novo, use acao \"repetir_orcamento\": o sistema reenvia o MESMO pedido, sem criar outro. "
         ."Nunca diga que criou: o número chega pelo sistema.\n";
 
-    /** As paradas da prévia do dia, só com os campos conhecidos e no formato certo; até 15. @return list<array> */
+    /**
+     * As paradas da prévia, só com os campos conhecidos e no formato certo — TODAS: o teto de 15 cortava
+     * calado (02/11/2026: a prévia dizia 20 visitas, e só 15 foram conferidas e gravadas). Passou do que se
+     * lança de uma vez, quem recusa, dizendo, é a AgendaDoTecnico. @return list<array>
+     */
     private static function paradas(mixed $lista): array
     {
         $hora = fn ($v) => preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', (string) $v) ? (string) $v : null;
         $texto = fn ($v, int $max) => filled($v) && $v !== 'null' ? mb_substr(trim((string) $v), 0, $max) : null;
 
-        return collect(is_array($lista) ? array_slice($lista, 0, 15) : [])->filter(fn ($p) => is_array($p))->map(fn ($p) => [
+        return collect(is_array($lista) ? $lista : [])->filter(fn ($p) => is_array($p))->map(fn ($p) => [
             'tipo' => in_array($p['tipo'] ?? null, ['criar_visita', 'reagendar_visita', 'cancelar_visita', 'abrir_atendimento'], true) ? $p['tipo'] : null,
             'visita_id' => is_numeric($p['visita_id'] ?? null) ? (int) $p['visita_id'] : null,
             'atendimento' => $texto($p['atendimento'] ?? null, 10) !== null ? (preg_replace('/\D/', '', (string) $p['atendimento']) ?: null) : null,
@@ -1050,10 +1057,17 @@ class Contexto
             ."\n\n### Atendimento de agora\n".($agora->map($linha)->implode("\n") ?: '(ainda sem mensagem)').$retomada;
     }
 
+    /**
+     * O maior texto que o WhatsApp entrega numa mensagem: até ele, a mensagem vai inteira ao Pedro. O teto
+     * de 1.200 cortava a programação da semana do Felipe (1.507 caracteres, 02/11/2026), e o Pedro pediu
+     * para reenviar a sexta, que tinha chegado.
+     */
+    public const MENSAGEM_INTEIRA = 4096;
+
     /** Foto anexada e áudio (transcrito ou a transcrever no runner) aparecem como tal. */
     private function textoDaMensagem(\App\Models\SuporteMensagem $m): string
     {
-        $texto = Str::limit((string) $m->texto, 1200, '…');
+        $texto = Str::limit((string) $m->texto, self::MENSAGEM_INTEIRA, '… [cortada aqui]');
         if ($m->tipo === 'image' && in_array($m->id, $this->fotos, true)) {
             return '[FOTO nº '.$m->id.' — ANEXADA a esta mensagem: veja-a]'.(trim(str_replace('[imagem]', '', $texto)) !== '' ? ' legenda: '.trim(str_replace('[imagem]', '', $texto)) : '');
         }

@@ -152,7 +152,7 @@ class PedroOrcamentoTest extends TestCase
         $wallas = app(Contexto::class)->prompt($this->conversa(self::WALLAS, 'faz um orçamento para o Mar Azul'));
         $this->assertStringNotContainsString('previa_orcamento', $wallas);
         $this->assertStringContainsString(OrcamentoDoGestor::SEM_VINCULO, $wallas);
-        $this->assertStringContainsString('criar orçamento no Gestor ainda não: falta ligar a linha dele', $wallas);
+        $this->assertStringContainsString('criar orçamento no Gestor ainda não: falta ligar o número dele ao usuário dele no Gestor', $wallas);
 
         $suporte = app(Contexto::class)->prompt($this->conversa(self::SUPORTE, 'faz um orçamento para o Mar Azul'));
         $this->assertStringNotContainsString('previa_orcamento', $suporte);

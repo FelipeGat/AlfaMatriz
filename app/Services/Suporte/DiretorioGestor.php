@@ -458,9 +458,11 @@ class DiretorioGestor
     }
 
     /**
-     * Quem da equipe (funcionário ativo do Gestor) escreve deste número.
+     * Quem da equipe (funcionário ativo do Gestor) escreve deste número, com o e-mail do usuário
+     * dele no Gestor, quando o funcionário tem um (e só um) usuário ativo. Dois funcionários com o
+     * mesmo número não são ninguém: escolher um seria adivinhar.
      *
-     * @return array{id: int, nome: string}|null
+     * @return array{id: int, nome: string, usuario: ?string}|null
      */
     public function daEquipe(string $numero): ?array
     {
@@ -468,9 +470,14 @@ class DiretorioGestor
         if (! $chave) {
             return null;
         }
-        $f = collect($this->retrato()['equipe'] ?? [])->first(fn ($p) => collect($p['telefones'] ?? [])->contains(fn ($t) => CanalWhatsApp::chave((string) $t) === $chave));
+        $deles = collect($this->retrato()['equipe'] ?? [])->filter(fn ($p) => collect($p['telefones'] ?? [])->contains(fn ($t) => CanalWhatsApp::chave((string) $t) === $chave))->values();
+        if ($deles->count() !== 1) {
+            return null;
+        }
+        $f = $deles->first();
+        $usuario = mb_strtolower(trim((string) ($f['usuario'] ?? '')));
 
-        return $f ? ['id' => (int) $f['id'], 'nome' => (string) $f['nome']] : null;
+        return ['id' => (int) $f['id'], 'nome' => (string) $f['nome'], 'usuario' => filter_var($usuario, FILTER_VALIDATE_EMAIL) !== false ? $usuario : null];
     }
 
     /** @return list<array> os atendimentos ABERTOS em nome do funcionário (responsável ou técnico), mais antigos primeiro */

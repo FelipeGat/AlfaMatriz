@@ -37,6 +37,20 @@ propõe, aponta o que existe e o que não bate, e confirma antes de gravar.
 - Q: Quem da lista de acesso interno pode alterar a agenda? → A: só diretor e gestor; os demais
   só consultam (FR-017).
 
+### Session 2026-11-02 (bugfix, conversa real do Felipe)
+
+A programação da semana (1.507 caracteres, 20 visitas) chegou ao Pedro cortada em 1.200; a prévia da
+IA dizia 20 visitas, o código guardava 15 e o resultado listou 15 sem dizer que faltavam 5; o Pedro
+pediu o e-mail que o Gestor já ligava ao celular dele; as visitas saíram no nome da conta do Pedro; e
+o aviso de visita não citada voltou depois de respondido. O dono aprovou "só as correções" (a
+programação semanal — visita por equipe, semana passada, vários orçamentos — fica para spec própria).
+
+- Q: Quem é o autor da visita no Gestor? → A: o usuário do Gestor de quem pediu (FR-014). Sem saber
+  quem é, a prévia diz o que falta e o "sim" não lança — nunca no nome de outra pessoa.
+- Q: Como o Pedro sabe o usuário? → A: pelo celular no cadastro de funcionário do Gestor (o
+  funcionário com um só usuário ativo); a 4ª coluna da lista vale quando preenchida (FR-019).
+- Q: E acima do que se lança de uma vez? → A: a prévia recusa dizendo (FR-018), em vez de cortar.
+
 ## User Scenarios & Testing
 
 ### User Story 1 - Ver como está o dia de um técnico (Priority: P1)
@@ -176,6 +190,11 @@ que só aquela visita mudou.
 - O relato atravessa a meia-noite ou cita outro dia ("ontem"): o Pedro converte para a data
   e a mostra na prévia.
 - Duas paradas do mesmo técnico se sobrepõem no próprio relato: o Pedro aponta e pergunta.
+- A programação da semana inteira vem numa mensagem só, maior que 1.200 caracteres (02/11/2026: 1.507):
+  a mensagem chega inteira ao Pedro até o tamanho que o WhatsApp entrega, e ele não pede para reenviar
+  o que já chegou; a prévia traz todas as visitas e o total, ou recusa dizendo, acima de 40.
+- Quem pede não tem usuário no Gestor ligado ao celular nem na 4ª coluna: a prévia diz o que falta e
+  nada é lançado no nome de outra pessoa.
 - Uma parada em que o técnico só buscou um equipamento e levou para outro lugar (o
   computador do Mundo Animal testado no Centro Jurídico): a prévia deixa claro a qual
   atendimento cada trabalho pertence e pergunta quando não estiver claro.
@@ -206,9 +225,14 @@ que só aquela visita mudou.
   visitas do técnico no dia, os atendimentos abertos e os orçamentos do cliente.
 - **FR-006**: O Pedro MUST montar uma prévia do dia dizendo, para cada parada, o que propõe:
   vincular a uma visita existente, corrigir horário de visita existente, criar visita num
-  atendimento aberto, abrir atendimento novo ou criar pré-cliente novo.
-- **FR-007**: O Pedro MUST apontar conflitos (o mesmo técnico em dois lugares ao mesmo tempo;
-  visita agendada no dia que o relato não menciona) e não resolvê-los sozinho.
+  atendimento aberto, abrir atendimento novo ou criar pré-cliente novo. A lista da prévia, o total
+  e o "Posso lançar?" são montados pelo SISTEMA a partir das paradas conferidas — por dia, com o
+  cliente, o nº e os técnicos do mesmo lugar e horário juntos; da IA fica só o que ela entendeu e
+  perguntou (bugfix de 02/11/2026).
+- **FR-007**: O Pedro MUST apontar conflitos (o mesmo técnico em dois lugares ao mesmo tempo) e
+  não resolvê-los sozinho. A visita que já está na agenda, não foi citada e não choca fica como
+  está: a prévia avisa uma vez, e a prévia seguinte da mesma pessoa não repete o aviso (bugfix de
+  02/11/2026).
 - **FR-008**: O Pedro MUST apontar lacunas (horário de fim que falta, cliente não encontrado,
   atendimento não identificado) e insistir na pergunta até fechar; nenhuma parada vai à
   gravação sem técnico, cliente ou pré-cliente, início e fim.
@@ -221,12 +245,16 @@ que só aquela visita mudou.
   no Gestor, e MUST ser idempotente: a mesma prévia confirmada mais de uma vez muda o Gestor
   uma vez só.
 - **FR-012**: Depois de gravar, o Pedro MUST devolver a quem pediu o resultado de cada parada:
-  números dos atendimentos, o que foi criado ou corrigido, e o que falhou com o motivo.
+  números dos atendimentos, o que foi criado ou corrigido, e o que falhou com o motivo. O total vem
+  do que o Gestor confirmou ("19 de 20 gravadas; 1 não gravou"), e cada falha é nomeada pelo dia,
+  técnico e nº.
 - **FR-013**: O Pedro MUST permitir corrigir uma visita existente (horário, técnico,
   atendimento) ou cancelá-la, mostrando o antes e o depois e pedindo o motivo do
   cancelamento.
 - **FR-014**: Cada mudança gravada pelo Pedro na agenda MUST registrar quem pediu, pelo nome da
-  lista de acesso interno, como já acontece com os atendimentos que ele abre.
+  lista de acesso interno, como já acontece com os atendimentos que ele abre, e MUST ter como autor
+  no Gestor o usuário de quem pediu — nunca a conta do Pedro. O Gestor confere na gravação que o
+  usuário existe e está ativo (bugfix de 02/11/2026).
 - **FR-015**: As visitas lançadas a partir de um relato do que já aconteceu MUST entrar como
   **agendadas**, com o horário relatado; quem finaliza é o técnico, pelo app, como hoje
   (decisão do dono em 23/10/2026). A prévia e a resposta final dizem isso.
@@ -236,6 +264,14 @@ que só aquela visita mudou.
   mudanças na agenda (lançar, corrigir, cancelar); os demais da lista (ex.: suporte) podem
   apenas consultar, e o Pedro diz isso a quem pedir mudança sem poder (decisão do dono em
   23/10/2026).
+- **FR-018**: Nenhuma parada MUST ser descartada em silêncio: a prévia guarda todas; acima de 40
+  mudanças por vez, recusa dizendo quantas são e pede em partes. A mudança da fila só é dada como
+  "nenhuma máquina gravou" quando nada do lote dela andou no prazo (a máquina grava 5 por volta).
+- **FR-019**: O usuário do Gestor de quem pede MUST vir da 4ª coluna da lista, quando preenchida,
+  ou do cadastro de funcionário do Gestor com o mesmo celular (um só funcionário, com um só usuário
+  ativo); o Pedro não pede e-mail na conversa.
+- **FR-020**: A mensagem de quem escreve MUST chegar inteira ao Pedro até o tamanho que o WhatsApp
+  entrega (4.096 caracteres); acima disso, o corte é marcado.
 
 ### Key Entities
 

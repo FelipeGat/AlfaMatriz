@@ -37,6 +37,10 @@ Validação item a item (como as outras listas desde v2026.10.23.1); `max:5000`.
 
 Mesma autenticação das aberturas (token de capacidade `central-ia-runner`, conta do Pedro).
 
+`autor_email` é o usuário do Gestor de quem pediu (bugfix de 02/11/2026: `suporte_gestor_agenda.autor_email`,
+gravado no "sim"); só a mudança confirmada antes disso, sem ele, sai com a conta do Pedro. O script recusa autor
+sem usuário ativo no Gestor (`quem pediu não tem usuário ativo no Gestor…`).
+
 ## 3. Script no Gestor (novo): `deploy/central-ia/suporte_gestor_agenda.php`
 
 Roda pela ponte `run_prod.py`, como `suporte_gestor_gravar.php`: lê a mudança do ambiente, aplica

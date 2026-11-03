@@ -50,7 +50,9 @@ class PedroAgendaDoTecnicoTest extends TestCase
             ['id' => 839, 'numero' => '756', 'cliente_id' => 167, 'descricao' => 'Recuperação estrutural da garagem', 'status' => 'em_atendimento', 'criado_em' => '2026-09-30 10:00:00'],
             ['id' => 810, 'numero' => '729', 'cliente_id' => null, 'solicitante' => 'Emanuele', 'descricao' => 'Ar-condicionado não refrigera', 'status' => 'em_atendimento', 'criado_em' => '2026-09-15 17:03:56'],
         ], [], [['id' => 9, 'nome' => 'Vitor Emanuel Oliveira de Paula', 'telefones' => []], ['id' => 21, 'nome' => 'Cleison Souza', 'telefones' => []],
-            ['id' => 5, 'nome' => 'Cristiano Lopes Lucas', 'telefones' => []]], [], [
+            ['id' => 5, 'nome' => 'Cristiano Lopes Lucas', 'telefones' => []],
+            // O Felipe é ligado ao usuário dele no Gestor pelo celular do cadastro de funcionário (bugfix de 02/11/2026).
+            ['id' => 13, 'nome' => 'Felipe Henrique', 'telefones' => ['(27) 99884-5397'], 'usuario' => 'felipe@gestor.teste']], [], [
             ['id' => 1185, 'atendimento_id' => 925, 'tecnico_id' => 9, 'inicio' => '2026-10-23 08:00', 'fim' => '2026-10-23 10:00', 'situacao' => 'agendado', 'observacoes' => '', 'adicionais' => []],
             ['id' => 1181, 'atendimento_id' => 839, 'tecnico_id' => 21, 'inicio' => '2026-10-22 08:00', 'fim' => '2026-10-22 10:00', 'situacao' => 'finalizado', 'observacoes' => '', 'adicionais' => [5]],
             ['id' => 1180, 'atendimento_id' => 810, 'tecnico_id' => 9, 'inicio' => '2026-10-22 08:00', 'fim' => '2026-10-22 18:00', 'situacao' => 'finalizado', 'observacoes' => '', 'adicionais' => []],
@@ -124,15 +126,21 @@ class PedroAgendaDoTecnicoTest extends TestCase
             ['tipo' => 'criar_visita', 'atendimento' => '999', 'tecnico_id' => 77, 'data' => '2026-10-23', 'hora_inicio' => '19:00'],
         ]);
 
-        $this->assertStringContainsString('Parada 1: conflita com a visita de Vitor das 08:00 às 10:00 (nº 824) — qual vale?', $msg);
-        $this->assertStringContainsString('Parada 2: o cliente não foi confirmado no Gestor', $msg);
-        $this->assertStringNotContainsString('Parada 3', $msg, 'pré-cliente novo com início e fim fecha');
-        $this->assertStringContainsString('Parada 4: o técnico não está na equipe do Gestor.', $msg);
-        $this->assertStringContainsString('Parada 4: o atendimento nº 999 não foi achado no Gestor.', $msg);
-        $this->assertStringContainsString('Parada 4: falta o horário de término.', $msg);
+        // A parada é chamada pelo dia, pelo técnico e pelo nº, como aparece na prévia (bugfix de 02/11/2026).
+        $this->assertStringContainsString('Sexta 23/10, Vitor (nº 756): conflita com a visita de Vitor das 08:00 às 10:00 (nº 824) — qual vale?', $msg);
+        $this->assertStringContainsString('Sexta 23/10, Vitor: o cliente não foi confirmado no Gestor', $msg);
+        $this->assertStringContainsString('Sexta 23/10, técnico 77 (nº 999): o técnico não está na equipe do Gestor.', $msg);
+        $this->assertStringContainsString('Sexta 23/10, técnico 77 (nº 999): o atendimento nº 999 não foi achado no Gestor.', $msg);
+        $this->assertStringContainsString('Sexta 23/10, técnico 77 (nº 999): falta o horário de término.', $msg);
+        // A lista é a do sistema, com o total; com pendência, não pergunta "Posso lançar?".
+        $this->assertStringContainsString("*Sexta 23/10*\n• 08:00 às 09:30 — Corais de Parati — nº 756 — visita nova — Vitor", $msg);
+        $this->assertStringContainsString('• 14:30 às 18:40 — pré-cliente novo — atendimento novo, a abrir depois do lançamento — Vitor', $msg);
+        $this->assertStringContainsString('Total: 2 visitas novas e 2 atendimentos novos a abrir depois, pelo registro.', $msg);
+        $this->assertStringNotContainsString('Posso lançar?', $msg);
 
         $previa = $c->fresh()->previa_agenda;
-        $this->assertSame(['Felipe', 4], [$previa['pedido_por'], count($previa['paradas'])]);
+        // 6: a 4ª parada tem três; a 2ª, o cliente e o choque com a Revizza; o pré-cliente novo com início e fim fecha.
+        $this->assertSame(['Felipe', 4, 6, 'felipe@gestor.teste'], [$previa['pedido_por'], count($previa['paradas']), count($previa['problemas']), $previa['autor_email']]);
         $this->assertArrayNotHasKey('inventado', $previa['paradas'][0], 'campo desconhecido não passa');
         $this->assertSame(0, SuporteGestorAbertura::count(), 'nada vai ao Gestor nesta fase');
     }
@@ -143,8 +151,11 @@ class PedroAgendaDoTecnicoTest extends TestCase
         $msg = $this->concluir($c, [['tipo' => 'reagendar_visita', 'visita_id' => 1181, 'tecnico_id' => 21, 'data' => '2026-10-22', 'hora_inicio' => '09:00', 'hora_fim' => '11:00']]);
 
         $this->assertStringNotContainsString('preciso acertar', $msg);
-        $this->assertStringContainsString('a visita das 08:00 já está FINALIZADA no Gestor', $msg);
+        $this->assertStringContainsString('• 09:00 às 11:00 — Corais de Parati — nº 756 — horário corrigido (era 08:00 às 10:00) — Cleison', $msg, 'o nº vem da visita');
+        $this->assertStringContainsString('Quinta 22/10, Cleison (nº 756): a visita das 08:00 já está FINALIZADA no Gestor', $msg);
         $this->assertStringContainsString('tem técnicos adicionais (Cristiano)', $msg);
+        $this->assertStringEndsWith("Total: 1 horário corrigido.\n\nPara você saber:\n• Quinta 22/10, Cleison (nº 756): a visita das 08:00 já está FINALIZADA no Gestor; mexer nela muda o registro do que foi feito.\n"
+            ."• Quinta 22/10, Cleison (nº 756): a visita tem técnicos adicionais (Cristiano); eles não mudam.\n\nPosso lançar?", $msg);
         $this->assertSame([], $c->fresh()->previa_agenda['problemas']);
     }
 
@@ -190,13 +201,16 @@ class PedroAgendaDoTecnicoTest extends TestCase
         Sanctum::actingAs($this->felipe, ['central-ia-runner']);
         $mudancas = $this->postJson(route('suporte.runner.agenda'), ['maquina' => 'wsl'])->assertOk()->json('mudancas');
         $this->assertSame(['reagendar_visita', 'criar_visita'], array_column($mudancas, 'tipo'));
-        $this->assertSame(['2026-10-23 13:00', '2026-10-23 14:00', '756', 'Felipe'], [$mudancas[1]['inicio'], $mudancas[1]['fim'], $mudancas[1]['atendimento'], $mudancas[1]['pedido_por']]);
+        $this->assertSame(['2026-10-23 13:00', '2026-10-23 14:00', '756', 'Felipe', 'felipe@gestor.teste'],
+            [$mudancas[1]['inicio'], $mudancas[1]['fim'], $mudancas[1]['atendimento'], $mudancas[1]['pedido_por'], $mudancas[1]['autor_email']], 'o autor é quem pediu, e não a conta do Pedro');
         $this->assertSame([], $this->postJson(route('suporte.runner.agenda'), ['maquina' => 'wsl'])->json('mudancas'), 'reservadas não saem de novo');
 
         $this->postJson(route('suporte.runner.agenda-feita', $mudancas[0]['id']), ['maquina' => 'wsl', 'ok' => true, 'visita_id' => 1185, 'numero' => '824'])->assertOk();
         Http::assertNotSent(fn ($r) => str_contains((string) ($r['text']['body'] ?? ''), 'Agenda no Gestor'));
         $this->postJson(route('suporte.runner.agenda-feita', $mudancas[1]['id']), ['maquina' => 'wsl', 'ok' => false, 'erro' => 'Técnico já tem agenda no dia 23/10/2026 entre 13:00 e 14:00.'])->assertOk();
-        Http::assertSent(fn ($r) => ($r['text']['body'] ?? '') === "Agenda no Gestor:\n• ✅ horário corrigido no nº 824, 23/10 10:00 às 11:00\n• ❌ visita criada no nº 756: não gravou (Técnico já tem agenda no dia 23/10/2026 entre 13:00 e 14:00.)");
+        Http::assertSent(fn ($r) => ($r['text']['body'] ?? '') === "Agenda no Gestor: 1 de 2 gravadas; 1 não gravou.\n\n❌ Não gravaram:\n"
+            ."• Sexta 23/10, Vitor (nº 756) — visita nova: Técnico já tem agenda no dia 23/10/2026 entre 13:00 e 14:00.\n\n✅ Gravadas:\n"
+            ."*Sexta 23/10*\n• 10:00 às 11:00 — Revizza — nº 824 — horário corrigido (era 08:00 às 10:00) — Vitor");
     }
 
     /** T-494: a máquina reservou e a ponte travou — pode ter gravado; o aviso é para conferir, uma vez por lote. */
@@ -220,7 +234,8 @@ class PedroAgendaDoTecnicoTest extends TestCase
         foreach (SuporteGestorAgenda::orderBy('id')->pluck('id') as $id) {
             $this->postJson(route('suporte.runner.agenda-feita', $id), ['maquina' => 'wsl', 'ok' => true, 'visita_id' => 1185, 'numero' => '824'])->assertOk();
         }
-        Http::assertSent(fn ($r) => str_starts_with((string) ($r['text']['body'] ?? ''), "Agenda no Gestor:\n• ✅ horário corrigido no nº 824"));
+        Http::assertSent(fn ($r) => ($r['text']['body'] ?? '') === "Agenda no Gestor: as 2 mudanças foram gravadas.\n\n*Sexta 23/10*\n"
+            ."• 10:00 às 11:00 — Revizza — nº 824 — horário corrigido — Vitor\n• 10:00 às 11:00 — Revizza — nº 824 — visita nova — Vitor");
     }
 
     public function test_sim_com_previa_pendente_nao_grava_e_mudanca_sem_maquina_vence(): void
@@ -236,7 +251,8 @@ class PedroAgendaDoTecnicoTest extends TestCase
         Carbon::setTestNow(now()->addMinutes(5));
         $this->artisan('suporte:pedro')->assertSuccessful();
         $this->assertSame(['falhou', 'nenhuma máquina gravou no Gestor'], [SuporteGestorAgenda::sole()->situacao, SuporteGestorAgenda::sole()->erro]);
-        Http::assertSent(fn ($r) => str_contains((string) ($r['text']['body'] ?? ''), '❌ horário corrigido no nº 824: não gravou (nenhuma máquina gravou no Gestor)'));
+        Http::assertSent(fn ($r) => ($r['text']['body'] ?? '') === "Agenda no Gestor: a mudança NÃO foi gravada.\n\n❌ Não gravaram:\n"
+            .'• Sexta 23/10, Vitor (nº 824) — horário corrigido (era 08:00 às 10:00): nenhuma máquina gravou no Gestor');
     }
 
     /** 23/10/2026: o Pedro disse ao Wallas que o Corais "já foi enviado" — era só a mensagem dele dizendo "estou enviando". */

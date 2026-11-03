@@ -105,6 +105,15 @@ vira comentário na tarefa dele (ou tarefa nova, tipo Bug), e não ajuste no mei
 3. Responda "sim". **Esperado:** "Enviei N mudanças…" e, em seguida, um resumo só ("Agenda no Gestor:"
    com ✅/❌). Confira as visitas na Agenda Técnica do Gestor.
 4. Do perfil `suporte`, tente lançar. **Esperado:** recusa (suporte só consulta).
+5. (bugfix de 02/11) Mande a programação de vários dias numa mensagem só, com mais de 1.200
+   caracteres. **Esperado:** o Pedro não diz que a mensagem chegou cortada; a prévia lista todos os
+   dias, com os técnicos do mesmo lugar juntos e o "Total: N visitas novas" igual ao que você mandou.
+6. Responda o aviso "fica como está" e peça uma mudança. **Esperado:** a prévia nova não repete o aviso.
+7. "Pode". **Esperado:** "Enviei N mudanças…" com o mesmo N; o resumo diz "as N mudanças foram
+   gravadas" (ou "X de N", com cada falha nomeada). Na Agenda Técnica do Gestor, as visitas têm
+   VOCÊ como quem criou, e não a conta do Pedro.
+8. Peça um orçamento do 5397 (sem e-mail na lista). **Esperado:** prévia do orçamento, sem pedir
+   e-mail. Não confirme com cliente real.
 
 ## E. Financeiro e comercial
 
