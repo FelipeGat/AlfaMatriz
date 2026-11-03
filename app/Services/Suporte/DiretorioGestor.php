@@ -212,6 +212,32 @@ class DiretorioGestor
     }
 
     /**
+     * Os clientes e pré-clientes com estes CNPJ ou CPF, para quem é da casa (Felipe, 03/11/2026: o Pedro não
+     * achou a POWER-FIT ACADEMIA, e o CNPJ que o Felipe mandou não ajudou, porque a busca da casa era só pelo
+     * nome). Só entre os que o Pedro atende, como a busca pelo nome.
+     *
+     * @param  list<string>  $documentos  só os dígitos
+     * @return list<array>
+     */
+    public function porDocumento(array $documentos): array
+    {
+        return $documentos ? $this->atendidos()->filter(fn ($c) => in_array(self::digitos($c['documento'] ?? ''), $documentos, true))->values()->all() : [];
+    }
+
+    /** O cliente com este documento que é de empresa que o Pedro não atende (a ALFA): é o motivo de ele não achar. */
+    public function deOutraEmpresa(string $documento): ?array
+    {
+        $atendidos = $this->atendidos()->map(fn ($c) => (int) ($c['id'] ?? 0))->all();
+
+        return collect($this->retrato()['clientes'])->first(fn ($c) => self::digitos($c['documento'] ?? '') === $documento && ! in_array((int) ($c['id'] ?? 0), $atendidos, true));
+    }
+
+    private static function digitos($v): string
+    {
+        return (string) preg_replace('/\D/', '', (string) $v);
+    }
+
+    /**
      * A busca do cliente NOVO, de número fora do cadastro (Felipe, 02/11/2026: o Pedro não achou o "Duque de
      * Caxias", cadastrado como "CDC COLEGIO DUQUE DE CAXIAS", porque o porNome exige o nome inteiro). É a busca
      * larga da casa, com travas que a da casa não precisa, porque quem escreve é desconhecido e o Pedro não

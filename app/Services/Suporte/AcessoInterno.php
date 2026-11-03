@@ -199,8 +199,70 @@ class AcessoInterno
      */
     public function clientesCitados(string $texto): array
     {
-        // Até 10: o relato do dia cita vários clientes, e cada um pode ter mais de um parecido.
-        return collect(app(DiretorioGestor::class)->buscarClientes($texto, 10))->mapWithKeys(fn ($c) => ['gestor:'.$c['id'] => $c])->all();
+        return $this->busca($texto)['clientes'];
+    }
+
+    /** Até 10 pelo nome: o relato do dia cita vários clientes, e cada um pode ter mais de um parecido. */
+    private const PARECIDOS = 10;
+
+    /**
+     * Os clientes citados, e por que o que ele citou pode não estar entre eles (Felipe, 03/11/2026: "por que o
+     * Pedro não está encontrando o cliente? PowerFit?"). A POWER-FIT ACADEMIA estava no Gestor, ativa e da
+     * INVEST; num pedido de orçamento, os itens ("mega", "tera", que soa como "Terra") puxavam outros cadastros
+     * e ela saía das 10 primeiras, e o CNPJ que ele mandou depois não ajudava, porque a busca era só pelo nome.
+     * - O CNPJ ou CPF escrito acha o cliente, que entra primeiro e fora do limite dos parecidos;
+     * - o que não acha, ou acha cliente de empresa que o Pedro não atende, vai como motivo, para o Pedro dizer
+     *   "não achei esse CNPJ" em vez de "não apareceu na lista";
+     * - e a lista cortada vai dita, para ele pedir o CNPJ em vez de dizer que o cliente não existe.
+     *
+     * @return array{clientes: array<string, array>, pelo_documento: list<string>, mais: bool, motivos: list<string>}
+     */
+    private function busca(string $texto): array
+    {
+        $d = app(DiretorioGestor::class);
+        $escritos = Contexto::documentos($texto);
+        $pelo = collect($d->porDocumento($escritos))->mapWithKeys(fn ($c) => ['gestor:'.$c['id'] => $c]);
+        $doPelo = $pelo->map(fn ($c) => (string) preg_replace('/\D/', '', (string) ($c['documento'] ?? '')))->all();
+        $motivos = [];
+        foreach ($escritos as $doc) {
+            // CPF de 11 dígitos só vale como motivo se foi escrito como CPF: celular também tem 11, e um em cem passa no dígito.
+            if (in_array($doc, $doPelo, true) || (strlen($doc) === 11 && ! preg_match('/\bcpf\b|'.self::mascara($doc, true).'/iu', $texto))) {
+                continue;
+            }
+            $fora = $d->deOutraEmpresa($doc);
+            $motivos[] = $fora
+                ? '- O '.self::tipoDoc($doc).' '.self::mascara($doc).' que ele informou é de '.trim(($fora['fantasia'] ?? '') ?: ($fora['nome'] ?? '')).', cliente da '.($fora['empresa'] ?: 'outra empresa')
+                    .', que o suporte do Pedro não atende (só '.implode(', ', (array) config('services.suporte_pedro.empresas')).'): diga isso, e não registre nem monte orçamento para ele.'
+                : '- O '.self::tipoDoc($doc).' '.self::mascara($doc).' que ele informou não está no cadastro de nenhum cliente ou pré-cliente que o Pedro atende no Gestor: diga isso ("não achei esse '
+                    .self::tipoDoc($doc).' no Gestor") e peça para ele conferir o número.';
+        }
+        // Catorze dígitos que não são CNPJ: um número trocado. Sem isso, o Pedro só diria que não achou.
+        preg_match_all('/(?<!\d)\d{14}(?!\d)/', (string) preg_replace('/(?<=\d)[.\/\-](?=\d)/', '', $texto), $m);
+        foreach (array_diff(array_unique($m[0]), $escritos) as $n) {
+            $motivos[] = '- O número '.self::mascara($n).' que ele escreveu tem a forma de um CNPJ, mas o dígito verificador não confere: diga que o CNPJ parece ter um número trocado e peça para ele conferir.';
+        }
+        $porNome = collect($d->buscarClientes($texto, self::PARECIDOS + 1))->mapWithKeys(fn ($c) => ['gestor:'.$c['id'] => $c]);
+
+        return ['clientes' => $pelo->union($porNome->take(self::PARECIDOS))->all(), 'pelo_documento' => $pelo->keys()->all(),
+            'mais' => $porNome->count() > self::PARECIDOS, 'motivos' => $motivos];
+    }
+
+    private static function tipoDoc(string $doc): string
+    {
+        return strlen($doc) === 14 ? 'CNPJ' : 'CPF';
+    }
+
+    /** "43.025.652/0001-93"; com $regex, o padrão do número escrito assim, com os pontos e o traço. */
+    private static function mascara(string $doc, bool $regex = false): string
+    {
+        $partes = strlen($doc) === 14 ? [[0, 2], [2, 3], [5, 3], [8, 4], [12, 2]] : [[0, 3], [3, 3], [6, 3], [9, 2]];
+        $sep = strlen($doc) === 14 ? ['.', '.', '/', '-'] : ['.', '.', '-'];
+        $texto = '';
+        foreach ($partes as $i => [$de, $n]) {
+            $texto .= ($i ? ($regex ? '\\'.$sep[$i - 1] : $sep[$i - 1]) : '').substr($doc, $de, $n);
+        }
+
+        return $texto;
     }
 
     /**
@@ -211,13 +273,17 @@ class AcessoInterno
     public function blocoParaRegistrar(string $texto): string
     {
         $d = app(DiretorioGestor::class);
-        $clientes = $this->clientesCitados($texto);
+        $busca = $this->busca($texto);
+        $clientes = $busca['clientes'];
         $equipe = collect($d->retrato()['equipe'] ?? []);
         $nomeDe = fn (array $ids) => collect($ids)->map(fn ($id) => (string) ($equipe->firstWhere('id', $id)['nome'] ?? ''))->filter()->implode(', ');
+        $motivos = implode('', array_map(fn ($m) => $m."\n", $busca['motivos']))
+            .($busca['mais'] ? '- Esta lista traz só os '.self::PARECIDOS.' mais parecidos com o nome, e há outros: se o cliente que ele citou não está aqui, diga que ele não ficou entre os parecidos '
+                ."e peça o CNPJ (ou o nome como está no Gestor). Nunca diga que o cliente não existe no Gestor nem que está fora da lista que você pode usar.\n" : '');
 
         $lista = $clientes
-            ? "## CLIENTES E PRÉ-CLIENTES DO GESTOR PARECIDOS COM O QUE FOI ESCRITO (use só estes códigos)\n"
-                .collect($clientes)->map(function ($c, $codigo) use ($d, $nomeDe) {
+            ? "## CLIENTES E PRÉ-CLIENTES DO GESTOR PARECIDOS COM O QUE FOI ESCRITO (use só estes códigos)\n".$motivos
+                .collect($clientes)->map(function ($c, $codigo) use ($d, $nomeDe, $busca) {
                     $atendimentos = collect($d->atendimentosDe((int) $c['id'], 8))->map(fn ($a) => '    • nº '.($a['numero'] ?? $a['id']).' — '.str_replace('_', ' ', (string) ($a['status'] ?? '?'))
                         .(! empty($a['criado_em']) ? ' — de '.substr((string) $a['criado_em'], 8, 2).'/'.substr((string) $a['criado_em'], 5, 2).'/'.substr((string) $a['criado_em'], 0, 4) : '')
                         .(($quem = $nomeDe((array) ($a['funcionarios'] ?? []))) !== '' ? ' — com '.$quem : '')
@@ -225,6 +291,7 @@ class AcessoInterno
 
                     return '- '.$codigo.': '.(! empty($c['pre']) ? '[PRÉ-CLIENTE] ' : '[CLIENTE] ').trim(($c['fantasia'] ?? '') ?: ($c['nome'] ?? '')).(! empty($c['razao']) ? ' — '.$c['razao'] : '')
                         .' — cidade: '.(! empty($c['cidade']) ? $c['cidade'] : 'não informada').(! empty($c['empresa']) ? ' (empresa '.$c['empresa'].')' : '')
+                        .(in_array($codigo, $busca['pelo_documento'], true) ? ' — ACHADO PELO '.self::tipoDoc((string) preg_replace('/\D/', '', (string) $c['documento'])).' QUE ELE INFORMOU' : '')
                         ."\n  Atendimentos (mais recentes primeiro):\n".($atendimentos->isNotEmpty() ? $atendimentos->implode("\n") : '    • nenhum')
                         .(($orc = collect($d->orcamentosDe((int) $c['id']))->take(6))->isNotEmpty()
                             ? "\n  Orçamentos em aberto:\n".$orc->map(fn ($o) => '    • orç. '.$o['numero'].' — '.str_replace('_', ' ', (string) $o['status'])
@@ -233,7 +300,8 @@ class AcessoInterno
                                 .' — '.Str::limit((string) $o['descricao'], 90, '…'))->implode("\n") : '')
                         ."\n  Assuntos: ".collect($d->assuntosPara($c))->take(15)->map(fn ($a) => $a['id'].' '.$a['nome'])->implode('; ');
                 })->implode("\n")
-            : "## CLIENTES E PRÉ-CLIENTES DO GESTOR PARECIDOS COM O QUE FOI ESCRITO\n- Nenhum combina: pergunte o nome como está no Gestor ou ofereça criar um PRÉ-CLIENTE novo (cliente \"novo_pre\").";
+            : "## CLIENTES E PRÉ-CLIENTES DO GESTOR PARECIDOS COM O QUE FOI ESCRITO\n".$motivos
+                .'- Nenhum combina com o nome: diga que não achou o cliente pelo nome e peça o CNPJ ou o nome como está no Gestor, ou ofereça criar um PRÉ-CLIENTE novo (cliente "novo_pre").';
 
         return $lista
             ."\n## EMPRESAS\n".collect($d->empresas())->map(fn ($e, $id) => "- {$id}: {$e['nome']}".($e['imposto_nf'] !== null ? ' (NF no orçamento: '.rtrim(rtrim(number_format($e['imposto_nf'], 2, ',', ''), '0'), ',').'%)' : '')."\n  Assuntos: ".collect($d->assuntosPara(['id' => 0, 'empresa_id' => $id]))->take(25)->map(fn ($a) => $a['id'].' '.$a['nome'])->implode('; '))->implode("\n")

@@ -280,7 +280,7 @@ class Pedro
                 $novoPre = ! $cliente && $bloco['cliente'] === 'novo_pre' && ($bloco['novo_pre'] ?? null);
                 $registro = $cliente || $novoPre ? $this->atendimento->registrarPorDentro($c, $interno, $cliente, $bloco) : null;
                 if (! $cliente && ! $novoPre) {
-                    $bloco['resposta'] .= "\n\n(Não registrei: não consegui confirmar o cliente no Gestor. Me diga o nome como está cadastrado.)";
+                    $bloco['resposta'] .= "\n\n(Não registrei: não consegui confirmar o cliente no Gestor. Me diga o CNPJ dele ou o nome como está cadastrado.)";
                 }
             }
             // Recusado pela conferência: só o aviso, sem o "estou enviando ao Gestor" que a IA escreveu

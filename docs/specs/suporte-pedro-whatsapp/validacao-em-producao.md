@@ -22,6 +22,7 @@ vira comentário na tarefa dele (ou tarefa nova, tipo Bug), e não ajuste no mei
       MATRIZ antes: com o Gestor antes, a conversa da noite iria a um Pedro que ainda não responde fora do
       horário, e o cliente ficaria 5 min sem resposta até o menu.
 - [ ] Para os passos A11 e A12: a versão com a busca do cliente novo (02/11/2026) publicada. Só o Matriz.
+- [ ] Para os passos H13 a H15: a versão com a busca da casa pelo CNPJ (03/11/2026) publicada. Só o Matriz.
 - [ ] O `.env` de produção do Matriz sem `SUPORTE_PEDRO_INICIO=07:00` (o padrão passou a 08:00). E o
       cabeçalho do menu do Gestor (`whatsapp_configs.menu_mensagem`), se citar 07:00, ajustado à mão.
 
@@ -196,6 +197,15 @@ Ajustes do dono de 02/11/2026 (sessão 2):
     **Esperado:** nenhuma sugestão do atendimento de câmera.
 12. Com a máquina desligada, confirme uma prévia. **Esperado:** em ~2 min, "Não criei… nenhuma máquina gravou";
     religue a máquina e responda "tentar de novo". **Esperado:** o mesmo pedido volta, e chega UM orçamento só.
+
+Busca da casa pelo CNPJ (03/11/2026: "por que o Pedro não está encontrando o cliente? PowerFit?"). Só monte a
+prévia; não responda "sim", ou exclua o orçamento no Gestor depois:
+
+13. Do 5397, peça o orçamento da POWER-FIT ACADEMIA com os itens, como no dia 03/11, e mande o CNPJ dela
+    (43.025.652/0001-93). **Esperado:** a prévia sai para a POWER-FIT ACADEMIA, sem "não apareceu na lista".
+14. Mande um CNPJ inventado com o dígito certo (o de pré-cliente também acha: o funil faz parte da busca).
+    **Esperado:** "não achei esse CNPJ no Gestor" e o pedido para conferir o número; nenhuma prévia.
+15. Mande o CNPJ com um dígito trocado. **Esperado:** ele diz que o CNPJ parece ter um número trocado.
 
 ## Fora do alcance desta semana
 

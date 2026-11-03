@@ -49,6 +49,21 @@ Telegram". O Pedro "não pode se confundir: tem que ter certeza de que sou eu, p
   um atendimento para a Emanuelle para o Vitor amanhã"):
   1. O Pedro busca o cliente no Gestor. A busca é larga: basta uma palavra do nome. Sem cliente, ou com mais de um
      possível, ele pergunta qual é.
+     - **CNPJ ou CPF escrito acha o cliente** (Felipe, 03/11/2026: o Pedro não achou a POWER-FIT ACADEMIA, que
+       estava no Gestor, ativa e da INVEST). Pelo nome, vão os 10 mais parecidos. Num pedido de orçamento, os
+       itens ("mega", "tera", que soa como "Terra") puxavam outros cadastros e ela ficava de fora; o CNPJ que o
+       Felipe mandou depois não ajudava, porque a busca era só pelo nome. Agora o cliente do CNPJ ou CPF citado
+       nas últimas mensagens entra primeiro, fora do limite dos 10, marcado "achado pelo CNPJ". Só entre os
+       clientes das empresas que o Pedro atende, como a busca pelo nome.
+     - **O Pedro diz por que não achou**, em vez de "não apareceu na lista":
+       - o CNPJ não é de nenhum cliente ou pré-cliente que ele atende ("não achei esse CNPJ no Gestor");
+       - o CNPJ é de cliente de empresa que ele não atende (a ALFA), e ele diz qual;
+       - o número tem a forma de CNPJ, mas o dígito verificador não confere;
+       - a lista dos parecidos foi cortada: ele pede o CNPJ, e nunca diz que o cliente não existe no Gestor;
+       - nenhum parecido com o nome: ele pede o CNPJ ou o nome como está no Gestor.
+     - CPF só vira motivo quando foi escrito como CPF (com a pontuação, ou com a palavra "CPF"): um celular de 11
+       dígitos às vezes passa no dígito verificador.
+     - A recusa do registro e da prévia de orçamento pede "o CNPJ dele ou o nome como está cadastrado".
   2. Mostra os atendimentos daquele cliente, abertos e concluídos, com nº e etapa, e pergunta se deve criar um novo,
      vincular a um aberto ou reabrir um concluído.
   3. Confirma cliente, serviço, responsável e data, e só registra depois do "sim".

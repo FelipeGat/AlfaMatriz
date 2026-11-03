@@ -230,7 +230,7 @@ class PedroOrcamentoTest extends TestCase
     public function test_cliente_que_nao_esta_no_gestor_ou_nao_foi_citado(): void
     {
         $inventado = $this->previa($this->conversa(self::FELIPE, 'orçamento para o Condomínio Inexistente'), ['cliente' => 'gestor:777'] + self::COMPLETO);
-        $this->assertStringContainsString('• o cliente não foi confirmado no Gestor: diga o nome como está cadastrado (não crio cliente nem pré-cliente).', $inventado);
+        $this->assertStringContainsString('• o cliente não foi confirmado no Gestor: diga o CNPJ dele ou o nome como está cadastrado (não crio cliente nem pré-cliente).', $inventado);
 
         $naoCitado = $this->previa($this->conversa(self::FELIPE, 'orçamento para a Padaria Sol'), self::COMPLETO);
         $this->assertStringContainsString('o cliente não foi confirmado no Gestor', $naoCitado, 'o código tem de ser de um cliente que ele citou');

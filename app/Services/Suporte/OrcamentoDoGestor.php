@@ -368,7 +368,7 @@ class OrcamentoDoGestor
         $avisos = [];
         $cliente = $this->cliente($o['cliente'] ?? null);
         if (! $cliente || ($citados !== null && ! isset($citados[(string) $o['cliente']]))) {
-            $problemas[] = 'o cliente não foi confirmado no Gestor: diga o nome como está cadastrado (não crio cliente nem pré-cliente).';
+            $problemas[] = 'o cliente não foi confirmado no Gestor: diga o CNPJ dele ou o nome como está cadastrado (não crio cliente nem pré-cliente).';
         }
         $empresas = $this->diretorio->empresas();
         if (! ($o['empresa_id'] ?? null)) {
