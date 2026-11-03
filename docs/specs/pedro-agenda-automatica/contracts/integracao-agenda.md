@@ -27,11 +27,13 @@ O que a aba mostra no topo.
 Resposta 200:
 
 ```json
-{"configuracao": {"modo": "desligada|ensaio|ligada", "manha": "06:30", "programacao": "16:30", "relatorio": "17:00", "silencio_inicio": "20:00"}, "envio_real": bool, "modelos": [{"nome": str, "aprovado": bool, "categoria": str|null, "variaveis_ok": bool}], "verificacoes": [{"tipo": str, "dia": "AAAA-MM-DD", "modo": str, "concluida_em": iso|null, "resumo": obj|null, "erro": str|null}], "destinatarios": [Destinatario]}
+{"configuracao": {"modo": "desligada|ensaio|ligada", "manha": "06:30", "programacao": "16:30", "relatorio": "17:00", "silencio_inicio": "20:00"}, "envio_real": bool, "modelos": [{"nome": str, "conferido": bool, "aprovado": bool, "categoria": str|null, "variaveis_ok": bool}], "verificacoes": [{"tipo": str, "dia": "AAAA-MM-DD", "modo": str, "concluida_em": iso|null, "resumo": obj|null, "erro": str|null}], "destinatarios": [Destinatario]}
 ```
 
 `envio_real` = modo `ligada` **e** `APP_ENV=production` (Decision 13). `modelos`: os quatro de
-`contracts/mensagens.md`, conferidos na lista de aprovados (`templatesAprovados`, cache de 10 min como a tela).
+`contracts/mensagens.md`, conferidos na lista de aprovados que a tela do WhatsApp do Gestor guarda em cache
+(`whatsapp:templates:<id>`, 10 min). A porta **não chama a Meta**: sem a lista no cache, `conferido` = `false` e
+`aprovado` = `false` (ver "Decidido na Fase 1").
 `verificacoes`: as de hoje e de ontem.
 
 `Destinatario` = `{"id": int, "funcionario_id": int, "nome": str, "papel": "tecnico|gestor", "ativo": bool, "final": str|null, "pendencia": str|null, "consentimento_em": iso|null, "consentimento_por": str|null, "parou_em": iso|null}`.
@@ -116,3 +118,12 @@ Nada novo nesse sentido: alertas vão por WhatsApp (Decision 15) e a supervisão
 - **Destinatários no `estado`**: todos, ativos e desativados, ordenados por papel e nome.
 - **Avisos de ensaio e pendentes** guardam o número para onde sairiam (a porta devolve só o final) e o texto que
   sairia: é o que a supervisão confere contra a agenda antes de ligar (SC-005).
+- **Modelos sem chamar a Meta** (QA da Fase 1, 02/11/2026): o `estado` só lê a lista de aprovados que a tela do
+  WhatsApp do Gestor já pôs no cache. Cada modelo ganhou `conferido` (a lista estava no cache). Sem ela, os quatro
+  saem `conferido: false`, `aprovado: false`, `categoria: null`, `variaveis_ok: false` — o lado seguro: modelo que
+  ninguém conferiu não é dado como aprovado. A aba deve mostrar "não conferido", e não "não aprovado". Voltar a
+  consultar a Meta daqui fica para a Fase 3 (tarefa 3.2.2), quando a chamada passa a ser permitida.
+- **Trilha da prévia** (QA da Fase 1, 02/11/2026): a porta 7 grava avisos, então o `activity()` dela ("agenda
+  automática: prévia") leva `autor`, `tipo`, `dia`, `antes` e `depois`. Antes e depois são os avisos de ensaio
+  daquele tipo e dia, cada um com `id`, `destinatario_id`, `versao`, `situacao` e `pendencia`; a diferença é o que a
+  prévia criou. Número e texto não entram no log: já estão na linha do aviso.

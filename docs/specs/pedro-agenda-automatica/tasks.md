@@ -109,9 +109,11 @@ Ref: `contracts/integracao-agenda.md` (portas 1 a 7); FR-005, FR-024, FR-025, FR
 
 - [x] 1.7.1 Rotas `api/integracao/matriz/agenda/*` com `AutenticaIntegracaoMatriz` e `throttle:120,1`; controller novo `Api/IntegracaoMatrizAgendaController`
 - [x] 1.7.2 FormRequests `IntegracaoMatriz/Agenda*` para destinatários, configuração, avisos e prévia; `autor` obrigatório nas portas de escrita
-- [x] 1.7.3 `estado` e `funcionarios`: só funcionários ativos e não apagados; telefone só pelo final; `modelos` pela lista de aprovados (cache de 10 min, como a tela)
+- [x] 1.7.3 `estado` e `funcionarios`: só funcionários ativos e não apagados; telefone só pelo final; `modelos` pela lista de aprovados que a tela do WhatsApp já pôs no cache, sem chamar a Meta
+  - QA da Fase 1 (02/11): a 1ª versão chamava `templatesAprovados` quando o cache vencia. Agora só lê o cache; sem ele, cada modelo sai com `conferido: false` e `aprovado: false`.
 - [x] 1.7.4 `destinatarios` (incluir é idempotente; não há exclusão, só desativar) e `configuracao`, cada mudança com `activity()` do autor, o antes e o depois
 - [x] 1.7.5 `avisos` (50 por página, filtros por dia, tipo, situação e modo) e `previa` (só hoje ou amanhã)
+  - QA da Fase 1 (02/11): a prévia grava avisos, então o `activity()` dela leva também o antes e o depois — os avisos de ensaio do dia (id, destinatário, versão, situação, pendência), sem número nem texto.
 - [x] 1.7.6 Testes das recusas: 401 sem o segredo, 404 de funcionário ou destinatário inexistente, 422 de horários e de dia inválidos
 - [x] 1.7.7 Teste de contrato que chama as portas reais e confere chaves, tipos e enums contra `contracts/integracao-agenda.md` (quickstart, cenário 9, passo 1)
 
@@ -121,13 +123,17 @@ Ref: plan, Constitution Check (Gestor III e V); Decision 4
 
 - [x] 1.8.1 `pint` nos arquivos da fase e a suíte `Integracao` do WhatsApp sem regressão (`WhatsappPedroTest` incluído)
 - [x] 1.8.2 Seção 8 em `docs/specs/whatsapp-pedro/contracts/integracao-matriz.md` do Gestor, apontando para o contrato desta feature
-- [~] 1.8.3 `.qa-diff-agenda-automatica.md` com o escopo exato e QA independente (Copilot) até `APROVADO`
-- [ ] 1.8.4 Pedir autorização para o commit e a publicação, só com os arquivos desta fase (as alterações de outras sessões no Gestor ficam de fora)
+- [x] 1.8.3 `.qa-diff-agenda-automatica.md` com o escopo exato e QA independente (Copilot) até `APROVADO`
+  - Rodada 1 (02/11) REPROVADO: o `estado` chamava a Meta quando o cache vencia, e a prévia não tinha antes/depois no `activity()`. Rodada 2 (02/11) APROVADO.
+- [x] 1.8.4 Pedir autorização para o commit e a publicação, só com os arquivos desta fase (as alterações de outras sessões no Gestor ficam de fora)
+  - Autorizado em 03/11. Commit `52d1ce51` no Gestor, só com os arquivos da fase, depois de rodar a suíte num worktree limpo (`HEAD` + só a fase). Publicado pelo `gestor-publicar-main.sh` em 03/11, com as 4 migrações; o ponto de volta é o `2f506400`.
+  - A 1ª tentativa parou no `git pull` da produção (`HEAD.lock` existia): os arquivos ficaram no disco, mas o HEAD e o banco continuaram no estado anterior, e o agendador deu "tabela inexistente" às 07:16 e 07:17. Quando a trava sumiu, a 2ª tentativa passou.
   - Notas da implementação (02/11/2026), para o QA e as fases seguintes: nos modos ensaio e real, o ciclo desta fase roda só a
     verificação da programação (a da manhã é a 4.3, a do relatório a 5.x); com `desligada`, as três registram que rodaram.
     `ligada` em produção antes da Fase 3 não manda nada: a verificação fica em aberto, com o erro dizendo isso
     (`Ciclo::SEM_ENVIO_REAL`). Decisões de borda registradas em `contracts/integracao-agenda.md` ("Decidido na Fase 1").
-- [ ] 1.8.5 Depois da publicação: conferir pela ponte, só leitura, que a linha da verificação em modo `desligada` aparece em produção; se não aparecer, o `schedule:run` do host não roda e a feature para aqui
+- [x] 1.8.5 Depois da publicação: conferir pela ponte, só leitura, que a linha da verificação em modo `desligada` aparece em produção; se não aparecer, o `schedule:run` do host não roda e a feature para aqui
+  - Conferido em 03/11, às 07:18: a verificação #1 (`manha`, `desligada`) foi iniciada e concluída às 07:18:05, sem erro. A configuração continua sem linha em `app_settings` (vale `desligada`), e não há nenhum destinatário nem aviso. O agendador do host roda.
 
 ---
 
@@ -156,7 +162,7 @@ Ref: FR-005; Decision 16 (confirmada: só a conta dona administra)
 Ref: US4; FR-002, FR-005, FR-024, FR-025, FR-028; quickstart, cenário 8
 
 - [ ] 2.3.1 Aba "Agenda automática" em `resources/views/suporte/_abas.blade.php`, com o ícone `calendar` do `x-nav-icon`
-- [ ] 2.3.2 Topo: modo, envio real sim/não, os quatro modelos (aprovado, categoria, variáveis) e as verificações de hoje e de ontem
+- [ ] 2.3.2 Topo: modo, envio real sim/não, os quatro modelos (conferido, aprovado, categoria, variáveis; sem a lista conferida, "não conferido") e as verificações de hoje e de ontem
 - [ ] 2.3.3 Destinatários com nome, papel, final do celular e pendência; incluir só escolhendo da lista de funcionários do Gestor, sem digitar número
 - [ ] 2.3.4 Consentimento ("a pessoa concordou em receber os avisos da agenda por este número"), ativar e desativar, horários e modo, com os botões escondidos para quem só vê
 - [ ] 2.3.5 "Prévia agora" e a lista de envios paginada, com filtros e o texto exato de cada aviso
@@ -190,6 +196,7 @@ Ref: FR-004, FR-022, FR-027; Decisions 6, 7, 13, 17; SC-006
 
 - [ ] 3.2.1 `AgendaAutomatica\Envio`: janela pela conversa mais recente do contato com a chave do celular (`WhatsappConversa::janelaAberta()`); fecha em menos de 5 min → modelo
 - [ ] 3.2.2 Conferência do modelo antes de cada uso: nome, idioma `pt_BR`, número de variáveis e categoria UTILITY; ausente, diferente ou MARKETING vira `pendente/sem_modelo` e nada sai fora da janela
+  - Vindo da Fase 1: o `estado` só lê a lista do cache da tela (`conferido`). Com a consulta à Meta liberada aqui, decidir se ele volta a buscar a lista quando o cache venceu.
 - [ ] 3.2.3 Só quem criou a linha `preparada` chama a Meta; envio real só com `envioReal()`; `nunca_enviar` checado de novo na hora do envio
 - [ ] 3.2.4 Grava canal, modelo, número, texto por parte, wamid e `enviado_em`; a mensagem não entra em `whatsapp_mensagens` nem cria conversa (FR-023)
 - [ ] 3.2.5 Testes: janela aberta vai livre com quebra de linha; fechada vai modelo; modelo recategorizado não sai; `ligada` em `local` não chama a Meta; chave de `nunca_enviar` nunca recebe; reexecução não chama de novo
