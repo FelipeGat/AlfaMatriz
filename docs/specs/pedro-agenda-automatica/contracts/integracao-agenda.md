@@ -127,3 +127,17 @@ Nada novo nesse sentido: alertas vão por WhatsApp (Decision 15) e a supervisão
   automática: prévia") leva `autor`, `tipo`, `dia`, `antes` e `depois`. Antes e depois são os avisos de ensaio
   daquele tipo e dia, cada um com `id`, `destinatario_id`, `versao`, `situacao` e `pendencia`; a diferença é o que a
   prévia criou. Número e texto não entram no log: já estão na linha do aviso.
+
+## Decidido na Fase 2 (03/11/2026)
+
+O lado do Matriz: `app/Services/Suporte/AgendaAutomatica.php` (cliente), `SuporteAgendaAutomaticaController` e
+`resources/views/suporte/agenda-automatica.blade.php`; testes em `tests/Feature/Suporte/AgendaAutomaticaTest.php`.
+
+- **404 com e sem `motivo`**: com `motivo` (`funcionario_inexistente`, `destinatario_inexistente`) é recusa do
+  contrato e a aba diz o motivo; sem `motivo` é a porta que não existe, e vale "O Gestor não respondeu; a configuração
+  continua a que estava lá.", como o Gestor fora do ar, o 5xx e a resposta que não é JSON.
+- **429 do `throttle:120,1`**: "O Gestor recebeu pedidos demais em um minuto; tente de novo daqui a pouco."
+- **422 no formato do Laravel** (`message` + `errors`, ver "Decidido na Fase 1"): a aba mostra o primeiro erro.
+- **Chaves**: o cliente fica só com as chaves deste contrato em cada objeto. Chave a mais (um número inteiro, por
+  exemplo) não passa dele; chave que falta aparece como "sem dado", e não como o null que quer dizer "sem número".
+- **Prévia**: a aba manda sempre o `dia` (hoje ou amanhã, escolhido na tela), sem depender do padrão do Gestor.

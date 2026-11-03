@@ -6,4 +6,5 @@
     <x-abas.item :href="route('suporte.base')" :ativo="$aba === 'base'" icone="clipboard">Base do suporte
         @if ($aConfirmar)<span class="rounded-badge bg-warn-tint px-1.5 py-0.5 text-[11px] font-semibold text-warn" title="Registros a confirmar">{{ $aConfirmar }}</span>@endif
     </x-abas.item>
+    <x-abas.item :href="route('suporte.agenda-automatica')" :ativo="$aba === 'agenda-automatica'" icone="calendar">Agenda automática</x-abas.item>
 </x-abas>

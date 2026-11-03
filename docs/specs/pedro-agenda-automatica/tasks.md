@@ -143,40 +143,48 @@ Ref: plan, Constitution Check (Gestor III e V); Decision 4
 
 Ref: `contracts/integracao-agenda.md` (Respostas do Matriz aos erros); plan, Source Code (Matriz)
 
-- [ ] 2.1.1 `App\Services\Suporte\AgendaAutomatica` com `services.suporte_gestor.url` e `.token`, timeout e as sete portas
-- [ ] 2.1.2 Tradução do `motivo` do Gestor, no padrão do `CanalWhatsApp::motivoDoGestor`; Gestor fora do ar ou 404 vira "O Gestor não respondeu; a configuração continua a que estava lá"
-- [ ] 2.1.3 Conferência das chaves da resposta; o que faltar aparece como "sem dado", sem estimar
-- [ ] 2.1.4 Testes com o Gestor falsificado: respostas certas, 401, 404, 422, fora do ar e resposta sem as chaves esperadas
+- [x] 2.1.1 `App\Services\Suporte\AgendaAutomatica` com `services.suporte_gestor.url` e `.token`, timeout e as sete portas
+- [x] 2.1.2 Tradução do `motivo` do Gestor, no padrão do `CanalWhatsApp::motivoDoGestor`; Gestor fora do ar ou 404 vira "O Gestor não respondeu; a configuração continua a que estava lá"
+  - 404 **com** `motivo` (`funcionario_inexistente`, `destinatario_inexistente`) é recusa do contrato e tem frase própria; só o 404 sem `motivo` (porta que não existe) e o 5xx viram "não respondeu". 429 do `throttle` diz para tentar de novo; 422 no formato do Laravel mostra o primeiro erro que o Gestor deu.
+- [x] 2.1.3 Conferência das chaves da resposta; o que faltar aparece como "sem dado", sem estimar
+  - Cada objeto fica só com as chaves do contrato (chave a mais, como um número inteiro por engano, não passa do cliente), e as que faltarem vão em `faltando`: a tela distingue "sem dado" de um null que quer dizer "sem número" ou "sem pendência".
+- [x] 2.1.4 Testes com o Gestor falsificado: respostas certas, 401, 404, 422, fora do ar e resposta sem as chaves esperadas
 
 ### 2.2 Rotas e autorização `[C]`
 
 Ref: FR-005; Decision 16 (confirmada: só a conta dona administra)
 
-- [ ] 2.2.1 Rotas `suporte/agenda-automatica[/...]` (nomes `suporte.agenda-automatica.*`): ver com `permissao:suporte,ler`
-- [ ] 2.2.2 Mudar destinatário, consentimento, horários e modo, e rodar a prévia: só a conta dona do Pedro (`services.suporte_pedro.conta`), pela mesma regra do `SuporteConhecimentoController::dono`
-- [ ] 2.2.3 Toda chamada de escrita leva como `autor` o e-mail de quem mudou
-- [ ] 2.2.4 Testes: a conta dona muda; outra conta com `suporte,ler` vê e recebe 403 ao mudar; sem `suporte,ler` não abre
+- [x] 2.2.1 Rotas `suporte/agenda-automatica[/...]` (nomes `suporte.agenda-automatica.*`): ver com `permissao:suporte,ler`
+  - A tela é `suporte.agenda-automatica`, sem sufixo, como `suporte.pedro` e `suporte.base`; as escritas são `.incluir`, `.mudar`, `.configurar` e `.previa`, com `permissao:suporte,editar` (o mesmo par da lista da casa) além da conta dona.
+- [x] 2.2.2 Mudar destinatário, consentimento, horários e modo, e rodar a prévia: só a conta dona do Pedro (`services.suporte_pedro.conta`), pela mesma regra do `SuporteConhecimentoController::dono`
+- [x] 2.2.3 Toda chamada de escrita leva como `autor` o e-mail de quem mudou
+- [x] 2.2.4 Testes: a conta dona muda; outra conta com `suporte,ler` vê e recebe 403 ao mudar; sem `suporte,ler` não abre
 
 ### 2.3 Tela `[A]`
 
 Ref: US4; FR-002, FR-005, FR-024, FR-025, FR-028; quickstart, cenário 8
 
-- [ ] 2.3.1 Aba "Agenda automática" em `resources/views/suporte/_abas.blade.php`, com o ícone `calendar` do `x-nav-icon`
-- [ ] 2.3.2 Topo: modo, envio real sim/não, os quatro modelos (conferido, aprovado, categoria, variáveis; sem a lista conferida, "não conferido") e as verificações de hoje e de ontem
-- [ ] 2.3.3 Destinatários com nome, papel, final do celular e pendência; incluir só escolhendo da lista de funcionários do Gestor, sem digitar número
-- [ ] 2.3.4 Consentimento ("a pessoa concordou em receber os avisos da agenda por este número"), ativar e desativar, horários e modo, com os botões escondidos para quem só vê
-- [ ] 2.3.5 "Prévia agora" e a lista de envios paginada, com filtros e o texto exato de cada aviso
-- [ ] 2.3.6 Blade + Alpine com os tokens do `tailwind.config.js` e do `design/README.md`; conferir no tema claro e no escuro
-- [ ] 2.3.7 Testes de tela: carrega com o Gestor falso, mostra só o final do celular, mostra a mensagem do Gestor fora do ar sem erro 500
+- [x] 2.3.1 Aba "Agenda automática" em `resources/views/suporte/_abas.blade.php`, com o ícone `calendar` do `x-nav-icon`
+- [x] 2.3.2 Topo: modo, envio real sim/não, os quatro modelos (conferido, aprovado, categoria, variáveis; sem a lista conferida, "não conferido") e as verificações de hoje e de ontem
+- [x] 2.3.3 Destinatários com nome, papel, final do celular e pendência; incluir só escolhendo da lista de funcionários do Gestor, sem digitar número
+- [x] 2.3.4 Consentimento ("a pessoa concordou em receber os avisos da agenda por este número"), ativar e desativar, horários e modo, com os botões escondidos para quem só vê
+  - Passar a `ligada` pede, além do seletor, a caixa "as mensagens passam a sair de verdade" (validada no servidor), para o envio real não sair de um clique distraído (FR-025). Registrar consentimento passa pelo `x-confirmar`, com a frase do consentimento.
+- [x] 2.3.5 "Prévia agora" e a lista de envios paginada, com filtros e o texto exato de cada aviso
+- [x] 2.3.6 Blade + Alpine com os tokens do `tailwind.config.js` e do `design/README.md`; conferir no tema claro e no escuro
+  - Conferido em 03/11 por captura (Playwright em Docker, CSS compilado da árvore, Gestor falso com dados fictícios), nos dois temas. Corrigidos na conferência: "3 tentativas" cortado pela metade, "1 pendências" e o e-mail do consentimento, que passou para o `title`.
+- [x] 2.3.7 Testes de tela: carrega com o Gestor falso, mostra só o final do celular, mostra a mensagem do Gestor fora do ar sem erro 500
 
 ### 2.4 Fechamento da Fase 2 `[A]`
 
 Ref: constituição do Matriz V e VII
 
-- [ ] 2.4.1 `tests/Feature/Suporte/AgendaAutomaticaTest.php` com o cenário 8 do quickstart inteiro
-- [ ] 2.4.2 Suíte isolada inteira verde antes do commit
-- [ ] 2.4.3 Registro no #478 e aviso ao Rossini
-- [ ] 2.4.4 Pedir autorização para o commit e a tag; publicar só depois da Fase 1 no ar
+- [x] 2.4.1 `tests/Feature/Suporte/AgendaAutomaticaTest.php` com o cenário 8 do quickstart inteiro
+  - 8 testes. Com três defeitos plantados (sem a trava da conta dona no incluir, 404 sem motivo tratado como recusa, chave fora do contrato passando), cada um faz pelo menos um teste falhar.
+- [x] 2.4.2 Suíte isolada inteira verde antes do commit
+  - 03/11: 2.178 testes, nenhuma falha, 30 pulados. `pint --test` limpo nos três arquivos novos; o aviso no `routes/web.php` já existia no HEAD.
+- [x] 2.4.3 Registro no #478 e aviso ao Rossini
+- [x] 2.4.4 Pedir autorização para o commit e a tag; publicar só depois da Fase 1 no ar
+  - Autorizado pelo Felipe em 03/11, com a Fase 1 no ar no Gestor desde as 07:18 (`52d1ce51`). Suíte isolada de novo antes do commit: 2.178 testes, nenhuma falha, 30 pulados. Tag `v2026.11.03.1`, sem migração, sem instalador e sem Gestor.
 
 ---
 

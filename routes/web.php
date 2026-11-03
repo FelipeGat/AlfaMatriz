@@ -414,6 +414,13 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
     Route::get('suporte/pedro', [\App\Http\Controllers\SuporteConhecimentoController::class, 'index'])->name('suporte.pedro')->middleware('permissao:suporte,ler');
     Route::post('suporte/pedro/acessos', [\App\Http\Controllers\SuporteConhecimentoController::class, 'acessos'])->name('suporte.pedro.acessos')->middleware('permissao:suporte,editar');
     Route::post('suporte/pedro/empresa', [\App\Http\Controllers\SuporteConhecimentoController::class, 'empresa'])->name('suporte.pedro.empresa')->middleware('permissao:suporte,editar');
+    // A agenda automática do Pedro (docs/specs/pedro-agenda-automatica): todos com `suporte` veem; mudar é só da conta dona (Decision 16).
+    $agendaAuto = \App\Http\Controllers\SuporteAgendaAutomaticaController::class;
+    Route::get('suporte/agenda-automatica', [$agendaAuto, 'index'])->name('suporte.agenda-automatica')->middleware('permissao:suporte,ler');
+    Route::post('suporte/agenda-automatica/destinatarios', [$agendaAuto, 'incluir'])->name('suporte.agenda-automatica.incluir')->middleware('permissao:suporte,editar');
+    Route::post('suporte/agenda-automatica/destinatarios/{destinatario}', [$agendaAuto, 'mudar'])->whereNumber('destinatario')->name('suporte.agenda-automatica.mudar')->middleware('permissao:suporte,editar');
+    Route::post('suporte/agenda-automatica/configuracao', [$agendaAuto, 'configurar'])->name('suporte.agenda-automatica.configurar')->middleware('permissao:suporte,editar');
+    Route::post('suporte/agenda-automatica/previa', [$agendaAuto, 'previa'])->name('suporte.agenda-automatica.previa')->middleware('permissao:suporte,editar');
     // A base do suporte que o Pedro consulta e os atendimentos alimentam (T-476; base-do-suporte.md).
     $base = \App\Http\Controllers\SuporteBaseController::class;
     Route::get('suporte/base', [$base, 'index'])->name('suporte.base')->middleware('permissao:suporte,ler');
