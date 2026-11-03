@@ -57,6 +57,16 @@ class Maquinas
         'suporte_gestor_agenda.php', 'suporte_gestor_orcamento.php',
     ];
 
+    /**
+     * O que mora em deploy/central-ia e NÃO vai para a máquina da pessoa. Arquivo
+     * novo na pasta entra numa das duas listas — o teste recusa o que não está em
+     * nenhuma: o suporte_gestor_agenda.php nasceu fora da ARQUIVOS e só chegou à
+     * máquina do Pedro copiado à mão (23/10/2026).
+     */
+    public const FORA_DA_MAQUINA = [
+        'README.md', 'instalar.sh', 'central-ia-runner.service', 'alfamatriz-central-ia-telegram.service',
+    ];
+
     public function podeConectar(User $user): bool
     {
         return $user->ativo && ! $user->temEscopoDeRevenda() && $user->canPermissao('central_ia_agentes', 'incluir');

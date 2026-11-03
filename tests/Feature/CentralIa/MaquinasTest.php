@@ -427,6 +427,26 @@ class MaquinasTest extends TestCase
         }
     }
 
+    public function test_todo_arquivo_da_pasta_do_runner_esta_numa_das_listas(): void
+    {
+        // Só os arquivos soltos: as subpastas (media, office, whisper) têm instalação própria.
+        $pasta = collect(glob(base_path('deploy/central-ia/*')))->filter(fn ($p) => is_file($p))->map(fn ($p) => basename($p));
+        $semLista = $pasta->diff(Maquinas::ARQUIVOS)->diff(Maquinas::FORA_DA_MAQUINA)->values()->all();
+        $this->assertSame([], $semLista, 'Arquivo de deploy/central-ia fora de Maquinas::ARQUIVOS e de FORA_DA_MAQUINA.');
+        $this->assertSame([], array_values(array_intersect(Maquinas::ARQUIVOS, Maquinas::FORA_DA_MAQUINA)));
+
+        // E o que os .mjs leem ou importam da própria pasta precisa ir junto.
+        foreach (Maquinas::ARQUIVOS as $f) {
+            if (! str_ends_with($f, '.mjs')) {
+                continue;
+            }
+            preg_match_all("~join\(AQUI, '([^']+)'\)|from '\./([^']+)'~", file_get_contents(base_path('deploy/central-ia/'.$f)), $m);
+            foreach (array_filter(array_merge($m[1], $m[2])) as $usado) {
+                $this->assertContains($usado, Maquinas::ARQUIVOS, "$f usa $usado, que a instalação não leva.");
+            }
+        }
+    }
+
     /** Uma execução pendente da pessoa e o que o runner recebe por ela. */
     private function job(User $u, array $roteamento = []): array
     {
