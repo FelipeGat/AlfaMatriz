@@ -58,7 +58,9 @@ class LicencaAvisaTest extends TestCase
     /**
      * @spec:AC-333 O cliente que nasce pendente é um pedido esperando a Alfa —
      * e quem edita clientes na matriz fica sabendo sem varrer a lista. Quem só
-     * lê (financeiro) e quem é da revenda não recebem.
+     * lê (financeiro) e quem é da revenda não recebem. Desde a T-582 o aviso
+     * segue quem pode LIBERAR (`licencas,incluir`): o "Financeiro – Licenças"
+     * recebe sem editar clientes.
      */
     public function test_cliente_pendente_avisa_quem_edita_clientes_na_matriz(): void
     {
@@ -66,6 +68,9 @@ class LicencaAvisaTest extends TestCase
 
         $financeiro = User::factory()->semPerfil()->create();
         $financeiro->perfis()->attach(Perfil::where('slug', 'financeiro')->value('id'));
+
+        $quemLibera = User::factory()->semPerfil()->create();
+        $quemLibera->perfis()->attach(Perfil::where('slug', 'financeiro_licencas')->value('id'));
 
         $daRevenda = User::factory()->create(['revenda_id' => $this->revenda->id, 'name' => 'Ciclana Souza']);
 
@@ -87,7 +92,7 @@ class LicencaAvisaTest extends TestCase
 
         $avisos = Notificacao::where('tipo', 'licenca_pendente')->get();
 
-        $this->assertSame([$admin->id], $avisos->pluck('destinatario_id')->all());
+        $this->assertEqualsCanonicalizing([$admin->id, $quemLibera->id], $avisos->pluck('destinatario_id')->all());
 
         $aviso = $avisos->first();
 

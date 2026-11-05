@@ -87,9 +87,11 @@ class ProvisionadorClienteService
      *
      * É o análogo comercial da pergunta aguardando resposta: alguém agiu, a
      * bola está com outro lado, e o outro lado não está olhando. O destinatário
-     * é quem EDITA clientes na matriz — a mesma capacidade da tela onde a
-     * licença se libera. `avisar` cala para o autor: o admin da matriz que
-     * cadastra direto não pede licença a si mesmo por sino.
+     * é quem pode LIBERAR licença na matriz — a mesma porta da rota
+     * (`licencas,incluir`; até a T-582 era `clientes,editar`, e o financeiro
+     * que só cuida de licença ficaria sem o aviso). `avisar` cala para o
+     * autor: o admin da matriz que cadastra direto não pede licença a si mesmo
+     * por sino.
      */
     private function avisarPedidoDeLicenca(Cliente $cliente, string $status): void
     {
@@ -97,7 +99,7 @@ class ProvisionadorClienteService
             return;
         }
 
-        foreach (User::idsDeQuemVe('clientes', 'editar') as $destinatarioId) {
+        foreach (User::idsDeQuemVe('licencas', 'incluir') as $destinatarioId) {
             Notificacao::avisar($destinatarioId, auth()->id(), [
                 'tipo' => 'licenca_pendente',
                 'nivel' => 'atencao',

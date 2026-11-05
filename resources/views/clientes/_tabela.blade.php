@@ -218,9 +218,6 @@
                                 && ($s->pivot->status_saas ?? '') !== '')
                             ->sortBy(fn ($s) => $s->pivot->gravidade())
                             ->values();
-                        // Com um só, o menu fica idêntico ao de sempre; o
-                        // cabeçalho por sistema só aparece quando há ambiguidade.
-                        $agrupar = $gerenciaveis->count() > 1;
                     @endphp
 
                     <div class="flex justify-end">
@@ -248,11 +245,23 @@
                                         $daAlfa = ! auth()->user()->temEscopoDeRevenda();
                                         $podeLiberar = $daAlfa && auth()->user()->canPermissao('licencas', 'incluir');
                                         $podeSuspender = $daAlfa && auth()->user()->canPermissao('licencas', 'editar');
-                                        $decideLicenca = $podeLiberar || $podeSuspender;
+                                        // Só os sistemas em que sobra botão para
+                                        // esta pessoa: quem só suspende não tem o
+                                        // que fazer num sistema que aguarda
+                                        // liberação, e o cabeçalho dele ficaria
+                                        // sozinho no menu.
+                                        $operaveis = $gerenciaveis->filter(fn ($s) => $daAlfa && (
+                                            ($podeLiberar && ($s->pivot->pendente() || $s->pivot->temLicenca()))
+                                            || ($podeSuspender && $s->pivot->temLicenca())
+                                        ))->values();
+                                        // Com um só, o menu fica idêntico ao de
+                                        // sempre; o cabeçalho por sistema só
+                                        // aparece quando há ambiguidade.
+                                        $agrupar = $operaveis->count() > 1;
                                     @endphp
 
-                                    @if ($decideLicenca)
-                                        @foreach ($gerenciaveis as $sistemaLicenca)
+                                    @if ($operaveis->isNotEmpty())
+                                        @foreach ($operaveis as $sistemaLicenca)
                                             @php $vinculo = $sistemaLicenca->pivot; @endphp
 
                                             {{-- O rótulo do item não muda ("Renovar
@@ -309,7 +318,7 @@
                                         @endforeach
                                     @endif
 
-                                    @if ($decideLicenca && $gerenciaveis->isNotEmpty())
+                                    @if ($operaveis->isNotEmpty())
                                         <div class="my-1 border-t border-line"></div>
                                     @endif
 

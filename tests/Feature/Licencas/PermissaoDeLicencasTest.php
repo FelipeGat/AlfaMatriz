@@ -148,6 +148,43 @@ class PermissaoDeLicencasTest extends TestCase
         $resposta->assertDontSee('Suspender licença');
     }
 
+    public function test_quem_so_suspende_nao_ve_cabecalho_de_sistema_sem_acao(): void
+    {
+        // Pendente no AlfaGym (só liberar) e licenciado no AlfaControl.
+        $control = Sistema::factory()->alfacontrol()->create(['token' => 'chave-control']);
+        $this->pendente->sistemas()->attach($control->id, [
+            'ativo' => true, 'status_saas' => 'ativo',
+            'licenca_status' => 'ativa', 'licenca_id_externo' => '88',
+        ]);
+        $this->licenciado->sistemas()->detach();
+
+        $this->naGrade('financeiro_licencas', ['incluir' => false]);
+
+        $resposta = $this->actingAs($this->comPerfil('financeiro_licencas'))
+            ->get(route('clientes.index'))
+            ->assertOk();
+
+        // Sobra um sistema com botão: o menu não agrupa, e o AlfaGym, onde
+        // ela não tem o que fazer, não aparece como cabeçalho vazio.
+        $resposta->assertSee('Suspender licença');
+        $resposta->assertDontSee('px-3 pt-2 pb-1 font-mono', false);
+    }
+
+    public function test_quem_libera_e_suspende_ve_os_dois_sistemas_agrupados(): void
+    {
+        $control = Sistema::factory()->alfacontrol()->create(['token' => 'chave-control']);
+        $this->pendente->sistemas()->attach($control->id, [
+            'ativo' => true, 'status_saas' => 'ativo',
+            'licenca_status' => 'ativa', 'licenca_id_externo' => '88',
+        ]);
+        $this->licenciado->sistemas()->detach();
+
+        $this->actingAs($this->comPerfil('financeiro_licencas'))
+            ->get(route('clientes.index'))
+            ->assertOk()
+            ->assertSee('px-3 pt-2 pb-1 font-mono', false);
+    }
+
     public function test_editar_clientes_sem_licencas_nao_opera_licenca(): void
     {
         Http::fake();
