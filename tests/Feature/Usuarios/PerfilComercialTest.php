@@ -135,9 +135,10 @@ class PerfilComercialTest extends TestCase
 
         // Cinco: funil, clientes, revendas, o painel próprio — levado por
         // `2026_08_15_130000_permissao_dashboard_comercial.php` — e o
-        // Secretário (perfis de pessoas, desde 17/10/2026).
+        // Secretário (perfis de pessoas, desde 17/10/2026). Seis desde a
+        // T-582: quem edita clientes continua operando licença (`licencas`).
         $this->assertSame(1, Perfil::where('slug', 'comercial')->count());
-        $this->assertSame(5, Perfil::where('slug', 'comercial')->firstOrFail()->permissoes()->count());
+        $this->assertSame(6, Perfil::where('slug', 'comercial')->firstOrFail()->permissoes()->count());
     }
 
     public function test_a_tela_de_usuarios_oferece_o_perfil_novo(): void

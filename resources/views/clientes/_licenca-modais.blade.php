@@ -7,8 +7,10 @@
      tela para cliente licenciado só num sistema de leitura.
 
      Só existem para quem decide sobre licença: renderizar para a revenda
-     deixaria os formulários de liberar/renovar na página dela. --}}
-@unless (auth()->user()->temEscopoDeRevenda())
+     deixaria os formulários de liberar/renovar na página dela. Dentro da Alfa,
+     só para quem tem `licencas,incluir`, a ação das duas rotas (T-582).
+     Suspender e reativar não têm modal: confirmam no próprio menu. --}}
+@unless (auth()->user()->temEscopoDeRevenda() || ! auth()->user()->canPermissao('licencas', 'incluir'))
 @foreach ($clientes as $cliente)
     @foreach ($cliente->sistemas->filter(fn ($s) => $s->suporta('gerencia_licenca')) as $sistemaLicencaModal)
     @php

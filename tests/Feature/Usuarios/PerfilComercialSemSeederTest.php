@@ -33,8 +33,10 @@ class PerfilComercialSemSeederTest extends TestCase
         // Cinco: funil, clientes, revendas, o painel próprio — este por
         // `2026_08_15_130000_permissao_dashboard_comercial.php`, porque a
         // rota `/comercial` deixou de aceitar `dashboard` — e o Secretário,
-        // que vale para os perfis de pessoas desde 17/10/2026.
-        $this->assertSame(5, $comercial->permissoes()->count());
+        // que vale para os perfis de pessoas desde 17/10/2026. Seis desde a
+        // T-582: quem edita clientes continua operando licença, agora pelo
+        // recurso próprio `licencas`.
+        $this->assertSame(6, $comercial->permissoes()->count());
     }
 
     public function test_e_quem_o_recebe_alcanca_as_quatro_telas(): void

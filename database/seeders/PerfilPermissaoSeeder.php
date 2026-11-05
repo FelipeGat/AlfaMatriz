@@ -33,6 +33,13 @@ class PerfilPermissaoSeeder extends Seeder
             'usuarios' => 'Usuários do sistema',
             'revendas' => 'Revendas',
             'clientes' => 'Clientes',
+            // Liberar, renovar, suspender e reativar licença (T-582): recurso
+            // próprio para o financeiro suspender sem ganhar o cadastro do
+            // cliente. `incluir` libera e renova (levam valor); `editar`
+            // suspende e reativa. Espelha
+            // `2026_11_05_100000_permissao_de_licencas.php`, que é quem leva
+            // isto a produção; aqui é só o estado inicial de quem semeia.
+            'licencas' => 'Licenças dos clientes (liberar, renovar, suspender e reativar)',
             'sistemas' => 'Sistemas e preços de atacado',
             // Boleto da revenda e baixa automática (cobranca-revendas-boleto): fora do admin, logo abaixo.
             'cobranca_revendas' => 'Cobrança de revendas (boleto e baixa automática)',
@@ -264,6 +271,26 @@ class PerfilPermissaoSeeder extends Seeder
                 $todasPermissoes[$recurso] => ['ler' => true, 'incluir' => true, 'editar' => true, 'imprimir' => true, 'excluir' => false],
             ]);
         }
+        // Licença: quem edita clientes já operava licença, e continua (a
+        // revenda não — licença é decisão da Alfa). O perfil "Financeiro –
+        // Licenças" é para quem só cuida disso: lê clientes, sistemas e
+        // revendas, e libera, renova, suspende e reativa (T-582).
+        foreach ([$operacao, $comercial] as $perfil) {
+            $perfil->permissoes()->syncWithoutDetaching([
+                $todasPermissoes['licencas'] => ['ler' => true, 'incluir' => true, 'editar' => true, 'imprimir' => false, 'excluir' => false],
+            ]);
+        }
+
+        $financeiroLicencas = Perfil::updateOrCreate(['slug' => 'financeiro_licencas'], ['nome' => 'Financeiro – Licenças']);
+        $financeiroLicencas->permissoes()->syncWithoutDetaching([
+            $todasPermissoes['licencas'] => ['ler' => true, 'incluir' => true, 'editar' => true, 'imprimir' => false, 'excluir' => false],
+        ]);
+        foreach (['clientes', 'sistemas', 'revendas'] as $recurso) {
+            $financeiroLicencas->permissoes()->syncWithoutDetaching([
+                $todasPermissoes[$recurso] => ['ler' => true, 'incluir' => false, 'editar' => false, 'imprimir' => true, 'excluir' => false],
+            ]);
+        }
+
         // VixCard (acesso-vixcard, 18/10/2026): quadro e Agenda, recortados ao
         // que é da VixCard pelo escopo `EscopoVixcard`. A migração
         // `2026_10_18_140000` leva o mesmo a produção.

@@ -645,18 +645,26 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
     // no AlfaGym e no AlfaControl, com estados diferentes. O sistema é
     // identidade do recurso, por isso vai na URL — os nomes das rotas não
     // mudam, só ganham um argumento.
+    //
+    // Recurso próprio, `licencas`, e não `clientes,editar` (T-582, 05/11/2026):
+    // o financeiro suspende quem não paga, e `clientes,editar` dava junto o
+    // cadastro inteiro. As duas ações separam o que mexe com valor do que não
+    // mexe, decisão do dono: liberar e renovar levam tipo e valor (`incluir`,
+    // um período novo de licença); suspender e reativar só ligam e desligam o
+    // acesso (`editar`). A revenda continua barrada no controller
+    // (`exigirDecisaoDaAlfa`), qualquer que seja a grade.
     Route::post('clientes/{cliente}/sistemas/{sistema}/licenca/liberar', [ClienteController::class, 'liberarLicenca'])
         ->name('clientes.liberarLicenca')
-        ->middleware('permissao:clientes,editar');
+        ->middleware('permissao:licencas,incluir');
     Route::post('clientes/{cliente}/sistemas/{sistema}/licenca/renovar', [ClienteController::class, 'renovarLicenca'])
         ->name('clientes.renovarLicenca')
-        ->middleware('permissao:clientes,editar');
+        ->middleware('permissao:licencas,incluir');
     Route::post('clientes/{cliente}/sistemas/{sistema}/licenca/bloquear', [ClienteController::class, 'bloquearLicenca'])
         ->name('clientes.bloquearLicenca')
-        ->middleware('permissao:clientes,editar');
+        ->middleware('permissao:licencas,editar');
     Route::post('clientes/{cliente}/sistemas/{sistema}/licenca/desbloquear', [ClienteController::class, 'desbloquearLicenca'])
         ->name('clientes.desbloquearLicenca')
-        ->middleware('permissao:clientes,editar');
+        ->middleware('permissao:licencas,editar');
 
     // O cadastro herda a MESMA porta que já protege preço e tier: registrar
     // sistema é decisão de quem cuida do catálogo.

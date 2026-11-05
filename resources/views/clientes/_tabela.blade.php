@@ -239,8 +239,17 @@
                                 <div class="py-1">
                                     {{-- Licença é decisão da Alfa. A revenda
                                          acompanha o estado do cliente, mas não
-                                         libera, renova nem suspende. --}}
-                                    @php $decideLicenca = ! auth()->user()->temEscopoDeRevenda(); @endphp
+                                         libera, renova nem suspende. Dentro da
+                                         Alfa, cada botão segue a ação da rota
+                                         (T-582): liberar e renovar levam valor
+                                         (`licencas,incluir`); suspender e
+                                         reativar, não (`licencas,editar`). --}}
+                                    @php
+                                        $daAlfa = ! auth()->user()->temEscopoDeRevenda();
+                                        $podeLiberar = $daAlfa && auth()->user()->canPermissao('licencas', 'incluir');
+                                        $podeSuspender = $daAlfa && auth()->user()->canPermissao('licencas', 'editar');
+                                        $decideLicenca = $podeLiberar || $podeSuspender;
+                                    @endphp
 
                                     @if ($decideLicenca)
                                         @foreach ($gerenciaveis as $sistemaLicenca)
@@ -256,7 +265,7 @@
                                                 </div>
                                             @endif
 
-                                            @if ($vinculo->pendente())
+                                            @if ($podeLiberar && $vinculo->pendente())
                                                 <button type="button" x-data
                                                         @click="$dispatch('open-modal', 'liberar-licenca-{{ $cliente->id }}-{{ $sistemaLicenca->id }}')"
                                                         class="flex w-full items-center gap-2 px-3 py-2 text-left text-[12.5px] font-semibold text-brand hover:bg-chip transition">
@@ -265,14 +274,16 @@
                                                 </button>
                                             @endif
 
-                                            @if ($vinculo->temLicenca())
+                                            @if ($podeLiberar && $vinculo->temLicenca())
                                                 <button type="button" x-data
                                                         @click="$dispatch('open-modal', 'renovar-licenca-{{ $cliente->id }}-{{ $sistemaLicenca->id }}')"
                                                         class="flex w-full items-center gap-2 px-3 py-2 text-left text-[12.5px] text-ink-dim hover:text-brand hover:bg-chip transition">
                                                     <span class="h-3.5 w-3.5 shrink-0"><x-nav-icon name="repeat" /></span>
                                                     Renovar licença
                                                 </button>
+                                            @endif
 
+                                            @if ($podeSuspender && $vinculo->temLicenca())
                                                 @if ($vinculo->suspensa())
                                                     <x-confirmar :action="route('clientes.desbloquearLicenca', [$cliente, $sistemaLicenca])"
                                                                  method="POST" confirmar="Reativar"
