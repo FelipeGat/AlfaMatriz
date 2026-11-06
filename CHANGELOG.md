@@ -1,5 +1,15 @@
 # Changelog — AlfaMatriz
 
+## AlfaMatriz — 06/11/2026 — A confirmação da Central de IA não trava mais (v2026.11.03.4, T-566)
+
+### Correção
+
+- **A confirmação da Central de IA não trava mais.** Quando alguém digitava
+  o código de confirmação, na tela ou no Telegram, no mesmo instante em que a
+  máquina perguntava se o código já tinha chegado, o banco podia cancelar uma
+  das duas operações. Agora as duas seguem a mesma ordem e não se atrapalham.
+  Nada se perdia: a máquina tentava de novo sozinha logo depois.
+
 ## AlfaMatriz — 06/11/2026 — Licenças com permissão própria (v2026.11.06, T-582)
 
 ### Novidade
