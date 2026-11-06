@@ -10,6 +10,12 @@
   das duas operações. Agora as duas seguem a mesma ordem e não se atrapalham.
   Nada se perdia: a máquina tentava de novo sozinha logo depois.
 
+### Acompanhamento
+
+- Em produção desde 03/11/2026 às 16:15 (versão v2026.11.03.4).
+- 06/11: log conferido nas duas versões do servidor, de 03/11 a 06/11. O erro
+  não voltou; a única ocorrência foi a de 03/11 às 06:57, antes da correção.
+
 ## AlfaMatriz — 06/11/2026 — Licenças com permissão própria (v2026.11.06, T-582)
 
 ### Novidade
