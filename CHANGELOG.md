@@ -1,5 +1,21 @@
 # Changelog — AlfaMatriz
 
+## AlfaMatriz — 06/11/2026 — Licenças com permissão própria (v2026.11.06, T-582)
+
+### Novidade
+
+- **Licença ganhou permissão própria, separada do cadastro de clientes.**
+  Antes, para liberar, renovar, suspender ou reativar a licença de um
+  cliente, era preciso poder editar o cadastro inteiro dele. Agora há a
+  permissão "Licenças": liberar e renovar (as ações que levam valor) ficam
+  numa ação, suspender e reativar em outra. Quem já fazia isso continua
+  fazendo.
+- **Perfil novo: "Financeiro – Licenças".** Quem tem esse perfil libera,
+  renova, suspende e reativa licenças do AlfaGym e do AlfaControl, mas só
+  consulta clientes, sistemas e revendas, sem editar nem apagar cadastro.
+- O aviso no sino "cliente aguarda liberação de licença" passa a ir para quem
+  pode liberar licença, inclusive quem tem o perfil novo.
+
 ## AlfaMatriz — 01/11/2026 — Central de IA: painel da aba Business com metade das consultas (v2026.11.01.1)
 
 ### Melhoria
