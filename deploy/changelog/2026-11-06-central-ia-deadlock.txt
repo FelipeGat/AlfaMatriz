@@ -3,5 +3,9 @@
 <b>🛠 Correção</b>
 • <b>A confirmação da Central de IA não trava mais.</b> Quando alguém digitava o código de confirmação, na tela ou no Telegram, no mesmo instante em que a máquina perguntava se o código já tinha chegado, o banco podia cancelar uma das duas operações. Agora as duas seguem a mesma ordem e não se atrapalham. Nada se perdia: a máquina tentava de novo sozinha logo depois.
 
+📅 <b>Acompanhamento</b>
+• Em produção desde 03/11/2026 às 16:15 (versão v2026.11.03.4).
+• 06/11: log conferido nas duas versões do servidor, de 03/11 a 06/11. O erro não voltou; a única ocorrência foi a de 03/11 às 06:57, antes da correção.
+
 <i>Versão v2026.11.03.4 · T-566</i>
 <i>Alfa Soluções Tecnológicas</i>
