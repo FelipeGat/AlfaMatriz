@@ -285,10 +285,13 @@ o Alexandre opera o Pedro pelo Matriz e também administra a lista de acesso e a
 ensaio): `permissao:suporte,ler`, como o resto do Suporte. Mudar (destinatário, consentimento, horários, modo) e rodar a
 prévia: **só quem administra o Pedro**, a mesma regra da lista da casa (`AcessoInterno::administra`, FR-A1): a conta dona
 (`services.suporte_pedro.conta`), sempre, e `services.suporte_pedro.administradores` (`SUPORTE_PEDRO_ADMINISTRADORES`;
-padrão: o Felipe e o Alexandre). A lista não dispensa o `permissao:suporte,editar` da rota. Cada mudança vai ao Gestor com o e-mail de quem mudou; o Gestor grava
+padrão: o Felipe e o Alexandre). A lista não dispensa o `permissao:suporte,editar` da rota: a conta do Alexandre era só
+"Membro do time" e recebia 403, e por isso ganhou o perfil **Suporte WhatsApp**, só com `suporte` `ler` e `editar`
+(migração `2026_11_06_100000`). Cada mudança vai ao Gestor com o e-mail de quem mudou; o Gestor grava
 o antes e o depois no `activity_log` (`activity()->withProperties`), além do registro que o `AuditSystemChanges` já faz
 da rota.
-**Rationale**: FR-005; a tela de quem já administra o Pedro; sem perfil novo nem sistema de permissão paralelo.
+**Rationale**: FR-005; a tela de quem já administra o Pedro; sem sistema de permissão paralelo. Perfil próprio, e não o
+Administrador (daria o caixa, os usuários e a auditoria) nem a grade do Membro (daria as conversas a todo membro).
 **Alternatives considered**: editores do Pedro (`services.suporte_pedro.editores`) — não ampliados: essa lista também
 valida a base do suporte (`BaseDoSuporte::podeValidar`), e o pedido não fala dela. Quem administra também edita o
 conhecimento, e não o contrário. Trocar `services.suporte_pedro.conta` — ela é a conta do runner e a dona do retrato do

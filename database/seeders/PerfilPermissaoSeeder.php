@@ -315,6 +315,13 @@ class PerfilPermissaoSeeder extends Seeder
             Permissao::where('recurso', 'orcamentos')->value('id') => ['ler' => true, 'incluir' => true, 'editar' => true, 'imprimir' => true, 'excluir' => true],
         ]);
 
+        // Suporte WhatsApp: perfil próprio de quem opera o Pedro sem ser administrador; a migração
+        // `2026_11_06_100000` o dá ao Alexandre e leva o mesmo a produção.
+        $suporteWhatsapp = Perfil::updateOrCreate(['slug' => 'suporte_whatsapp'], ['nome' => 'Suporte WhatsApp']);
+        $suporteWhatsapp->permissoes()->syncWithoutDetaching([
+            $todasPermissoes['suporte'] => ['ler' => true, 'incluir' => false, 'editar' => true, 'imprimir' => false, 'excluir' => false],
+        ]);
+
         // O Secretário é de cada pessoa (dado sempre da própria conta): os
         // perfis de pessoas o recebem desde 17/10/2026 — a migração
         // `2026_10_17_230000` leva o mesmo a produção. Revenda e Exibição, não.
