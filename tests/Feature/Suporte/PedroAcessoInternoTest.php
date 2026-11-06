@@ -2,8 +2,11 @@
 
 namespace Tests\Feature\Suporte;
 
+use App\Models\Auditoria;
 use App\Models\CentralIaRunner;
 use App\Models\Orcamento;
+use App\Models\Perfil;
+use App\Models\Permissao;
 use App\Models\SecretarioGestorRetrato;
 use App\Models\SuporteConversa;
 use App\Models\SuportePedido;
@@ -138,6 +141,59 @@ class PedroAcessoInternoTest extends TestCase
         $outro = User::factory()->create(['email' => 'outro@teste.local']);
         $this->actingAs($outro)->get(route('suporte.pedro'))->assertOk()->assertDontSee('99745-8265');
         $this->post(route('suporte.pedro.acessos'), ['acessos_internos' => '+55 27 98888-7777 | Intruso | diretor'])->assertForbidden();
+    }
+
+    /**
+     * Felipe, 06/11/2026: o Alexandre administra a lista. Ela dá acesso ao financeiro e liga número a usuário do
+     * Gestor, então o rastro diz quem mudou o quê, sem o número inteiro.
+     */
+    public function test_administrador_da_lista_muda_os_acessos_e_fica_no_rastro(): void
+    {
+        config(['services.suporte_pedro.administradores' => ['Alexandre@Teste.local']]);
+        $alexandre = User::factory()->semPerfil()->create(['email' => 'alexandre@teste.local']);
+        $perfil = Perfil::create(['nome' => 'Edita o suporte', 'slug' => 'edita-suporte']);
+        $perfil->permissoes()->attach(Permissao::where('recurso', 'suporte')->value('id'), ['ler' => true, 'editar' => true]);
+        $alexandre->perfis()->attach($perfil->id);
+
+        $this->actingAs($alexandre)->get(route('suporte.pedro'))->assertOk()->assertSee('99745-8265');
+        $this->post(route('suporte.pedro.acessos'), ['acessos_internos' => '+55 27 99745-8265 | Wallas | chefe'])->assertSessionHasErrors('acessos_internos');
+        $this->assertSame(0, Auditoria::where('recurso', 'suporte')->count(), 'o que foi recusado não entra no rastro');
+
+        $this->post(route('suporte.pedro.acessos'), ['acessos_internos' => "+55 27 99745-8265 | Wallas | diretor | wallas@gestor.local\n+55 27 3109-3265 | Alexandre | suporte"])->assertSessionHasNoErrors();
+        $this->assertSame('diretor', app(AcessoInterno::class)->deQuem('27997458265')['perfil']);
+
+        $rastro = Auditoria::where('recurso', 'suporte')->where('acao', 'alterou')->sole();
+        $this->assertSame('Lista de acesso interno do Pedro', $rastro->descricao);
+        $this->assertSame($alexandre->id, $rastro->user_id);
+        $this->assertSame('…5397 Felipe (diretor); …8265 Wallas (gestor); …3265 Alexandre (suporte)', $rastro->alteracoes['lista']['de']);
+        $this->assertSame('…8265 Wallas (diretor) → wallas@gestor.local; …3265 Alexandre (suporte)', $rastro->alteracoes['lista']['para']);
+        $this->assertStringNotContainsString('99745', json_encode($rastro->alteracoes));
+    }
+
+    /** O padrão, sem nada no `.env`: o Felipe e o Alexandre. A conta dona fica mesmo com a lista vazia. */
+    public function test_quem_administra_por_padrao_e_a_conta_dona_nunca_sai(): void
+    {
+        $ve = fn (string $email) => str_contains($this->actingAs(User::where('email', $email)->first() ?? User::factory()->create(['email' => $email]))
+            ->get(route('suporte.pedro'))->assertOk()->getContent(), '99745-8265');
+
+        $this->assertTrue($ve('alexandreblankl@outlook.com'));
+        $this->assertTrue($ve('felipehenriquegat@gmail.com'));
+        $this->assertFalse($ve('rossinidesouza06@gmail.com'));
+
+        config(['services.suporte_pedro.administradores' => []]);
+        $this->assertTrue($ve('felipe@teste.local'), 'a conta dona administra mesmo fora da lista');
+        $this->assertFalse($ve('alexandreblankl@outlook.com'));
+    }
+
+    /** Administrar não é ser a conta do Pedro: o runner e o retrato do Gestor continuam presos a ela. */
+    public function test_administrador_nao_vira_a_conta_do_runner(): void
+    {
+        config(['services.suporte_pedro.administradores' => ['alexandre@teste.local']]);
+        $alexandre = User::factory()->create(['email' => 'alexandre@teste.local']);
+        CentralIaRunner::create(['user_id' => $alexandre->id, 'maquina' => 'wsl', 'agentes' => ['claude'], 'projetos' => [], 'visto_em' => now()]);
+        $this->app['auth']->forgetGuards();
+        Sanctum::actingAs($alexandre, ['central-ia-runner']);
+        $this->postJson(route('suporte.runner.gestor'), ['maquina' => 'wsl', 'lido_em' => now()->toIso8601String()])->assertForbidden();
     }
 
     /** FR-A11 (Felipe, 31/10/2026): o Gestor decide entre o Pedro e o menu antes daqui, e precisa da lista. */

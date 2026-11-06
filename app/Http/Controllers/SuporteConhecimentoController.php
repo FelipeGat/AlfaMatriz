@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Auditoria;
 use App\Models\SuporteRoteiro;
+use App\Services\Suporte\AcessoInterno;
 use App\Services\Suporte\Conhecimento;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -12,7 +14,8 @@ use Illuminate\View\View;
 /**
  * Suporte › Pedro (docs/specs/suporte-pedro-whatsapp/conhecimento.md): onde o
  * Felipe padroniza as mensagens e ensina o negócio ao Pedro. Quem tem `suporte`
- * vê o que o Pedro sabe; só os editores (`services.suporte_pedro.editores`) mudam.
+ * vê o que o Pedro sabe; só os editores (`services.suporte_pedro.editores`) e quem
+ * administra o Pedro mudam.
  */
 class SuporteConhecimentoController extends Controller
 {
@@ -22,32 +25,33 @@ class SuporteConhecimentoController extends Controller
             'roteiros' => SuporteRoteiro::with('atualizadoPor:id,name')->orderBy('ordem')->orderBy('id')->get(),
             'ajustes' => collect(array_keys(Conhecimento::AJUSTES))->mapWithKeys(fn ($k) => [$k => $conhecimento->ajuste($k)]),
             'podeEditar' => $this->editor($request),
-            'podeAcessos' => $this->dono($request),
-            'acessos' => $this->dono($request) ? $conhecimento->ajuste(\App\Services\Suporte\AcessoInterno::AJUSTE) : '',
+            'podeAcessos' => AcessoInterno::administra($request->user()),
+            'acessos' => AcessoInterno::administra($request->user()) ? $conhecimento->ajuste(AcessoInterno::AJUSTE) : '',
         ]);
     }
 
-    /** A lista de acesso interno do Pedro: só a conta dona dele (acesso-interno.md, FR-A1). */
-    public function acessos(Request $request, Conhecimento $conhecimento): RedirectResponse
+    /**
+     * A lista de acesso interno do Pedro: só quem o administra (acesso-interno.md, FR-A1). Ela dá acesso ao financeiro
+     * e liga número a usuário do Gestor; com mais de uma pessoa administrando, o rastro é o que diz quem mudou o quê.
+     */
+    public function acessos(Request $request, Conhecimento $conhecimento, AcessoInterno $interno): RedirectResponse
     {
-        abort_unless($this->dono($request), 403);
+        abort_unless(AcessoInterno::administra($request->user()), 403);
         $texto = (string) $request->validate(['acessos_internos' => ['nullable', 'string', 'max:3000']])['acessos_internos'];
-        if ($ruins = \App\Services\Suporte\AcessoInterno::linhasInvalidas($texto)) {
+        if ($ruins = AcessoInterno::linhasInvalidas($texto)) {
             return back()->withInput()->withErrors(['acessos_internos' => 'Linha não entendida (use telefone | nome | diretor, gestor ou suporte | e-mail no Gestor, opcional): '.$ruins[0]]);
         }
-        $conhecimento->gravarAjuste(\App\Services\Suporte\AcessoInterno::AJUSTE, $texto);
+        $antes = $interno->paraAuditoria();
+        $conhecimento->gravarAjuste(AcessoInterno::AJUSTE, $texto);
+        Auditoria::registrar(recurso: 'suporte', acao: 'alterou', descricao: 'Lista de acesso interno do Pedro',
+            alteracoes: ['lista' => ['de' => $antes, 'para' => $interno->paraAuditoria()]]);
         // O Gestor decide Pedro ou menu antes de a mensagem chegar aqui: sem a lista lá, quem
         // é da casa recebe o menu fora do horário (FR-A11).
-        $gestor = app(\App\Services\Suporte\AcessoInterno::class)->mandarAoGestor();
+        $gestor = $interno->mandarAoGestor();
 
         return back()->with('status', $gestor === false
             ? 'Acessos internos salvos, mas o Gestor não recebeu a lista: fora do horário, quem é da casa ainda recebe o menu. Nova tentativa em até 15 minutos.'
             : 'Acessos internos salvos: valem a partir da próxima mensagem.');
-    }
-
-    private function dono(Request $request): bool
-    {
-        return mb_strtolower((string) $request->user()?->email) === mb_strtolower((string) config('services.suporte_pedro.conta'));
     }
 
     public function empresa(Request $request, Conhecimento $conhecimento): RedirectResponse
@@ -99,6 +103,7 @@ class SuporteConhecimentoController extends Controller
 
     private function editor(Request $request): bool
     {
-        return in_array(mb_strtolower((string) $request->user()?->email), array_map('mb_strtolower', (array) config('services.suporte_pedro.editores')), true);
+        return AcessoInterno::administra($request->user())
+            || in_array(mb_strtolower((string) $request->user()?->email), array_map('mb_strtolower', (array) config('services.suporte_pedro.editores')), true);
     }
 }

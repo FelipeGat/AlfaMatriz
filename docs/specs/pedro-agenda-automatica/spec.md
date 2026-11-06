@@ -113,13 +113,21 @@ Os pontos que a spec deixou para o plano, decididos em `research.md` e confirmad
 02/11/2026 ("Sim, as quatro e seguir para as tarefas").
 
 - Q: Quem é o administrador autorizado (FR-005)? → A: só a conta dona do Pedro muda destinatários,
-  consentimento, horários e modo; quem tem acesso ao Suporte só vê (Decision 16).
+  consentimento, horários e modo; quem tem acesso ao Suporte só vê (Decision 16). Revista em 06/11/2026,
+  abaixo.
 - Q: Por onde vai o aviso aos gestores (resposta de técnico e "parar")? → A: pelo WhatsApp, o mesmo
   canal do relatório; fora da janela de 24 h, pelo 4º modelo, `agenda_alerta` (Decision 15).
 - Q: Quanto tempo o registro guarda número e texto (FR-024)? → A: 365 dias; depois ficam só tipo,
   dia, situação e contagens (Decision 20).
 - Q: A programação ou o relatório perdidos que rodam depois das 20:00 esperam a manhã? → A: não; saem
   na hora, no mesmo dia (FR-028-INFRA-SCHED). O silêncio vale só para o aviso de mudança (Decision 11).
+
+### Session 2026-11-06
+
+- Q: O Alexandre, que opera o Pedro pelo Matriz, também administra (FR-005)? → A: sim. Administram a conta
+  dona do Pedro, sempre, e quem está em `services.suporte_pedro.administradores` (padrão: o Felipe e o
+  Alexandre); toda mudança segue com o e-mail de quem mudou (Decision 16, revista). A conta do runner e a dona
+  do retrato continuam sendo só a conta dona.
 
 ## User Scenarios & Testing
 

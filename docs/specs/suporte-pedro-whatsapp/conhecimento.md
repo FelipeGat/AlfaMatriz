@@ -42,7 +42,8 @@ link que está aqui.
 
 **Cobrança dos críticos:** de quanto em quanto tempo cobrar (padrão: 60 min).
 
-Só os editores (`services.suporte_pedro.editores`, padrão: o Felipe) alteram. Quem tem `suporte` vê.
+Só os editores (`services.suporte_pedro.editores`, padrão: o Felipe) e quem administra o Pedro (`acesso-interno.md`,
+FR-A1) alteram. Quem tem `suporte` vê.
 
 **Roteiros que já nascem**, editáveis:
 - **Portão parado:** crítica, 3 h, abre atendimento.

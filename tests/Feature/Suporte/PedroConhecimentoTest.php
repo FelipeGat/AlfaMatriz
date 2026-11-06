@@ -11,6 +11,7 @@ use App\Models\SuporteRoteiro;
 use App\Models\Tarefa;
 use App\Models\User;
 use App\Services\FluxoTarefaService;
+use App\Services\Suporte\Conhecimento;
 use Database\Seeders\PerfilPermissaoSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -216,9 +217,20 @@ class PedroConhecimentoTest extends TestCase
         $this->assertSame($antes, $cobrancas());
     }
 
+    /** Felipe, 06/11/2026: quem administra o Pedro também escreve o que ele sabe, sem estar na lista de editores. */
+    public function test_administrador_altera_o_conhecimento(): void
+    {
+        config(['services.suporte_pedro.administradores' => ['rossini@teste.local']]);
+        $this->actingAs($this->rossini)->get(route('suporte.pedro'))->assertOk()->assertSee('Salvar apresentação')->assertDontSee('alteram');
+        $this->post(route('suporte.pedro.roteiro.novo'), ['titulo' => 'Cerca elétrica', 'quando' => 'Cerca sem tensão', 'ativo' => '1'])->assertRedirect();
+        $this->assertSame($this->rossini->id, SuporteRoteiro::where('titulo', 'Cerca elétrica')->value('atualizado_por'));
+        $this->post(route('suporte.pedro.empresa'), ['cobranca_minutos' => 45])->assertSessionHasNoErrors();
+        $this->assertSame(45, app(Conhecimento::class)->cobrancaMinutos());
+    }
+
     public function test_so_o_editor_altera_o_conhecimento(): void
     {
-        $this->actingAs($this->rossini)->get(route('suporte.pedro'))->assertOk()->assertSee('Portão parado')->assertSee('só o Felipe altera');
+        $this->actingAs($this->rossini)->get(route('suporte.pedro'))->assertOk()->assertSee('Portão parado')->assertSee('só os administradores do Pedro alteram');
         $this->actingAs($this->rossini)->post(route('suporte.pedro.roteiro.novo'), ['titulo' => 'X', 'quando' => 'y'])->assertForbidden();
         $this->actingAs($this->rossini)->post(route('suporte.pedro.empresa'), ['cobranca_minutos' => 60])->assertForbidden();
 

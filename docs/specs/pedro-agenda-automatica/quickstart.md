@@ -87,6 +87,8 @@ para 05/11"); visita finalizada (nada sai).
    conta dona; a linha mostra o nome e o final do celular.
 3. Outra conta com `suporte,ler` abre a aba. **Expected**: vê; os botões de mudar não aparecem e o `POST` dá 403.
 4. Gestor fora do ar. **Expected**: a aba diz que o Gestor não respondeu, sem erro 500.
+5. Conta de `services.suporte_pedro.administradores`, com `suporte,editar`, repete o passo 2. **Expected**: `autor` = o
+   e-mail dela. Com só `suporte,ler`, mesmo estando na lista, o `POST` dá 403 (Decision 16, revista em 06/11/2026).
 
 ## Scenario 9: Roundtrip End-to-End (borda Matriz ↔ Gestor)
 

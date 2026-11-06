@@ -37,8 +37,8 @@
         @if ($erro)
             <p class="rounded-panel border border-line bg-crit-tint px-4 py-3 text-[13px] font-semibold text-crit">{{ $erro }}</p>
         @endif
-        @unless ($dono)
-            <p class="text-[12.5px] text-ink-mute">Você vê a agenda automática; só o Felipe altera.</p>
+        @unless ($administra)
+            <p class="text-[12.5px] text-ink-mute">Você vê a agenda automática; só os administradores do Pedro alteram.</p>
         @endunless
 
         {{-- Funcionamento: modo e horários --}}
@@ -60,16 +60,16 @@
                     @csrf
                     <input type="hidden" name="modo_atual" value="{{ $modoAtual }}">
                     <label><span class="{{ $rotulo }}">Modo</span>
-                        <select name="modo" x-model="modo" class="{{ $campo }}" @disabled(! $dono)>
+                        <select name="modo" x-model="modo" class="{{ $campo }}" @disabled(! $administra)>
                             @foreach (A::MODOS as $k => $v)<option value="{{ $k }}" @selected(old('modo', $modoAtual) === $k)>{{ $v }}</option>@endforeach
                         </select></label>
                     @foreach (['manha' => 'Manhã: mudanças da noite', 'programacao' => 'Programação de amanhã', 'relatorio' => 'Relatório aos gestores', 'silencio_inicio' => 'Silêncio a partir de'] as $k => $v)
                         <label><span class="{{ $rotulo }}">{{ $v }}</span>
-                            <input type="time" name="{{ $k }}" value="{{ old($k, $cfg[$k]) }}" class="{{ $campo }}" @disabled(! $dono) @if ($falta($cfg, $k)) placeholder="sem dado" @endif></label>
+                            <input type="time" name="{{ $k }}" value="{{ old($k, $cfg[$k]) }}" class="{{ $campo }}" @disabled(! $administra) @if ($falta($cfg, $k)) placeholder="sem dado" @endif></label>
                     @endforeach
                     <p class="text-[12.5px] text-ink-mute md:col-span-5"><b>Desligada</b>: nada sai, e as verificações só registram que rodaram.
                         <b>Ensaio</b>: grava o texto exato que sairia para cada pessoa, sem enviar. <b>Ligada</b>: envia de verdade, e só no Gestor de produção.</p>
-                    @if ($dono)
+                    @if ($administra)
                         <label x-show="modo === 'ligada' && @js($modoAtual) !== 'ligada'" x-cloak class="flex items-start gap-2 text-[12.5px] text-ink md:col-span-5">
                             <input type="checkbox" name="confirmar_ligada" value="1" class="mt-0.5">
                             <span>Sei que, ligada, as mensagens passam a sair de verdade para os técnicos e os gestores da lista.</span></label>
@@ -167,7 +167,7 @@
                             @elseif ($d['consentimento_em'])consentimento {{ $quando($d['consentimento_em']) }}
                             @else{{ $falta($d, 'consentimento_em') ? 'sem dado' : 'sem consentimento' }}@endif
                         </span>
-                        @if ($dono && $d['id'])
+                        @if ($administra && $d['id'])
                             <span class="flex shrink-0 items-center gap-1.5">
                                 @if (! $d['consentimento_em'] || $d['parou_em'])
                                     <x-confirmar :action="route('suporte.agenda-automatica.mudar', $d['id'])" confirmar="Registrar"
@@ -191,7 +191,7 @@
                 @endforelse
             @endif
 
-            @if ($dono)
+            @if ($administra)
                 <form method="POST" action="{{ route('suporte.agenda-automatica.incluir') }}" class="grid gap-3 border-t border-line px-4 py-3 md:grid-cols-[1fr_160px_auto]">
                     @csrf
                     @if ($funcionarios === null)
@@ -223,7 +223,7 @@
             <div class="flex flex-wrap items-center gap-2 border-b border-line px-4 py-2.5">
                 <h2 class="flex-1 font-display text-[15px] font-semibold text-ink">O que saiu
                     <span class="text-[12.5px] font-normal text-ink-mute">· e, no ensaio, o que sairia</span></h2>
-                @if ($dono)
+                @if ($administra)
                     <form method="POST" action="{{ route('suporte.agenda-automatica.previa') }}" class="flex flex-wrap items-center gap-1.5">
                         @csrf
                         <select name="tipo" class="{{ $filtro }}">

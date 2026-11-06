@@ -98,6 +98,9 @@ return [
         'limite_minutos' => (int) env('SUPORTE_PEDRO_LIMITE_MINUTOS', 30),
         // Quem escreve o conhecimento do Pedro (roteiros e apresentação); quem tem `suporte` só vê.
         'editores' => array_filter(explode(',', (string) env('SUPORTE_PEDRO_EDITORES', 'felipehenriquegat@gmail.com'))),
+        // Quem administra o Pedro: a lista da casa, a agenda automática e o que ele sabe (Felipe, 06/11/2026: o Alexandre
+        // opera o Pedro pelo Matriz). A `conta` administra sempre, e continua sendo só ela a do runner e a dona do retrato.
+        'administradores' => array_filter(explode(',', (string) env('SUPORTE_PEDRO_ADMINISTRADORES', 'felipehenriquegat@gmail.com,alexandreblankl@outlook.com'))),
     ],
 
     'alfamonitor' => [

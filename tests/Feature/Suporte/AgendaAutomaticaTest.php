@@ -110,6 +110,17 @@ class AgendaAutomaticaTest extends TestCase
         return $u;
     }
 
+    /** O suporte para editar, num perfil próprio: quem decide é a lista de administradores, e não o perfil de admin. */
+    private function comEdicao(string $email): User
+    {
+        $u = User::factory()->semPerfil()->create(['email' => $email]);
+        $perfil = Perfil::create(['nome' => 'Edita o suporte', 'slug' => 'edita-suporte']);
+        $perfil->permissoes()->attach(Permissao::where('recurso', 'suporte')->value('id'), ['ler' => true, 'editar' => true]);
+        $u->perfis()->attach($perfil->id);
+
+        return $u;
+    }
+
     private function postsAoGestor(): int
     {
         return Http::recorded(fn (Request $r) => $r->method() === 'POST')->count();
@@ -138,7 +149,7 @@ class AgendaAutomaticaTest extends TestCase
         $leitor = $this->soLeitura();
         $antes = $this->postsAoGestor();
         $this->actingAs($leitor)->get(route('suporte.agenda-automatica'))->assertOk()
-            ->assertSee('Cristiano')->assertSee('só o Felipe altera')
+            ->assertSee('Cristiano')->assertSee('só os administradores do Pedro alteram')
             ->assertDontSee('Prévia agora')->assertDontSee('Salvar no Gestor')->assertDontSee('Registrar consentimento')->assertDontSee('Desativar');
         $this->post(route('suporte.agenda-automatica.incluir'), ['funcionario_id' => 7, 'papel' => 'tecnico'])->assertForbidden();
         $this->post(route('suporte.agenda-automatica.mudar', 3), ['acao' => 'desativar'])->assertForbidden();
@@ -151,8 +162,8 @@ class AgendaAutomaticaTest extends TestCase
         $this->actingAs($this->felipe)->get(route('suporte.agenda-automatica'))->assertOk()->assertSee(AgendaAutomatica::SEM_RESPOSTA);
     }
 
-    /** Quem pode editar o suporte, mas não é a conta dona, também só vê (Decision 16). */
-    public function test_conta_que_edita_o_suporte_mas_nao_e_a_dona_recebe_403(): void
+    /** Quem pode editar o suporte, mas não administra o Pedro, também só vê (Decision 16). */
+    public function test_conta_que_edita_o_suporte_mas_nao_administra_o_pedro_recebe_403(): void
     {
         $this->gestor(['destinatarios' => [$this->destinatario()]]);
         $outro = User::factory()->create(['email' => 'outro@teste.local']);
@@ -164,6 +175,54 @@ class AgendaAutomaticaTest extends TestCase
         $this->post(route('suporte.agenda-automatica.previa'), ['tipo' => 'programacao', 'dia' => 'hoje'])->assertForbidden();
         $this->assertSame(0, $this->postsAoGestor());
         Http::assertNotSent(fn (Request $r) => str_ends_with($r->url(), '/funcionarios'));
+    }
+
+    /** Felipe, 06/11/2026: o Alexandre opera o Pedro. Tudo vai ao Gestor com o e-mail dele, e ligar continua pedindo a confirmação. */
+    public function test_administrador_da_lista_muda_em_nome_proprio(): void
+    {
+        config(['services.suporte_pedro.administradores' => ['Alexandre@Teste.local']]);
+        $this->gestor(['destinatarios' => [$this->destinatario()]]);
+        $this->actingAs($this->comEdicao('alexandre@teste.local'))->from(route('suporte.agenda-automatica'));
+
+        $this->get(route('suporte.agenda-automatica'))->assertOk()->assertSee('Salvar no Gestor')->assertSee('Prévia agora')
+            ->assertSee('Técnico Sem Celular · técnico · sem número')->assertDontSee('alteram');
+
+        $autor = ['autor' => 'alexandre@teste.local'];
+        $this->post(route('suporte.agenda-automatica.incluir'), ['funcionario_id' => 7, 'papel' => 'tecnico', 'consentimento' => '1'])->assertSessionHasNoErrors();
+        Http::assertSent(fn (Request $r) => $r->url() === self::GESTOR.'destinatarios' && $r->data() === ['funcionario_id' => 7, 'papel' => 'tecnico', 'consentimento' => true] + $autor);
+        $this->post(route('suporte.agenda-automatica.mudar', 3), ['acao' => 'desativar'])->assertSessionHasNoErrors();
+        Http::assertSent(fn (Request $r) => $r->url() === self::GESTOR.'destinatarios/3' && $r->data() === ['ativo' => false] + $autor);
+
+        $horarios = ['manha' => '06:30', 'programacao' => '16:30', 'relatorio' => '17:00', 'silencio_inicio' => '20:00'];
+        $antes = $this->postsAoGestor();
+        $this->post(route('suporte.agenda-automatica.configurar'), $horarios + ['modo' => 'ligada', 'modo_atual' => 'desligada'])->assertSessionHasErrors('confirmar_ligada');
+        $this->assertSame($antes, $this->postsAoGestor(), 'ligar sem a confirmação não chega ao Gestor, para ninguém');
+        $this->post(route('suporte.agenda-automatica.configurar'), $horarios + ['modo' => 'ensaio', 'modo_atual' => 'desligada'])->assertSessionHasNoErrors();
+        Http::assertSent(fn (Request $r) => $r->url() === self::GESTOR.'configuracao' && $r->data() === ['modo' => 'ensaio'] + $horarios + $autor);
+
+        $this->post(route('suporte.agenda-automatica.previa'), ['tipo' => 'programacao', 'dia' => 'amanha'])->assertSessionHasNoErrors();
+        Http::assertSent(fn (Request $r) => $r->url() === self::GESTOR.'previa' && $r->data() === ['tipo' => 'programacao', 'dia' => '2026-11-04'] + $autor);
+    }
+
+    /** A lista não dispensa a permissão da rota: sem `suporte,editar`, quem está nela não chega ao Gestor. */
+    public function test_estar_na_lista_sem_editar_o_suporte_nao_chega_ao_gestor(): void
+    {
+        config(['services.suporte_pedro.administradores' => ['leitor@teste.local']]);
+        $this->gestor();
+        $this->actingAs($this->soLeitura());
+        $this->post(route('suporte.agenda-automatica.incluir'), ['funcionario_id' => 7, 'papel' => 'tecnico'])->assertForbidden();
+        $this->post(route('suporte.agenda-automatica.configurar'), ['modo' => 'ligada'])->assertForbidden();
+        $this->assertSame(0, $this->postsAoGestor());
+    }
+
+    /** A conta dona administra mesmo fora da lista: um `.env` errado não tranca o Pedro para ela. */
+    public function test_conta_dona_administra_mesmo_fora_da_lista(): void
+    {
+        config(['services.suporte_pedro.administradores' => []]);
+        $this->gestor();
+        $this->actingAs($this->felipe)->get(route('suporte.agenda-automatica'))->assertOk()->assertSee('Salvar no Gestor');
+        $this->post(route('suporte.agenda-automatica.previa'), ['tipo' => 'programacao', 'dia' => 'hoje'])->assertSessionHasNoErrors();
+        $this->assertSame(1, $this->postsAoGestor());
     }
 
     public function test_sem_permissao_de_suporte_nao_abre(): void

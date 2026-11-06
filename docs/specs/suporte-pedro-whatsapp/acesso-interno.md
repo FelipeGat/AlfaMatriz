@@ -24,7 +24,10 @@ Telegram". O Pedro "não pode se confundir: tem que ter certeza de que sou eu, p
     não vai ao pedido à IA, e o Gestor confere na gravação que o usuário está ativo e cria orçamento pela tela.
   - O número do WhatsApp vem assinado pela Meta, e o repasse do Gestor também é assinado. O nome que a pessoa diz
     ser não conta.
-  - Só a conta dona do Pedro (`services.suporte_pedro.conta`) edita a lista; quem só vê o Pedro não vê os números.
+  - Só quem administra o Pedro edita a lista: a conta dona (`services.suporte_pedro.conta`), sempre, e
+    `services.suporte_pedro.administradores` (padrão: o Felipe e o Alexandre; Felipe, 06/11/2026). Quem só vê o Pedro
+    não vê os números. Toda gravação entra na auditoria (recurso `suporte`) com quem mudou, o antes e o depois, e do
+    número só o final: a lista dá acesso ao financeiro e liga número a usuário do Gestor.
   - Comparação pela chave do número (DDD + 8 últimos dígitos), a mesma do resto do Pedro.
 - **FR-A2, perfis** (cada um inclui o de baixo):
   - `suporte`: atendimentos do Gestor, todos os abertos, com cliente, etapa, data e responsável; e qualquer

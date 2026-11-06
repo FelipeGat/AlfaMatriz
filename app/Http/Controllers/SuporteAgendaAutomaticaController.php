@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\Suporte\AcessoInterno;
 use App\Services\Suporte\AgendaAutomatica;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -11,7 +12,7 @@ use Illuminate\View\View;
 
 /**
  * Suporte › Agenda automática (docs/specs/pedro-agenda-automatica, US4): quem recebe a agenda pelo WhatsApp, os
- * horários, o modo, a prévia e o que saiu. Quem tem `suporte` vê; mudar é só da conta dona do Pedro (Decision 16),
+ * horários, o modo, a prévia e o que saiu. Quem tem `suporte` vê; mudar é só de quem administra o Pedro (Decision 16),
  * a mesma regra da lista da casa, porque mexe em quem recebe mensagem e em ligar o envio de verdade. A regra e os
  * dados moram no Gestor: aqui não se guarda nada, e toda mudança vai com o e-mail de quem mudou (FR-005).
  */
@@ -21,24 +22,24 @@ class SuporteAgendaAutomaticaController extends Controller
     {
         $filtros = $this->filtros($request);
         $pagina = max(1, min(10000, (int) $request->query('pagina', 1)));
-        $dono = $this->dono($request);
+        $administra = AcessoInterno::administra($request->user());
         $erro = null;
         $estado = $funcionarios = $avisos = null;
         // Uma chamada por vez, parando na primeira falha: com o Gestor fora, as três dariam o mesmo recado.
         try {
             $estado = $agenda->estado();
-            $funcionarios = $dono ? $agenda->funcionarios() : null;
+            $funcionarios = $administra ? $agenda->funcionarios() : null;
             $avisos = $agenda->avisos($filtros, $pagina);
         } catch (ValidationException $e) {
             $erro = $e->validator->errors()->first();
         }
 
-        return view('suporte.agenda-automatica', compact('estado', 'funcionarios', 'avisos', 'filtros', 'pagina', 'dono', 'erro'));
+        return view('suporte.agenda-automatica', compact('estado', 'funcionarios', 'avisos', 'filtros', 'pagina', 'administra', 'erro'));
     }
 
     public function incluir(Request $request, AgendaAutomatica $agenda): RedirectResponse
     {
-        abort_unless($this->dono($request), 403);
+        abort_unless(AcessoInterno::administra($request->user()), 403);
         $d = $request->validate([
             'funcionario_id' => ['required', 'integer', 'min:1'],
             'papel' => ['required', Rule::in(array_keys(AgendaAutomatica::PAPEIS))],
@@ -50,7 +51,7 @@ class SuporteAgendaAutomaticaController extends Controller
 
     public function mudar(Request $request, AgendaAutomatica $agenda, int $destinatario): RedirectResponse
     {
-        abort_unless($this->dono($request), 403);
+        abort_unless(AcessoInterno::administra($request->user()), 403);
         $acao = $request->validate(['acao' => ['required', Rule::in(['ativar', 'desativar', 'consentimento'])]])['acao'];
         $dest = $agenda->mudar($destinatario, match ($acao) {
             'ativar' => ['ativo' => true],
@@ -71,7 +72,7 @@ class SuporteAgendaAutomaticaController extends Controller
      */
     public function configurar(Request $request, AgendaAutomatica $agenda): RedirectResponse
     {
-        abort_unless($this->dono($request), 403);
+        abort_unless(AcessoInterno::administra($request->user()), 403);
         $hora = ['required', 'date_format:H:i'];
         $d = $request->validate([
             'modo' => ['required', Rule::in(array_keys(AgendaAutomatica::MODOS))],
@@ -88,7 +89,7 @@ class SuporteAgendaAutomaticaController extends Controller
     /** Grava como ensaio no Gestor e abre a lista já filtrada nesses avisos, com o texto exato de cada um. */
     public function previa(Request $request, AgendaAutomatica $agenda): RedirectResponse
     {
-        abort_unless($this->dono($request), 403);
+        abort_unless(AcessoInterno::administra($request->user()), 403);
         $d = $request->validate([
             'tipo' => ['required', Rule::in(['programacao', 'relatorio'])],
             'dia' => ['required', Rule::in(['hoje', 'amanha'])],
@@ -114,11 +115,6 @@ class SuporteAgendaAutomaticaController extends Controller
             'situacao' => array_key_exists((string) $request->query('situacao'), AgendaAutomatica::SITUACOES) ? (string) $request->query('situacao') : null,
             'modo' => in_array($request->query('modo'), ['ensaio', 'real'], true) ? (string) $request->query('modo') : null,
         ];
-    }
-
-    private function dono(Request $request): bool
-    {
-        return mb_strtolower((string) $request->user()?->email) === mb_strtolower((string) config('services.suporte_pedro.conta'));
     }
 
     /** Quem mudou, como o Gestor grava no activity_log dele (até 120 caracteres, pelo contrato). */

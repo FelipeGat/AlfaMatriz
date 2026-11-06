@@ -17,10 +17,10 @@
         @if (session('status'))<x-aviso>{{ session('status') }}</x-aviso>@endif
         @if ($errors->any())<x-aviso tom="critico" :segundos="0">{{ $errors->first() }}</x-aviso>@endif
         @unless ($podeEditar)
-            <p class="text-[12.5px] text-ink-mute">Você vê o que o Pedro sabe; só o Felipe altera.</p>
+            <p class="text-[12.5px] text-ink-mute">Você vê o que o Pedro sabe; só os administradores do Pedro alteram.</p>
         @endunless
 
-        {{-- Acesso interno (acesso-interno.md): só a conta dona do Pedro vê e muda os números. --}}
+        {{-- Acesso interno (acesso-interno.md): só quem administra o Pedro vê e muda os números. --}}
         @if ($podeAcessos)
             <section class="rounded-panel border border-line bg-surface">
                 <h2 class="border-b border-line px-4 py-2.5 font-display text-[15px] font-semibold text-ink">Acesso interno pelo WhatsApp</h2>

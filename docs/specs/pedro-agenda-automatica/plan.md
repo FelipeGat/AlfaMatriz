@@ -66,7 +66,7 @@ técnicos, 2 gestores). Dezenas de mensagens por dia.
 
 | Princípio | Status | Notas |
 |---|---|---|
-| I. Privacidade por conta | PASS | A aba é do Pedro: mudar é só da conta dona (`services.suporte_pedro.conta`), ver é `permissao:suporte,ler`, como o resto do Suporte. Nada da Central. |
+| I. Privacidade por conta | PASS | A aba é do Pedro: mudar é só de quem administra o Pedro (a conta dona e `services.suporte_pedro.administradores`, Decision 16 revista em 06/11/2026), ver é `permissao:suporte,ler`, como o resto do Suporte. Nada da Central. |
 | II. Cada um com a sua máquina | N/A | Nada roda no runner. |
 | III. Um sistema só | PASS | Nenhuma aplicação nova; nenhum agendador no Matriz (o relógio é o do Gestor). |
 | IV. Segredos | PASS | Usa o segredo da integração que já existe; nada novo em código, log ou prompt. |
@@ -121,7 +121,7 @@ docs/specs/whatsapp-pedro/contracts/integracao-matriz.md # + seção 8, apontand
 
 # Matriz (este repositório)
 app/Services/Suporte/AgendaAutomatica.php                # [novo] cliente das portas (Http, timeout, motivo)
-app/Http/Controllers/SuporteAgendaAutomaticaController.php   # [novo] aba: ver, mudar (só a conta dona), prévia
+app/Http/Controllers/SuporteAgendaAutomaticaController.php   # [novo] aba: ver, mudar (só quem administra o Pedro), prévia
 resources/views/suporte/agenda-automatica.blade.php      # [novo] Blade + Alpine + tokens; ícone `calendar`
 resources/views/suporte/_abas.blade.php                  # + aba "Agenda automática"
 routes/web.php                                           # suporte/agenda-automatica (permissao:suporte,ler|editar)
@@ -141,7 +141,7 @@ controller, no padrão de `SuporteConhecimentoController` e `CanalWhatsApp`.
 | Colunas (MySQL) | snake_case | migração | `database/migrations/*` do Gestor; `data-model.md` |
 | Portas Matriz → Gestor (JSON) | snake_case; datas `AAAA-MM-DD`, horas `HH:MM`, instantes ISO 8601 | FormRequest no Gestor; `validate` e checagem de chaves no cliente do Matriz | `contracts/integracao-agenda.md` |
 | URL | `api/integracao/matriz/agenda/<recurso>` em minúsculas; nomes `integracao.matriz.agenda.*` | `routes/api.php` | `routes/api.php` do Gestor |
-| Tela do Matriz | rotas `suporte/agenda-automatica[/...]`, nomes `suporte.agenda-automatica.*` | `permissao:` + conta dona | `routes/web.php` deste repositório |
+| Tela do Matriz | rotas `suporte/agenda-automatica[/...]`, nomes `suporte.agenda-automatica.*` | `permissao:` + `AcessoInterno::administra` | `routes/web.php` deste repositório |
 | Modelos da Meta | nomes snake_case; variáveis posicionais `{{n}}` | conferidos em `templatesAprovados` antes de cada uso | `contracts/mensagens.md` |
 
 **Mapeamento**: sem ORM entre os sistemas. O Gestor monta arrays nas portas; o Matriz não guarda nada e mostra o que
@@ -156,7 +156,7 @@ Gestor publica antes do Matriz: a aba chama portas que precisam existir.
 | Fase | Entrega | FR / Stories | Sistema |
 |---|---|---|---|
 | A | Base: tabelas, configuração (`desligada`), destinatários e pendências, programação e versão, textos, ciclo de minuto com as verificações devidas e a prova de execução, ensaio e prévia, as 7 portas, teste de contrato. Nenhuma chamada à Meta ainda. | FR-001–003, 005–011, 024–025, 028-INFRA-SCHED, 029, 030; US1 em ensaio; US4 (lado Gestor) | Gestor |
-| B | Aba Suporte › Agenda automática: estado, destinatários com nome e final, consentimento, horários, modo, prévia, envios; só a conta dona muda. | FR-002, 005, 025, 028; US4 | Matriz |
+| B | Aba Suporte › Agenda automática: estado, destinatários com nome e final, consentimento, horários, modo, prévia, envios; só quem administra o Pedro muda. | FR-002, 005, 025, 028; US4 | Matriz |
 | C | Envio real: janela ou modelo, conferência do modelo e da categoria, erro da Meta, linha antes da chamada, tentativas, situação pelo webhook, `nunca_enviar`, trava de produção. | FR-004, 022, 024, 026, 027; SC-002, SC-006 | Gestor |
 | D | Mudanças: comparação pareada, estabilidade, silêncio, verificação das 06:30. | FR-012–016; US2; SC-003 | Gestor |
 | E | Relatório das 17:00: contagens, conflitos, pendências, dia vazio, partes. | FR-017–020; US3; SC-004 | Gestor |

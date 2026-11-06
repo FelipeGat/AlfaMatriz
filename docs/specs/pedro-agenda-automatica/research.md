@@ -278,17 +278,21 @@ Gestor → Matriz.
 
 ## Decision 16: Administração e quem é "administrador autorizado"
 
-**Confirmada** pelo Felipe em 02/11/2026 ("Sim, as quatro e seguir para as tarefas").
+**Confirmada** pelo Felipe em 02/11/2026 ("Sim, as quatro e seguir para as tarefas"). **Revista** por ele em 06/11/2026:
+o Alexandre opera o Pedro pelo Matriz e também administra a lista de acesso e a agenda automática.
 
 **Decision**: Aba nova **"Agenda automática"** em Suporte, no Matriz. Ver (destinatários, configuração, envios,
 ensaio): `permissao:suporte,ler`, como o resto do Suporte. Mudar (destinatário, consentimento, horários, modo) e rodar a
-prévia: **só a conta dona do Pedro** (`services.suporte_pedro.conta`), a mesma regra da lista da casa
-(`SuporteConhecimentoController::dono`, FR-A1). Cada mudança vai ao Gestor com o e-mail de quem mudou; o Gestor grava
+prévia: **só quem administra o Pedro**, a mesma regra da lista da casa (`AcessoInterno::administra`, FR-A1): a conta dona
+(`services.suporte_pedro.conta`), sempre, e `services.suporte_pedro.administradores` (`SUPORTE_PEDRO_ADMINISTRADORES`;
+padrão: o Felipe e o Alexandre). A lista não dispensa o `permissao:suporte,editar` da rota. Cada mudança vai ao Gestor com o e-mail de quem mudou; o Gestor grava
 o antes e o depois no `activity_log` (`activity()->withProperties`), além do registro que o `AuditSystemChanges` já faz
 da rota.
 **Rationale**: FR-005; a tela de quem já administra o Pedro; sem perfil novo nem sistema de permissão paralelo.
-**Alternatives considered**: editores do Pedro (`services.suporte_pedro.editores`) — hoje é a mesma pessoa; fica como
-mudança de uma linha se o dono quiser estender.
+**Alternatives considered**: editores do Pedro (`services.suporte_pedro.editores`) — não ampliados: essa lista também
+valida a base do suporte (`BaseDoSuporte::podeValidar`), e o pedido não fala dela. Quem administra também edita o
+conhecimento, e não o contrário. Trocar `services.suporte_pedro.conta` — ela é a conta do runner e a dona do retrato do
+Gestor: mudá-la derrubaria o Pedro.
 
 ## Decision 17: O número e quem nunca recebe
 

@@ -5,7 +5,7 @@ AlfaMatriz (este repositório) ganha só a aba de administração e supervisão.
 real só com o modo `ligada` **e** `APP_ENV=production`, e só depois da autorização expressa do dono (SC-006).
 
 Decisões do plano confirmadas pelo Felipe em 02/11/2026 ("Sim, as quatro e seguir para as tarefas"): só a conta
-dona do Pedro administra (Decision 16); aviso aos gestores pelo WhatsApp, com o 4º modelo `agenda_alerta` (Decision
+dona do Pedro administra (Decision 16, revista em 06/11/2026: o Alexandre também); aviso aos gestores pelo WhatsApp, com o 4º modelo `agenda_alerta` (Decision
 15); registro guardado por 365 dias (Decision 20); programação ou relatório perdidos saem na hora, mesmo à noite
 (Decision 11).
 
@@ -152,11 +152,12 @@ Ref: `contracts/integracao-agenda.md` (Respostas do Matriz aos erros); plan, Sou
 
 ### 2.2 Rotas e autorização `[C]`
 
-Ref: FR-005; Decision 16 (confirmada: só a conta dona administra)
+Ref: FR-005; Decision 16 (confirmada em 02/11/2026; revista em 06/11/2026: administram a conta dona e `services.suporte_pedro.administradores`)
 
 - [x] 2.2.1 Rotas `suporte/agenda-automatica[/...]` (nomes `suporte.agenda-automatica.*`): ver com `permissao:suporte,ler`
   - A tela é `suporte.agenda-automatica`, sem sufixo, como `suporte.pedro` e `suporte.base`; as escritas são `.incluir`, `.mudar`, `.configurar` e `.previa`, com `permissao:suporte,editar` (o mesmo par da lista da casa) além da conta dona.
 - [x] 2.2.2 Mudar destinatário, consentimento, horários e modo, e rodar a prévia: só a conta dona do Pedro (`services.suporte_pedro.conta`), pela mesma regra do `SuporteConhecimentoController::dono`
+  - Revisto em 06/11/2026: a regra das duas telas passou a ser `AcessoInterno::administra`, que soma `services.suporte_pedro.administradores` à conta dona. Os testes estão em `AgendaAutomaticaTest`, `PedroAcessoInternoTest` e `PedroConhecimentoTest`.
 - [x] 2.2.3 Toda chamada de escrita leva como `autor` o e-mail de quem mudou
 - [x] 2.2.4 Testes: a conta dona muda; outra conta com `suporte,ler` vê e recebe 403 ao mudar; sem `suporte,ler` não abre
 
@@ -486,7 +487,7 @@ os passos 7.1.1 (aprovar os textos) e 7.2.1 a 7.2.3 (cadastros) não dependem de
 | US1 | Programação de amanhã às 16:30, só com os compromissos do técnico (FR-007 a FR-011) | 1, 3 |
 | US2 | Mudança por evento e verificação das 06:30, com estabilidade e silêncio (FR-012 a FR-016) | 4 |
 | US3 | Relatório das 17:00 aos gestores (FR-017 a FR-020) | 5 |
-| US4 | Administração e supervisão no AlfaMatriz, só a conta dona muda (FR-001 a FR-006, FR-024, FR-025, FR-028) | 1, 2 |
+| US4 | Administração e supervisão no AlfaMatriz, só quem administra o Pedro muda (FR-001 a FR-006, FR-024, FR-025, FR-028) | 1, 2 |
 | FR-021 | Resposta fixa ao técnico, alerta aos gestores pelo WhatsApp e "parar" | 6 |
 | FR-022 a FR-027 | Livre ou modelo, separação do atendimento, registro, tentativas, nada na máquina da Central | 3 |
 | FR-028-INFRA-SCHED a FR-030-INFRA-LOCK | Verificação perdida no mesmo dia (inclusive à noite), idempotência e serialização | 1 |
@@ -503,4 +504,4 @@ os passos 7.1.1 (aprovar os textos) e 7.2.1 a 7.2.3 (cadastros) não dependem de
 | Tela no Gestor | Administração e supervisão só no AlfaMatriz | Decisão de 31/10: o AlfaMatriz é o ambiente de supervisão do Pedro (Decision 1) |
 | Botão "Parar" no modelo | O "parar" é uma frase no texto | Evita mexer no `enviarTemplate` e tratar o payload do botão (Decision 7) |
 | Gravação em `funcionarios` pelo código | Os cadastros são corrigidos pelo dono | É produção; o pedido aprovou a decisão, não a gravação (spec, Contexto) |
-| Editores além da conta dona | Só a conta dona administra | Decision 16, confirmada; estender é uma linha, se o dono pedir |
+| Ampliar `services.suporte_pedro.editores` | Quem administra também edita o conhecimento; a lista de editores fica como está | Ela também valida a base do suporte, fora deste pedido (Decision 16, revista em 06/11/2026) |

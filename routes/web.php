@@ -410,11 +410,11 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
     Route::post('suporte/whatsapp/{conversa}/devolver', [$sup, 'devolver'])->whereNumber('conversa')->name('suporte.devolver')->middleware('permissao:suporte,editar');
     Route::post('suporte/whatsapp/{conversa}/vincular', [$sup, 'vincular'])->whereNumber('conversa')->name('suporte.vincular')->middleware('permissao:suporte,editar');
     Route::post('suporte/whatsapp/{conversa}/gestor', [$sup, 'gestorNumero'])->whereNumber('conversa')->name('suporte.gestor-numero')->middleware('permissao:suporte,editar');
-    // O que o Pedro sabe do negócio (docs/specs/suporte-pedro-whatsapp/conhecimento.md): todos com `suporte` veem; só os editores alteram.
+    // O que o Pedro sabe do negócio (docs/specs/suporte-pedro-whatsapp/conhecimento.md): todos com `suporte` veem; só os editores e quem administra o Pedro alteram.
     Route::get('suporte/pedro', [\App\Http\Controllers\SuporteConhecimentoController::class, 'index'])->name('suporte.pedro')->middleware('permissao:suporte,ler');
     Route::post('suporte/pedro/acessos', [\App\Http\Controllers\SuporteConhecimentoController::class, 'acessos'])->name('suporte.pedro.acessos')->middleware('permissao:suporte,editar');
     Route::post('suporte/pedro/empresa', [\App\Http\Controllers\SuporteConhecimentoController::class, 'empresa'])->name('suporte.pedro.empresa')->middleware('permissao:suporte,editar');
-    // A agenda automática do Pedro (docs/specs/pedro-agenda-automatica): todos com `suporte` veem; mudar é só da conta dona (Decision 16).
+    // A agenda automática do Pedro (docs/specs/pedro-agenda-automatica): todos com `suporte` veem; mudar é só de quem administra o Pedro (Decision 16).
     $agendaAuto = \App\Http\Controllers\SuporteAgendaAutomaticaController::class;
     Route::get('suporte/agenda-automatica', [$agendaAuto, 'index'])->name('suporte.agenda-automatica')->middleware('permissao:suporte,ler');
     Route::post('suporte/agenda-automatica/destinatarios', [$agendaAuto, 'incluir'])->name('suporte.agenda-automatica.incluir')->middleware('permissao:suporte,editar');

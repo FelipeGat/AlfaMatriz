@@ -11,7 +11,7 @@ use Illuminate\Support\Str;
 
 /**
  * Quem consulta o Pedro por dentro (docs/specs/suporte-pedro-whatsapp/acesso-interno.md):
- * decidido SÓ pelo número que escreve, numa lista que só a conta dona do Pedro edita.
+ * decidido SÓ pelo número que escreve, numa lista que só quem administra o Pedro edita.
  * O que cada perfil não vê não vai para a IA — nem com regra pedindo silêncio (FR-A3).
  */
 class AcessoInterno
@@ -33,6 +33,14 @@ class AcessoInterno
      * DESATUALIZADO, e só então o Pedro fala da hora da leitura (pedro-comunicacao, FR-002).
      */
     public const RETRATO_VELHO_MINUTOS = 30;
+
+    /** Quem administra o Pedro: a conta dona, sempre, e quem está em `services.suporte_pedro.administradores`. */
+    public static function administra(?User $u): bool
+    {
+        $contas = [...(array) config('services.suporte_pedro.administradores'), (string) config('services.suporte_pedro.conta')];
+
+        return $u !== null && in_array(mb_strtolower($u->email), array_map('mb_strtolower', $contas), true);
+    }
 
     /**
      * As linhas válidas da lista. A 4ª coluna, opcional, é o e-mail do usuário da pessoa no Gestor
@@ -65,6 +73,13 @@ class AcessoInterno
     private static function emailValido(string $email): bool
     {
         return filter_var($email, FILTER_VALIDATE_EMAIL) !== false;
+    }
+
+    /** A lista para o rastro da auditoria: quem, com qual perfil e ligado a qual usuário; do número, só o final. */
+    public function paraAuditoria(): string
+    {
+        return implode('; ', array_map(fn ($p) => '…'.substr((string) preg_replace('/\D/', '', $p['telefone']), -4).' '.$p['nome'].' ('.$p['perfil'].')'
+            .($p['gestor_email'] ? ' → '.$p['gestor_email'] : ''), $this->lista()));
     }
 
     /** As linhas que não foram entendidas, para a tela avisar em vez de ignorar calada. @return list<string> */
