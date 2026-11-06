@@ -76,6 +76,9 @@ return [
         'ligado' => env('SUPORTE_PEDRO_LIGADO', true),
         'conta' => env('SUPORTE_PEDRO_CONTA', 'felipehenriquegat@gmail.com'),
         'responsaveis' => array_filter(explode(',', (string) env('SUPORTE_PEDRO_RESPONSAVEIS', 'rossinidesouza06@gmail.com,alexandreblankl@outlook.com'))),
+        // Quem responde pelo chamado que o Pedro abre (Felipe, 06/11/2026: o nº 710, o 839 e o 837 ficaram sem ninguém
+        // enquanto o cliente ouvia que a equipe retornaria), pelo e-mail do usuário dele no Gestor.
+        'responsavel_chamados' => env('SUPORTE_PEDRO_RESPONSAVEL_CHAMADOS', 'alexandreblankl@outlook.com'),
         'agente' => env('SUPORTE_PEDRO_AGENTE', 'claude'),
         'modelo' => env('SUPORTE_PEDRO_MODELO', 'sonnet'),
         // O horário da equipe e do cliente do cadastro (Felipe, 31/10/2026: "das 08:00 às 18:00").

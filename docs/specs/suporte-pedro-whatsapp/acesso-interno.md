@@ -85,10 +85,20 @@ Telegram". O Pedro "não pode se confundir: tem que ter certeza de que sou eu, p
     gravar.
   - **Antes de abrir** (`Atendimento::modoNoGestor`):
     - se a conversa citou o nº de um atendimento do cliente: aberto vira vincular, concluído vira reabrir;
-    - se há um aberto do mesmo assunto: vincular;
-    - se há um do mesmo assunto concluído dentro da garantia (`SUPORTE_PEDRO_GARANTIA_DIAS`, padrão 90 dias, contados
-      da abertura): reabrir;
-    - senão, novo.
+    - se há um aberto do mesmo assunto e do mesmo problema: vincular. O assunto do Gestor é uma categoria: só ele juntava
+      pedidos diferentes (05/11/2026: um pedido de tags no chamado do portão). "Mesmo problema" é uma palavra que
+      identifica o problema em comum entre o pedido e a descrição do chamado, fora o "Assunto:", a assinatura, o sintoma
+      ("não abre") e as palavras da conversa (`Atendimento::mesmoProblema`). O erro para cá é um chamado a mais, que o
+      responsável vê e junta; para lá, um pedido escondido no chamado de outra coisa;
+    - se é o chamado da conversa de agora (`Atendimento::CONVERSA_DE_AGORA_HORAS`, 2 h), do mesmo assunto, ou recém-criado
+      e ainda fora do retrato: vincular. "Marta, apartamento 101" continua o pedido sem nenhuma palavra em comum com ele;
+    - se há um do mesmo assunto e do mesmo problema, concluído dentro da garantia (`SUPORTE_PEDRO_GARANTIA_DIAS`, padrão
+      90 dias, contados da abertura): reabrir;
+    - senão, novo, com o responsável de `SUPORTE_PEDRO_RESPONSAVEL_CHAMADOS` (padrão: o Alexandre; decisão do Felipe,
+      06/11/2026), localizado na equipe do retrato pelo e-mail do usuário no Gestor. Fora da equipe, o chamado nasce sem
+      responsável, porque a máquina recusaria funcionário inativo. Vincular e reabrir não mudam o responsável.
+    - A confirmação do mesmo chamado não se repete: o cliente ouve "acrescentei" uma vez a cada 2 h (03/11/2026: a mesma
+      frase saiu cinco vezes em dois minutos). A equipe continua avisada de cada informação nova.
     - O Gestor confere de novo ao gravar: o atendimento tem de ser daquele cliente e não pode estar cancelado.
   - **No Gestor:** vincular acrescenta um andamento. Reabrir passa o atendimento para `em_atendimento`, com andamento
     e histórico, como o botão Reabrir. O autor no Gestor é a conta do Felipe (o andamento exige usuário em produção);

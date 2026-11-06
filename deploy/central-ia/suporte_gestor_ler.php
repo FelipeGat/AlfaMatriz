@@ -191,6 +191,25 @@ try {
             'funcionarios' => array_values(array_unique(array_filter(array_merge([$a->funcionario_id ? (int) $a->funcionario_id : null], $tecnicos[$a->id] ?? []))))];
     }
 
+    // Os andamentos de cada atendimento (Felipe, 06/11/2026: "ler o que foi feito para ele no andamento"):
+    // até aqui o Pedro via só a descrição. São 15 por atendimento porque os que ele mesmo registra se repetem
+    // e não podem empurrar para fora o que a equipe escreveu; a marca sai daqui, antes do corte, porque a
+    // assinatura fica no fim do texto. O que vai ao pedido da IA o Matriz decide, sem reinstalar a máquina.
+    if ($atendimentos && Schema::hasTable('atendimento_andamentos')) {
+        $andamentos = [];
+        foreach (DB::table('atendimento_andamentos')->whereIn('atendimento_id', array_column($atendimentos, 'id'))->orderByDesc('id')->get(['atendimento_id', 'descricao', 'created_at']) as $r) {
+            if (count($andamentos[$r->atendimento_id] ?? []) < 15) {
+                $andamentos[$r->atendimento_id][] = ['em' => substr((string) $r->created_at, 0, 16), 'texto' => mb_substr(trim((string) $r->descricao), 0, 500),
+                    'pedro' => str_contains((string) $r->descricao, '(Aberto pelo Pedro')];
+            }
+        }
+        foreach ($atendimentos as $i => $a) {
+            if (isset($andamentos[$a['id']])) {
+                $atendimentos[$i]['andamentos'] = array_reverse($andamentos[$a['id']]);
+            }
+        }
+    }
+
     // Os orçamentos em aberto (pedro-dia-do-tecnico, FR-005): a parada do relato pode ser de um
     // orçamento, ligado ou não a um atendimento.
     $orcamentos = [];

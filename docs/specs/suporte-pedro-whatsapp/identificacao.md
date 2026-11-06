@@ -20,8 +20,8 @@ identificação, e seguia respondendo sem ela.
   aprovação) foi recusada pelo dono: "é inviável ficar indo no Gestor ver quem pode entrar". A identificação é
   registro, não permissão.
 - **Relatar problema: qualquer pessoa identificada.** O nome dela vai como solicitante no atendimento
-  (`SuporteConversa::solicitante`). Antes de abrir, o Pedro confere se já existe atendimento do mesmo assunto
-  (vincular ou reabrir, `Atendimento::modoNoGestor`, que já existia).
+  (`SuporteConversa::solicitante`). Antes de abrir, o Pedro confere se já existe atendimento do mesmo assunto e do
+  mesmo problema (vincular ou reabrir, `Atendimento::modoNoGestor`; ver FR-A8 em `acesso-interno.md`).
 - **Pedido sensível** (histórico, boleto, login do portal, acesso, cancelamento): continua só para os telefones do
   cadastro do cliente (`Identificacao::doCadastro`, antes `Contexto::numeroDoCadastro`). Ver "Níveis de
   identificação", abaixo.
@@ -150,6 +150,11 @@ Onde mora:
 - `Contexto::busca` — os candidatos, o candidato marcado `NOME PARECIDO` e o estado do CNPJ (`PEDIR_CNPJ`,
   `CNPJ_NAO_CONFERE`, `PELO_CNPJ`). O nome é procurado também no áudio transcrito. Vale igual para dois clientes
   do Matriz de mesmo nome.
+- **O CNPJ válido procura em todos os clientes atendidos** (decisão do Felipe, 06/11/2026; antes, "só entre os
+  parecidos"): um colégio mandou o CNPJ certo e ouviu duas vezes "não localizei", porque ele só era comparado com três
+  cadastros que nada tinham a ver. Achou, é só esse: os de nome parecido não vão ao Pedro. A pessoa continua identificada
+  só pelo nome, o que não abre nada do cadastro. **O CPF não entra nessa busca:** é de uma pessoa, e dizer de quem é a quem
+  só digitou o número é o que a LGPD não deixa. Ele continua só desempatando entre os parecidos.
 - `Contexto::documentos` — o CNPJ (ou CPF) escrito, com ou sem pontuação, só com dígito verificador certo:
   celular não vira "esse CNPJ não confere", e o dígito errado faz o Pedro pedir de novo. O CNPJ do cadastro já vem
   no retrato do Gestor (`documento`); a máquina não mudou.

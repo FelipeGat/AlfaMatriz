@@ -23,6 +23,7 @@ vira comentário na tarefa dele (ou tarefa nova, tipo Bug), e não ajuste no mei
       horário, e o cliente ficaria 5 min sem resposta até o menu.
 - [ ] Para os passos A11 e A12: a versão com a busca do cliente novo (02/11/2026) publicada. Só o Matriz.
 - [ ] Para os passos H13 a H15: a versão com a busca da casa pelo CNPJ (03/11/2026) publicada. Só o Matriz.
+- [ ] Para a seção I: a versão com as correções da análise das conversas (06/11/2026) publicada. Só o Matriz.
 - [ ] O `.env` de produção do Matriz sem `SUPORTE_PEDRO_INICIO=07:00` (o padrão passou a 08:00). E o
       cabeçalho do menu do Gestor (`whatsapp_configs.menu_mensagem`), se citar 07:00, ajustado à mão.
 
@@ -158,8 +159,8 @@ Depois do Matriz e do instalador da máquina publicados. O financeiro é relido 
 9. Do perfil suporte, pergunte por um atendimento que tem visita marcada para daqui a alguns dias.
    **Esperado:** a data da próxima visita; nenhum "próximo passo" que não esteja escrito no Gestor.
 10. De um número fora da lista e do cadastro, diga que o portão parou e pergunte "em quanto tempo vocês
-    vêm?". **Esperado:** nenhum prazo em horas ou dias; ele diz que vai com prioridade e que a equipe confirma
-    o horário. (Sem cadastro, ele pede a identificação antes; o prazo também não pode aparecer ali.)
+    vêm?". **Esperado:** nenhum prazo em horas ou dias, nem que o caso tem prioridade; ele diz que está com a equipe,
+    que confirma o horário. (Sem cadastro, ele pede a identificação antes; o prazo também não pode aparecer ali.)
 11. Do mesmo número, pergunte "como funciona o monitoramento de câmeras de vocês?" e depois "quanto fica, mais
     ou menos?". **Esperado:** até 3 frases e uma pergunta sobre a necessidade, sem telefone nem site na
     primeira; nenhum valor em reais na segunda.
@@ -206,6 +207,36 @@ prévia; não responda "sim", ou exclua o orçamento no Gestor depois:
 14. Mande um CNPJ inventado com o dígito certo (o de pré-cliente também acha: o funil faz parte da busca).
     **Esperado:** "não achei esse CNPJ no Gestor" e o pedido para conferir o número; nenhuma prévia.
 15. Mande o CNPJ com um dígito trocado. **Esperado:** ele diz que o CNPJ parece ter um número trocado.
+
+## I. O que a análise das conversas corrigiu (06/11/2026)
+
+De um número de teste, fora da lista da casa
+e fora do cadastro; o chamado que nascer é de verdade, então use um cliente de teste e cancele-o no Gestor depois.
+
+1. Conte um problema com palavras que puxam nomes parecidos e mande o CNPJ de um cliente que não se pareça com eles.
+   **Esperado:** ele acha o cliente pelo CNPJ, sem "não localizei". Um CNPJ válido que não é de ninguém continua em
+   "não localizei".
+2. Mande um CPF de cliente pessoa física, sem dizer o nome. **Esperado:** ele não diz de quem é.
+3. Peça algo de uma categoria que já tem chamado aberto de outro problema (tags, com o portão aberto). **Esperado:**
+   chamado novo, e não "acrescentei". Depois mande um detalhe ("apartamento 101"). **Esperado:** vai para o mesmo chamado.
+4. No Gestor, o chamado novo. **Esperado:** responsável Alexandre.
+5. Mande mais duas informações sobre o problema. **Esperado:** "acrescentei" não se repete, e as duas estão no chamado.
+6. Responda "Obrigado, fico no aguardo". **Esperado:** nenhum pedido de nota.
+7. Peça uma pessoa e, passados 6 min, escreva de novo. **Esperado:** nenhum menu de boas-vindas. Repita respondendo pela
+   tela Suporte › Conversas, em vez de pedir uma pessoa. **Esperado:** nenhum menu também.
+
+## J. Catraca em "Apresente o cartão" e o que já aconteceu (06/11/2026)
+
+Pré-requisito: a publicação e o instalador na máquina (sem ele, o passo 3 não acontece; os outros, sim). De um número de
+teste que seja telefone do cadastro de um cliente de teste; nada aqui abre chamado, se você seguir o roteiro até o fim.
+
+1. Escreva "O visor da catraca está em Apresente o cartão e não libera". **Esperado:** ele orienta abrir o AlfaSync, sem
+   falar em tomada nem cabo de rede.
+2. Responda "funcionou, preciso fazer isso todas as manhãs?". **Esperado:** o ideal é não acontecer, o computador
+   provavelmente está sendo desligado e vale um lembrete; nenhum colega chamado, nenhum chamado aberto.
+3. No Gestor, registre um andamento num chamado do cliente de teste ("Mostrado como abrir o AlfaSync"). Espere até 10 min e
+   escreva de novo sobre o problema. **Esperado:** ele diz que viu o contato anterior, citando o dia, e usa o que foi registrado.
+4. Repita o passo 3 de um número fora do cadastro. **Esperado:** ele orienta abrir o AlfaSync e não conta o que foi registrado.
 
 ## Fora do alcance desta semana
 

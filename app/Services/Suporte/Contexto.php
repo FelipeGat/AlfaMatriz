@@ -92,10 +92,11 @@ class Contexto
     /**
      * Prazo (Felipe, 31/10/2026: "não prometer SLA ou prazo de atendimento sem confirmação no Gestor
      * ou contrato"). O "até 3 horas" da bateria vinha da mensagem padrão do roteiro Portão parado; o
-     * prazo do roteiro continua valendo para a equipe (Cobranca), mas o cliente não o ouve.
+     * prazo do roteiro continua valendo para a equipe (Cobranca), mas o cliente não o ouve. A prioridade
+     * também não (06/11/2026): "segue com prioridade" era esta frase, e os chamados nasciam com a média.
      */
     public const PRAZO = "PRAZO: nunca prometa prazo de atendimento, de visita ou de solução (horas, dias, \"hoje ainda\"), nem SLA, mesmo que a mensagem padrão de um ROTEIRO traga: isso só a equipe confirma. "
-        ."Se a pessoa perguntar, diga que o caso vai com prioridade para a equipe técnica, que confirma o horário por aqui.\n";
+        ."Se a pessoa perguntar, diga que o caso está com a equipe técnica, que confirma o horário por aqui. Não diga que o caso tem prioridade: quem define isso é a equipe.\n";
 
     /**
      * O comercial em poucas linhas (Felipe, 31/10/2026: "reduzir respostas comerciais excessivamente
@@ -110,6 +111,16 @@ class Contexto
      */
     public const ACOES_DO_CLIENTE = "O QUE VOCÊ FAZ: orienta, abre atendimento (ou junta a um que já existe), passa ao comercial ou ao financeiro e chama um colega. "
         ."Não marca data de visita, não manda documento, não liga para ninguém e não acompanha o técnico: não ofereça isso.\n";
+
+    /**
+     * Felipe, 06/11/2026: o cliente escreveu três manhãs seguidas sobre a mesma catraca, e o Pedro respondeu como
+     * se fosse a primeira ("o Pedro tem que saber que ele entrou em contato no dia anterior, ler o que foi feito
+     * para ele no andamento e fazer o que eu fiz"). O registro é da equipe e às vezes traz combinado interno, por
+     * isso serve para entender o caso, e não para ser repetido. Só vai a quem escreve do cadastro (atendimentos()).
+     */
+    public const O_QUE_JA_ACONTECEU = "O QUE JÁ ACONTECEU: ATENDIMENTOS traz o que a equipe registrou em cada chamado, e MENSAGENS marca o dia de cada conversa. "
+        ."Se a pessoa voltou a um problema de outro dia, diga logo no começo que viu o contato anterior, citando o dia (ontem ou a data), e use o que já foi feito e o ROTEIRO para responder, antes de dizer que não sabe ou de chamar um colega. "
+        ."Diga só o que está escrito ali, sem deduzir o que foi feito. Ao cliente, só o que ajuda a resolver: nunca cobrança, valor, combinado interno nem nome de colega.\n";
 
     /** O jeito de responder a cada perfil da casa (FR-005): o mesmo dado serve a perguntas diferentes. */
     public const JEITO_POR_PERFIL = [
@@ -252,6 +263,7 @@ class Contexto
             .self::PRAZO
             .self::COMERCIAL_CURTO
             .self::ACOES_DO_CLIENTE
+            .self::O_QUE_JA_ACONTECEU
             .self::FINANCEIRO.($doCadastro ? '' : self::FINANCEIRO_PELO_NOME)
             ."ROTEIROS: se a situação combina com um roteiro, siga-o (a mensagem padrão vale mais que o seu texto, menos no PRAZO; a prioridade e o prazo já vão para a equipe) e devolva o número dele em \"roteiro\". "
             ."Link, site ou endereço: só os que aparecem nesta mensagem.\n"
@@ -283,14 +295,15 @@ class Contexto
             // Felipe, 21/10/2026: a conversa não pode ficar presa com o Pedro.
             ."PASSAR PARA UMA PESSOA: use acao \"transferir\" quando o cliente pedir para falar com uma pessoa, um atendente ou alguém pelo nome, ou quando você não conseguir resolver e não for caso de abrir atendimento. Se ele disse um nome, devolva em \"atendente\" (só nomes de ATENDENTES; outro nome, devolva assim mesmo que o sistema avisa). Em \"resumo\", o que ele quer, para quem vai atender. Na resposta, diga só que vai passar; quem e quando é acrescentado automaticamente. Comercial e financeiro continuam com encaminhar_setor.\n"
             // Felipe, 21/10/2026: encerramento com avaliação, como no chat da Intelbras.
-            ."ENCERRAR: quando o cliente disser que está resolvido, agradecer ou disser que não precisa de mais nada, use acao \"encerrar\" com uma despedida curta; o pedido de avaliação vai em seguida, automaticamente. Na dúvida, pergunte se pode ajudar em mais algo antes de encerrar.\n"
+            ."ENCERRAR: use acao \"encerrar\", com uma despedida curta, só quando o cliente disser que o problema está resolvido ou que não precisa de mais nada; o pedido de avaliação vai em seguida, automaticamente. "
+            ."Agradecer não é encerrar: a quem agradece e continua esperando (\"obrigado\", \"fico no aguardo\"), use acao \"responder\" e diga em poucas palavras que o caso segue com a equipe. Na dúvida, pergunte se pode ajudar em mais algo antes de encerrar.\n"
             ."Se perguntarem diretamente se é uma pessoa ou um robô, não minta, mas responda como gente, numa frase curta e leve: você é o Pedro, assistente virtual do suporte; ofereça chamar alguém da equipe se a pessoa preferir e volte ao assunto dela com naturalidade.\n"
             ."Use acao \"abrir_atendimento\" quando: o problema precisar de alguém da equipe (sistema fora do ar, erro, catraca ou equipamento, acesso, dado errado) — havendo roteiro com passos, só depois de tentá-los —, "
             ."o cliente pedir um atendente, o assunto for financeiro, cancelamento ou reclamação, ou a resposta não estiver nestas informações. "
             ."Nesse caso, diga que vai encaminhar para a equipe técnica, que retorna por aqui; o número do atendimento é acrescentado automaticamente. "
             ."Se ele perguntar de um atendimento, responda com a etapa que aparece em ATENDIMENTOS.\n"
             // Felipe, 21/10/2026: não abrir outro chamado do que já está aberto ou foi feito há pouco (garantia).
-            ."ANTES DE ABRIR, confira ATENDIMENTOS: se já existe um aberto sobre o mesmo problema, ou um concluído recente do mesmo problema (garantia), devolva o nº dele em \"atendimento\": a informação nova vai para ele (ou ele é reaberto) em vez de abrir outro. Não prometa número: ele é informado automaticamente.\n"
+            ."ANTES DE ABRIR, confira ATENDIMENTOS: se já existe um aberto sobre o mesmo problema, ou um concluído recente do mesmo problema (garantia), devolva o nº dele em \"atendimento\": a informação nova vai para ele (ou ele é reaberto) em vez de abrir outro. Mesmo problema, e não só a mesma categoria: pedir tags não é o portão que parou. Não prometa número: ele é informado automaticamente.\n"
             .(app(CanalWhatsApp::class)->viaGestor()
                 ? "SETORES: assunto COMERCIAL (quem quer conhecer, contratar ou pedir orçamento) ou FINANCEIRO (boleto, pagamento, nota, cobrança) é atendido pela equipe desse setor. Faça a sua parte conforme o roteiro (apresentar, orientar) e, quando o cliente precisar de uma pessoa, use acao \"encaminhar_setor\" com \"setor\": \"comercial\" ou \"financeiro\", dizendo que um atendente do setor continua por aqui. Suporte técnico continua com você.\n"
                 : '')
@@ -693,15 +706,25 @@ class Contexto
         // O áudio vale pelo que foi dito (o nome do cliente costuma vir falado).
         $recentes = $entradas->map(fn ($m) => $m->transcricao ?: $m->texto)->implode(' ');
         $documentos = self::documentos($recentes);
+        // O CNPJ certo acha o cliente, parecido ou não com o nome dito (Felipe, 06/11/2026: um colégio mandou o dele e
+        // ouviu duas vezes "não localizei", porque ele só era comparado com três cadastros que nada tinham a ver). Quem
+        // escreve continua identificado só pelo nome, o que não abre nada do cadastro. O CPF não: é de uma pessoa, e
+        // dizer de quem é a quem só digitou o número é o que a LGPD não deixa. Ele só desempata entre os parecidos.
+        $cnpjs = array_values(array_filter($documentos, fn ($d) => strlen($d) === 14));
         $diretorio = app(DiretorioGestor::class);
         $lista = [];
         $estados = [];
         if (! $c->cliente_id) {
             $palavras = DiretorioGestor::palavrasDe($recentes);
-            $citados = \App\Models\Cliente::where('ativo', true)->get(['id', 'nome', 'nome_fantasia', 'cidade', 'uf', 'cpf_cnpj'])
-                ->filter(fn ($cl) => DiretorioGestor::citado((string) $cl->nome, $palavras) || DiretorioGestor::citado((string) $cl->nome_fantasia, $palavras))
-                ->map(fn ($cl) => ['cliente' => $cl, 'documento' => $cl->cpf_cnpj])->values()->all();
-            [$citados, $estados[]] = self::semParecidos($citados, $documentos);
+            $ativos = \App\Models\Cliente::where('ativo', true)->get(['id', 'nome', 'nome_fantasia', 'cidade', 'uf', 'cpf_cnpj']);
+            if ($dele = $ativos->first(fn ($cl) => in_array(preg_replace('/\D/', '', (string) $cl->cpf_cnpj), $cnpjs, true))) {
+                $citados = [['cliente' => $dele, 'pelo_cnpj' => true]];
+                $estados[] = 'confere';
+            } else {
+                $citados = $ativos->filter(fn ($cl) => DiretorioGestor::citado((string) $cl->nome, $palavras) || DiretorioGestor::citado((string) $cl->nome_fantasia, $palavras))
+                    ->map(fn ($cl) => ['cliente' => $cl, 'documento' => $cl->cpf_cnpj])->values()->all();
+                [$citados, $estados[]] = self::semParecidos($citados, $documentos);
+            }
             foreach ($citados as $x) {
                 $cl = $x['cliente'];
                 $lista['matriz:'.$cl->id] = ($cl->nome_fantasia ?: $cl->nome).($cl->cidade && empty($x['pelo_cnpj']) ? ', '.$cl->cidade : '').' — sistemas Alfa (Matriz)'
@@ -710,15 +733,21 @@ class Contexto
         }
         if (! $c->gestor_cliente_id) {
             $doTelefone = collect($diretorio->porTelefone($c->telefone))->take(3);
-            $nomeMatriz = $c->cliente ? ($c->cliente->nome.' '.$c->cliente->nome_fantasia) : '';
-            $porNome = collect($diretorio->candidatosPorNome($recentes))
-                ->merge($nomeMatriz !== '' ? array_map(fn ($g) => ['cliente' => $g, 'inteiro' => true], $diretorio->porNome($nomeMatriz)) : [])
-                ->unique(fn ($x) => $x['cliente']['id'])->map(fn ($x) => $x + ['documento' => $x['cliente']['documento'] ?? null]);
-            // O número é do cadastro de um deles: é ele, e os de nome parecido não aparecem.
-            if ($porNome->contains(fn ($x) => $doTelefone->contains('id', $x['cliente']['id']))) {
-                $porNome = collect();
+            // Dois cadastros com o mesmo CNPJ são a mesma pessoa jurídica: vale o primeiro, e o retrato traz o cliente antes do pré-cliente.
+            if ($dele = $diretorio->porDocumento($cnpjs)[0] ?? null) {
+                $porNome = [['cliente' => $dele, 'inteiro' => false, 'pelo_cnpj' => true]];
+                $estados[] = 'confere';
+            } else {
+                $nomeMatriz = $c->cliente ? ($c->cliente->nome.' '.$c->cliente->nome_fantasia) : '';
+                $porNome = collect($diretorio->candidatosPorNome($recentes))
+                    ->merge($nomeMatriz !== '' ? array_map(fn ($g) => ['cliente' => $g, 'inteiro' => true], $diretorio->porNome($nomeMatriz)) : [])
+                    ->unique(fn ($x) => $x['cliente']['id'])->map(fn ($x) => $x + ['documento' => $x['cliente']['documento'] ?? null]);
+                // O número é do cadastro de um deles: é ele, e os de nome parecido não aparecem.
+                if ($porNome->contains(fn ($x) => $doTelefone->contains('id', $x['cliente']['id']))) {
+                    $porNome = collect();
+                }
+                [$porNome, $estados[]] = self::semParecidos($porNome->values()->all(), $documentos);
             }
-            [$porNome, $estados[]] = self::semParecidos($porNome->values()->all(), $documentos);
             foreach ($doTelefone as $g) {
                 $lista['gestor:'.$g['id']] = self::descricaoDoGestor($g);
             }
@@ -740,7 +769,7 @@ class Contexto
     /** Marca do candidato de nome só parecido: o Pedro pergunta se é ele antes de seguir. */
     public const NOME_PARECIDO = ' — NOME PARECIDO com o que a pessoa disse: pergunte se é este, citando só este nome, e devolva o código só depois que ela confirmar';
 
-    /** Marca do candidato que o CNPJ escrito pela pessoa achou, entre os de nome parecido. */
+    /** Marca do candidato que o CNPJ escrito pela pessoa achou. */
     public const PELO_CNPJ = ' — o CNPJ que a pessoa informou confere com este cadastro: pode confirmar';
 
     /**
@@ -748,7 +777,7 @@ class Contexto
      * dizer ou falar de outro cliente; OBRIGATORIAMENTE pedir o CNPJ", pela LGPD; o exemplo dele são as duas
      * Fit Club, uma em Vitória e outra em Cariacica). O Pedro não recebe nenhum deles, nem o nome nem a cidade,
      * e por isso não tem como citá-los; o Pedro::confirmarCliente só aceita código listado, então também não
-     * tem como confirmar um. O CNPJ que a pessoa escrever decide, e só entre eles.
+     * tem como confirmar um. O CNPJ que a pessoa escrever decide, entre todos os atendidos (busca); o CPF, só entre eles.
      */
     public const PEDIR_CNPJ = '- PEÇA O CNPJ: o nome que a pessoa disse é parecido com o de mais de um cliente, e o número dela não é do cadastro de nenhum deles. '
         .'Por segurança, peça o CNPJ da empresa ou do condomínio (de pessoa física, o CPF) antes de seguir, sem explicar por quê além de "para localizar o cadastro". '
@@ -976,11 +1005,49 @@ class Contexto
         $doGestor = ($g = $this->gestorDaConversa($c))
             ? collect(app(DiretorioGestor::class)->atendimentosDe((int) $g['id']))
                 ->map(fn ($a) => '- Gestor nº '.($a['numero'] ?? $a['id']).': '.Str::limit((string) ($a['descricao'] ?? ''), 110, '…').' — etapa: '.str_replace('_', ' ', (string) ($a['status'] ?? '?'))
-                    .(! empty($a['criado_em']) ? ' (aberto em '.substr((string) $a['criado_em'], 8, 2).'/'.substr((string) $a['criado_em'], 5, 2).')' : ''))
+                    .(! empty($a['criado_em']) ? ' (aberto em '.substr((string) $a['criado_em'], 8, 2).'/'.substr((string) $a['criado_em'], 5, 2).')' : '')
+                    .$this->andamentos($a))
             : collect();
         $matriz = $this->atendimentosDoMatriz($c);
 
         return $doGestor->merge($matriz ? [$matriz] : [])->implode("\n") ?: '- Nenhum atendimento registrado.';
+    }
+
+    /**
+     * O que já aconteceu no chamado. O que o próprio Pedro anotou é o relato de quem escreveu, e por isso
+     * vale só pelas datas: a pessoa já falou disso nesses dias, e nada ali foi feito por alguém.
+     */
+    private function andamentos(array $atendimento): string
+    {
+        $lista = collect($atendimento['andamentos'] ?? []);
+        $dia = fn (array $a) => substr((string) ($a['em'] ?? ''), 8, 2).'/'.substr((string) ($a['em'] ?? ''), 5, 2);
+        $voltou = $lista->filter(fn ($a) => ! empty($a['pedro']))->map($dia)->unique()->implode(', ');
+        $registros = $lista->reject(fn ($a) => ! empty($a['pedro']))
+            ->map(fn ($a) => ['dia' => $dia($a), 'texto' => $this->textoDoAndamento((string) ($a['texto'] ?? ''))])
+            ->filter(fn ($a) => $a['texto'] !== null)->take(-self::ANDAMENTOS_NO_PEDIDO)
+            ->map(fn ($a) => "\n  - Registrado pela equipe em {$a['dia']}: {$a['texto']}")->implode('');
+
+        return $registros.($voltou !== '' ? "\n  - A pessoa falou disso pelo WhatsApp em: {$voltou}." : '');
+    }
+
+    /** Quantos registros da equipe vão por chamado: os mais novos. O pedido à IA não cresce com o histórico. */
+    private const ANDAMENTOS_NO_PEDIDO = 3;
+
+    /**
+     * Null quando o andamento não ajuda a responder: a troca de etapa sem texto ("Finalizado") não diz o que
+     * foi feito, mas "Realizado o reinício do programa" chega pelo mesmo campo. Cobrança e ordem da direção
+     * saem aqui mesmo, porque a regra do pedido é a segunda trava, e não a primeira.
+     */
+    private function textoDoAndamento(string $texto): ?string
+    {
+        $texto = trim((string) preg_replace('/\(\s*(?:Aberto|Registrado) pelo Pedro.*$/su', '', $texto));
+        $trocaDeEtapa = str_starts_with($texto, 'Alteração de status/prioridade:');
+        $texto = Str::squish($trocaDeEtapa ? Str::after($texto, 'Alteração de status/prioridade:') : $texto);
+        if ($texto === '' || ($trocaDeEtapa && count(explode(' ', $texto)) < 4) || preg_match('/cobran|^dire[çc][ãa]o:|orienta[çc][ãa]o da dire[çc][ãa]o/iu', $texto)) {
+            return null;
+        }
+
+        return Str::limit($texto, 300, '…');
     }
 
     private function atendimentosDoMatriz(SuporteConversa $c, bool $doCliente = true): ?string
@@ -1039,6 +1106,29 @@ class Contexto
         $linha = fn ($m) => $quem[$m->direcao].': '.$this->textoDaMensagem($m);
         // A resposta que não saiu (recusada pelo Gestor ou pela Meta) não foi dita ao cliente.
         $ultimas = $c->mensagens()->reorder()->where(fn ($q) => $q->whereNull('status')->orWhere('status', '!=', 'falhou'))->orderByDesc('id')->limit(15)->get()->reverse();
+        // Sem o dia, "ontem" não existia para o Pedro (Felipe, 06/11/2026): as mensagens de três manhãs chegavam
+        // a ele como uma conversa só. Na conversa de hoje nada muda: ela não leva marca nenhuma.
+        $hoje = now()->startOfDay();
+        $diaDe = fn ($m) => $m->created_at->copy()->startOfDay();
+        $marcar = $ultimas->contains(fn ($m) => ! $diaDe($m)->equalTo($hoje));
+        $emLinhas = function ($mensagens) use ($linha, $diaDe, $marcar, $hoje) {
+            $saida = [];
+            $anterior = null;
+            foreach ($mensagens as $m) {
+                $dia = $diaDe($m);
+                if ($marcar && ($anterior === null || ! $dia->equalTo($anterior))) {
+                    $saida[] = '['.$dia->format('d/m').match (true) {
+                        $dia->equalTo($hoje) => ', hoje',
+                        $dia->equalTo($hoje->copy()->subDay()) => ', ontem',
+                        default => '',
+                    }.']';
+                }
+                $anterior = $dia;
+                $saida[] = $linha($m);
+            }
+
+            return implode("\n", $saida);
+        };
         // O histórico fica inteiro, para o Pedro lembrar; o atendimento encerrado vem
         // separado, para ele não tomá-lo como o assunto de agora (T-478, 22/10/2026: um
         // "oi" depois do encerramento voltou com "sobre as câmeras sem imagem…").
@@ -1050,11 +1140,11 @@ class Contexto
         $retomada = collect(Pedro::avisosDeEspera())->contains(fn ($a) => str_starts_with($ultimaDoPedro, $a))
             ? "\n(O PEDRO esteve fora do ar ou fora do horário, e quem escreveu recebeu o aviso automático acima. Retome agora: cumprimente conforme a hora, peça desculpas pela demora em poucas palavras se ela foi longa e dê andamento ao que a pessoa pediu, sem repetir o aviso.)" : '';
         if ($antes->isEmpty()) {
-            return $agora->map($linha)->implode("\n").$retomada;
+            return $emLinhas($agora).$retomada;
         }
 
-        return "### Atendimento anterior, já ENCERRADO\n".$antes->map($linha)->implode("\n")
-            ."\n\n### Atendimento de agora\n".($agora->map($linha)->implode("\n") ?: '(ainda sem mensagem)').$retomada;
+        return "### Atendimento anterior, já ENCERRADO\n".$emLinhas($antes)
+            ."\n\n### Atendimento de agora\n".($emLinhas($agora) ?: '(ainda sem mensagem)').$retomada;
     }
 
     /**

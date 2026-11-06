@@ -22,6 +22,30 @@ class Atendimento
 {
     public const CONTA = User::EMAIL_DO_PEDRO;
 
+    /** Até quanto depois de um chamado a mensagem do cliente ainda é a mesma conversa falando dele. */
+    public const CONVERSA_DE_AGORA_HORAS = 2;
+
+    /**
+     * As palavras que não dizem qual é o problema, já sem o plural: a conversa, o chamado, quem pede, o
+     * lugar (o portão e o interfone da garagem são dois chamados) e o sintoma ("não abre" serve ao portão e
+     * à cancela). Sem elas, sobra o que distingue um pedido do outro.
+     */
+    private const PALAVRAS_GERAIS = [
+        'que', 'por', 'para', 'pra', 'com', 'sem', 'nao', 'sim', 'uma', 'ele', 'ela', 'dele', 'dela', 'seu', 'sua', 'nosso', 'nossa', 'meu', 'minha',
+        'esse', 'essa', 'este', 'esta', 'isso', 'isto', 'aquele', 'aquela', 'pela', 'pelo', 'qual', 'como', 'quando', 'onde', 'mai', 'muito', 'muita',
+        'tambem', 'ainda', 'apena', 'mesmo', 'mesma', 'outro', 'outra', 'todo', 'toda', 'tudo', 'dua', 'doi', 'tre', 'foi', 'tem', 'ter', 'tinha', 'ser',
+        'sao', 'estao', 'estava', 'continua', 'continuam', 'segue', 'seguem', 'voltou', 'ficou', 'agora', 'hoje', 'ontem', 'amanha', 'dia', 'manha', 'tarde', 'noite',
+        'cliente', 'contato', 'pessoa', 'solicitante', 'morador', 'moradora', 'sindico', 'sindica', 'zelador', 'porteiro', 'proprietaria', 'proprietario',
+        'condominio', 'edificio', 'empresa', 'academia', 'colegio', 'escola', 'predio', 'apto', 'apartamento', 'bloco', 'sala',
+        'pede', 'pediu', 'pedido', 'pedindo', 'solicita', 'solicitou', 'solicitacao', 'informa', 'informou', 'informacao', 'relata', 'relatou', 'relato',
+        'diz', 'disse', 'reclama', 'reclamou', 'reclamacao', 'quer', 'queria', 'precisa', 'precisam', 'preciso', 'favor', 'gentileza', 'obrigado', 'obrigada',
+        'verificar', 'verificacao', 'ajuda', 'ajudar', 'resolver', 'resolvido', 'problema', 'defeito', 'erro', 'falha', 'atendimento', 'chamado', 'visita',
+        'tecnico', 'tecnica', 'equipe', 'suporte', 'manutencao', 'servico', 'orcamento', 'whatsapp', 'mensagem', 'foto', 'video', 'audio', 'aberto', 'novo', 'nova',
+        'entrada', 'saida', 'garagem', 'recepcao', 'portaria', 'frente', 'fundo', 'lateral', 'social',
+        'acesso', 'controle', 'abre', 'abrir', 'abrindo', 'fecha', 'fechar', 'fechando', 'funciona', 'funcionar', 'funcionando', 'liga', 'ligar', 'ligou',
+        'desliga', 'desligou', 'parou', 'parado', 'parada', 'travou', 'travado', 'travada', 'quebrou', 'quebrado', 'quebrada', 'libera', 'liberar', 'liberam',
+    ];
+
     public function __construct(private AvisoNoTelegram $telegram) {}
 
     /**
@@ -57,16 +81,20 @@ class Atendimento
     /**
      * Antes de abrir, conferir (Felipe, 21/10/2026: "sempre conferir se não tem chamado em
      * aberto, se não tem chamado anterior com o mesmo assunto para, em vez de abrir um novo,
-     * reabrir — garantia"):
+     * reabrir — garantia"). O assunto do Gestor é uma categoria: só ele juntava pedidos que não têm
+     * nada a ver (05/11/2026: o pedido de duas tags foi parar no chamado do portão), por isso
+     * vale também o problema (mesmoProblema):
      *   - o nº que a conversa citou, se é deste cliente: aberto → vincular; concluído → reabrir;
-     *   - aberto do mesmo assunto → vincular;
-     *   - mesmo assunto concluído dentro da garantia → reabrir (o mais recente);
+     *   - aberto do mesmo assunto e do mesmo problema → vincular;
+     *   - o chamado da conversa de agora, do mesmo assunto, ou ainda fora do retrato → vincular:
+     *     "Marta, apartamento 101" continua o pedido, sem nenhuma palavra em comum com ele;
+     *   - mesmo assunto e mesmo problema, concluído dentro da garantia → reabrir (o mais recente);
      *   - senão, novo.
      * O Gestor confere de novo na hora de gravar (o retrato pode ter 10 min).
      *
      * @return array{modo: string, numero: ?string}
      */
-    public function modoNoGestor(int $clienteId, ?int $assuntoId, ?string $numeroCitado = null): array
+    public function modoNoGestor(int $clienteId, ?int $assuntoId, ?string $numeroCitado = null, string $pedido = '', ?string $chamadoDeAgora = null): array
     {
         $doCliente = collect(app(DiretorioGestor::class)->retrato()['atendimentos'] ?? [])->filter(fn ($a) => (int) ($a['cliente_id'] ?? 0) === $clienteId)
             ->reject(fn ($a) => ($a['status'] ?? '') === 'cancelado')->sortByDesc(fn ($a) => (string) ($a['criado_em'] ?? ''));
@@ -78,15 +106,88 @@ class Atendimento
             return ['modo' => 'novo', 'numero' => null];
         }
         $mesmo = $doCliente->filter(fn ($a) => (int) ($a['assunto_id'] ?? 0) === $assuntoId);
-        if ($a = $mesmo->first($aberto)) {
+        if ($a = $mesmo->first(fn ($x) => $aberto($x) && $this->mesmoProblema($pedido, $x))) {
             return ['modo' => 'vincular', 'numero' => (string) $a['numero']];
         }
+        if ($chamadoDeAgora) {
+            $dele = fn ($x) => (string) ($x['numero'] ?? '') === $chamadoDeAgora;
+            // Fora do retrato, ele acabou de nascer (o retrato é de até 10 min atrás): sem isto, viraria um segundo chamado.
+            if ($mesmo->contains(fn ($x) => $dele($x) && $aberto($x)) || ! $doCliente->contains($dele)) {
+                return ['modo' => 'vincular', 'numero' => $chamadoDeAgora];
+            }
+        }
         $limite = now()->subDays(max(0, (int) config('services.suporte_pedro.garantia_dias', 90)))->toDateTimeString();
-        if ($a = $mesmo->first(fn ($x) => ! $aberto($x) && (string) ($x['criado_em'] ?? '') >= $limite)) {
+        if ($a = $mesmo->first(fn ($x) => ! $aberto($x) && (string) ($x['criado_em'] ?? '') >= $limite && $this->mesmoProblema($pedido, $x))) {
             return ['modo' => 'reabrir', 'numero' => (string) $a['numero']];
         }
 
         return ['modo' => 'novo', 'numero' => null];
+    }
+
+    /**
+     * O pedido fala do que o chamado fala? Uma palavra que identifica o problema em comum basta. O
+     * erro para cá é um chamado a mais, que o responsável vê e junta; para lá, um pedido escondido
+     * no chamado de outra coisa, que ninguém vê. Sem o "Assunto:" do começo, que é a categoria, nem a
+     * assinatura do fim, que traz o nome de quem pediu.
+     */
+    private function mesmoProblema(string $pedido, array $atendimento): bool
+    {
+        $descricao = (string) preg_replace(['/^\s*Assunto:[^\n]*/u', '/\(\s*(?:Aberto|Registrado) pelo Pedro.*$/su'], '', (string) ($atendimento['descricao'] ?? ''));
+
+        return array_intersect(self::palavrasDoProblema($pedido), self::palavrasDoProblema($descricao)) !== [];
+    }
+
+    /** @return list<string> sem o plural, para "tags" e "tag", "portões" e "portão" serem a mesma */
+    private static function palavrasDoProblema(string $texto): array
+    {
+        $palavras = array_map(fn ($p) => rtrim((string) preg_replace('/(?:oes|aes)$/', 'ao', (string) $p), 's'), array_keys(DiretorioGestor::palavrasDe($texto)));
+
+        return array_values(array_diff(array_filter($palavras, fn ($p) => mb_strlen($p) >= 3 && ! ctype_digit($p)), self::PALAVRAS_GERAIS));
+    }
+
+    /** O chamado que esta conversa abriu ou alimentou há pouco, do cliente de agora. */
+    private function chamadoDeAgora(SuporteConversa $c): ?string
+    {
+        $numero = SuporteGestorAbertura::where('conversa_id', $c->id)->where('gestor_cliente_id', $c->gestor_cliente_id)->whereNull('pedido_por')->where('situacao', 'feito')
+            ->where('updated_at', '>=', now()->subHours(self::CONVERSA_DE_AGORA_HORAS))->orderByDesc('id')->value('numero');
+
+        return $numero !== null ? (string) $numero : null;
+    }
+
+    /**
+     * O funcionário do Gestor que responde pelo chamado novo. Fora da equipe do retrato (desligado, ou
+     * com mais de um usuário), o chamado nasce sem responsável: a máquina recusaria funcionário
+     * inativo, e perder o chamado do cliente é pior que ele nascer sem dono.
+     */
+    private function responsavelDoChamado(): ?int
+    {
+        $email = mb_strtolower(trim((string) config('services.suporte_pedro.responsavel_chamados')));
+        $dele = $email !== '' ? collect(app(DiretorioGestor::class)->retrato()['equipe'] ?? [])->first(fn ($p) => mb_strtolower(trim((string) ($p['usuario'] ?? ''))) === $email) : null;
+
+        return $dele ? (int) $dele['id'] : null;
+    }
+
+    /**
+     * A conversa tem um chamado que ainda não terminou? Quem agradece esperando o retorno não está
+     * dizendo que resolveu (04 e 05/11/2026: "Obrigado! Ficamos no aguardo" recebeu o pedido de
+     * nota, com as catracas paradas). Vale o chamado desta conversa, e não qualquer um do cliente: o
+     * condomínio com um portão em aberto ainda pode tirar uma dúvida e avaliar.
+     */
+    public function chamadoEmAberto(SuporteConversa $c): bool
+    {
+        if (SuporteGestorAbertura::where('conversa_id', $c->id)->whereNull('pedido_por')->whereIn('situacao', ['pendente', 'reservado'])->exists()) {
+            return true;
+        }
+        if (blank($c->gestor_atendimento)) {
+            return false;
+        }
+        $a = app(DiretorioGestor::class)->atendimentoPorNumero((string) $c->gestor_atendimento);
+        if ($a) {
+            return ! in_array($a['status'] ?? '', ['concluido', 'cancelado'], true);
+        }
+
+        // Fora do retrato: acabou de nascer, ou foi concluído há mais de 120 dias.
+        return $this->chamadoDeAgora($c) === (string) $c->gestor_atendimento;
     }
 
     /**
@@ -109,10 +210,12 @@ class Atendimento
         }
         // Quem pediu é a pessoa que se identificou (T-478), e não o nome do perfil do WhatsApp.
         $solicitante = $c->solicitante();
-        $modo = $this->modoNoGestor((int) $c->gestor_cliente_id, (int) $assunto['id'], $numeroCitado);
+        $modo = $this->modoNoGestor((int) $c->gestor_cliente_id, (int) $assunto['id'], $numeroCitado, $resumo, $this->chamadoDeAgora($c));
 
         return SuporteGestorAbertura::create(['conversa_id' => $c->id, 'gestor_cliente_id' => $c->gestor_cliente_id, 'assunto_id' => $assunto['id'], 'empresa_id' => $g['empresa_id'] ?? null,
             'modo' => $modo['modo'], 'atendimento_numero' => $modo['numero'], 'prioridade' => $prioridade ?? 'media',
+            // Só o que nasce agora: o que já existia continua com quem está, e a máquina não mexe nele.
+            'funcionario_id' => $modo['modo'] === 'novo' ? $this->responsavelDoChamado() : null,
             'descricao' => Str::limit(trim($resumo) ?: 'Cliente pediu atendimento pelo WhatsApp.', 1500)."\n\n(Aberto pelo Pedro, suporte no WhatsApp — {$solicitante}, {$c->telefoneLegivel()}.)",
             'solicitante' => Str::limit($solicitante, 120, ''), 'telefone' => $c->telefone]);
     }
@@ -137,6 +240,11 @@ class Atendimento
             }
             if ($this->telegram->configurado()) {
                 $this->telegram->enviar('📞 <b>Gestor nº '.e($a->numero).'</b>'.e($dobro).': '.e($nome)."\n".e(Str::before($a->descricao, "\n\n"))."\n".e(route('suporte.conversas', $c->id)));
+            }
+            // A informação nova chegou ao chamado, e a equipe foi avisada acima; a frase é que não se repete
+            // (03/11/2026: a mesma, cinco vezes em dois minutos, enquanto reclamava da demora).
+            if (! $a->pedido_por && ! $atrasado && $a->modo === 'vincular' && $this->jaOuviuDoChamado($a)) {
+                return;
             }
             // O número sempre volta para quem pediu (Felipe, 21/10/2026), dizendo o que foi feito.
             // Menos para quem não escreve do cadastro (31/10/2026): o chamado que já existia é
@@ -177,6 +285,13 @@ class Atendimento
         } catch (\Illuminate\Validation\ValidationException) {
             // Fora da janela: a conversa já está na fila da equipe.
         }
+    }
+
+    /** Esta conversa já ouviu deste chamado há pouco? */
+    private function jaOuviuDoChamado(SuporteGestorAbertura $a): bool
+    {
+        return SuporteGestorAbertura::where('conversa_id', $a->conversa_id)->whereKeyNot($a->id)->whereNull('pedido_por')->where('situacao', 'feito')->where('numero', $a->numero)
+            ->where('updated_at', '>=', now()->subHours(self::CONVERSA_DE_AGORA_HORAS))->exists();
     }
 
     /**

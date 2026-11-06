@@ -65,6 +65,7 @@ class Transferencia
         $alvo = $this->atendentePorNome($nome);
         $c->update(['situacao' => 'humano', 'humano_id' => $alvo?->id, 'humano_ate' => now()->addHours(SuporteConversa::HUMANO_HORAS),
             'fila_desde' => now(), 'fila_motivo' => Str::limit(trim($motivo) ?: 'cliente pediu um atendente', 250, '…'), 'fila_lembrada_em' => now()]);
+        app(CanalWhatsApp::class)->marcarSuporte($c);
         $this->avisar($c, $alvo, false);
         $primeiro = $alvo ? Str::before($alvo->name, ' ') : null;
         // Como uma pessoa da equipe chamaria um colega (T-478): sem "fila" nem "transferência".

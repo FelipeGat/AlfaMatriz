@@ -87,6 +87,9 @@ class SuportePedroRunnerController extends Controller
             'descricao' => ['nullable', 'string', 'max:500'], 'status' => ['nullable', 'string', 'max:40'], 'criado_em' => ['nullable', 'string', 'max:30'],
             'empresa_id' => ['nullable', 'integer'], 'assunto_id' => ['nullable', 'integer'],
             'funcionarios' => ['nullable', 'array', 'max:20'], 'funcionarios.*' => ['integer'],
+            // O que já foi feito no chamado (06/11/2026). Ausente = máquina antiga. Texto solto: uma data estranha não pode derrubar o retrato.
+            'andamentos' => ['sometimes', 'array', 'max:15'], 'andamentos.*.em' => ['nullable', 'string', 'max:20'],
+            'andamentos.*.texto' => ['nullable', 'string', 'max:500'], 'andamentos.*.pedro' => ['sometimes', 'boolean'],
         ]);
         // "usuario": o e-mail do usuário do Gestor ligado ao funcionário (bugfix de 02/11/2026); ausente = máquina antiga.
         // Só texto aqui: um e-mail estranho no cadastro de alguém não pode derrubar o retrato inteiro — quem usa confere.

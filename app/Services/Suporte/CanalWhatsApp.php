@@ -6,6 +6,7 @@ use App\Models\ClienteTelefone;
 use App\Models\SuporteConversa;
 use App\Models\SuporteMensagem;
 use App\Models\User;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -22,6 +23,9 @@ use Illuminate\Validation\ValidationException;
  */
 class CanalWhatsApp
 {
+    /** O que fica no lugar do "3" escolhido no menu do Gestor. */
+    public const ESCOLHEU_SUPORTE_NO_MENU = '[escolheu Suporte Técnico no menu]';
+
     public function configurado(): bool
     {
         return filled(config('services.whatsapp_suporte.phone_number_id'))
@@ -61,6 +65,25 @@ class CanalWhatsApp
         }
 
         return (array) $r->json();
+    }
+
+    /**
+     * A conversa ficou com uma pessoa daqui: no Gestor ela passa a "atendida no Matriz". Sem isto, para
+     * ele a conversa continua com o Pedro, que aqui não responde mais; passado o tempo limite, ele manda
+     * o menu de boas-vindas no meio do atendimento (03, 04 e 06/11/2026). Falhar não atrapalha
+     * quem chamou: a conversa já está com a pessoa, e a próxima mensagem do cliente tenta de novo.
+     */
+    public function marcarSuporte(SuporteConversa $c): void
+    {
+        if (! $this->viaGestor() || ! $c->gestor_conversa_id || $c->gestor_setor === 'suporte') {
+            return;
+        }
+        try {
+            $this->pedirAoGestor($c, 'suporte');
+            $c->update(['gestor_setor' => 'suporte']);
+        } catch (ValidationException|ConnectionException $e) {
+            Log::warning('[Pedro] o Gestor não marcou a conversa como suporte', ['conversa' => $c->id, 'erro' => $e::class]);
+        }
     }
 
     /**
@@ -117,10 +140,33 @@ class CanalWhatsApp
             return false;
         }
         $comPedro = (bool) ($estado['com_pedro'] ?? false);
-        $c->update(['gestor_conversa_id' => (int) $estado['conversa_id'], 'gestor_setor' => mb_substr((string) ($estado['setor'] ?? ''), 0, 20) ?: null]
+        $setor = mb_substr((string) ($estado['setor'] ?? ''), 0, 20) ?: null;
+        // O que o Matriz pede (marcarSuporte) já muda o setor daqui: se o Gestor chegou sozinho a "suporte", foi o menu.
+        if ($setor === 'suporte' && $c->gestor_setor !== 'suporte') {
+            $this->registrarEscolhaNoMenu($c);
+        }
+        $c->update(['gestor_conversa_id' => (int) $estado['conversa_id'], 'gestor_setor' => $setor]
             + ($comPedro ? ($c->situacao === 'gestor' ? ['situacao' => 'pedro'] : []) : ['situacao' => 'gestor']));
+        // Com uma pessoa aqui e com o Pedro lá: alguém respondeu pela tela, ou o Gestor abriu conversa nova depois de
+        // 6 h parada (a pessoa aqui vale por 24 h). É sempre a mensagem do cliente que dispara o menu, então aqui pega a tempo.
+        if ($comPedro && $c->comHumano()) {
+            $this->marcarSuporte($c);
+        }
 
         return $comPedro;
+    }
+
+    /**
+     * O Pedro não vê o menu, que é do Gestor: para ele, o "3" é só um número solto, e depois de um
+     * pedido de nota vira "Obrigado pela avaliação" (06/11/2026). Só a mensagem que é o número e
+     * mais nada: "preciso de suporte" também escolhe a opção, e o que a pessoa escreveu fica.
+     */
+    private function registrarEscolhaNoMenu(SuporteConversa $c): void
+    {
+        $m = $c->mensagens()->reorder()->where('direcao', 'entrada')->orderByDesc('id')->first();
+        if ($m && preg_match('/^\s*\d\s*$/', (string) $m->texto)) {
+            $m->update(['texto' => self::ESCOLHEU_SUPORTE_NO_MENU]);
+        }
     }
 
     /** X-Hub-Signature-256: HMAC SHA256 do corpo cru com o app secret. Sem segredo, nada passa. */

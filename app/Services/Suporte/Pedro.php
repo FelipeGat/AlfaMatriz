@@ -410,8 +410,11 @@ class Pedro
             if ($semGestor) {
                 $urgente = $roteiro?->prioridade === 'critica' ? 'CRÍTICO ('.$roteiro->titulo.'); ' : '';
                 $resposta .= "\n\n".$this->atendimento->paraAtendente($c, $urgente.$semGestor, $bloco['resumo'], $bloco['assunto_id'])['texto'];
-                $this->marcarSuporteNoGestor($c);
             }
+        }
+        // A trava mora aqui, e não só no pedido à IA: com o chamado desta conversa em aberto, a despedida sai sem pedir nota.
+        if ($bloco['acao'] === 'encerrar' && $this->atendimento->chamadoEmAberto($c)) {
+            $bloco['acao'] = 'responder';
         }
         $encerrar = $bloco['acao'] === 'encerrar';
         // Para uma pessoa: a conversa vai à fila (ou a quem foi nomeado) e o cliente ouve isso na mesma mensagem.
@@ -474,20 +477,6 @@ class Pedro
             $c->update(['situacao' => 'gestor', 'gestor_setor' => $setor]);
         } catch (ValidationException $e) {
             $this->atendimento->paraAtendente($c, "o Gestor não aceitou a entrega ao {$setor}: ".collect($e->errors())->flatten()->first(), "[{$setor}] ".$resumo);
-        }
-    }
-
-    /** Suporte que ficou com um atendente daqui: no Gestor a conversa fica "atendida no Matriz". */
-    private function marcarSuporteNoGestor(SuporteConversa $c): void
-    {
-        if (! $this->canal->viaGestor() || ! $c->gestor_conversa_id || $c->gestor_setor === 'suporte') {
-            return;
-        }
-        try {
-            $this->canal->pedirAoGestor($c, 'suporte');
-            $c->update(['gestor_setor' => 'suporte']);
-        } catch (ValidationException) {
-            // A conversa segue no Gestor; o atendente daqui já foi chamado.
         }
     }
 

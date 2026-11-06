@@ -326,7 +326,14 @@ class DiretorioGestor
             'cliente', 'servico', 'condensadora', 'condensadoras', 'condicionado', 'urgente', 'visita', 'tecnica', 'tecnico', 'problema', 'preciso', 'pode',
             // Nem as do problema e do cumprimento, que o cliente novo diz em toda conversa (02/11/2026: "o portão
             // está travado" trazia o pré-cliente "Portal…", a uma letra de "portão").
-            'portao', 'portoes', 'portaria', 'porteiro', 'camera', 'cameras', 'interfone', 'alarme', 'cerca', 'catraca', 'motor', 'garagem',
+            'portao', 'portoes', 'portaria', 'porteiro', 'camera', 'cameras', 'interfone', 'interfones', 'alarme', 'alarmes', 'cerca', 'cercas', 'catraca', 'catracas', 'motor', 'motores', 'garagem',
+            // 06/11/2026: "as catracas... o visor 'Apresente o cartão'... não libera a entrada" trouxe três cadastros de nome
+            // parecido com "catraca", "cartão" e "libera", e o Pedro pediu o CNPJ a um colégio por causa deles.
+            'problemas', 'cartao', 'cartoes', 'visor', 'mensagem', 'apresente', 'libera', 'liberam', 'liberar', 'liberando', 'entrada', 'passar',
+            // E o registro da escolha no menu do Gestor (CanalWhatsApp::ESCOLHEU_SUPORTE_NO_MENU).
+            'escolheu', 'suporte', 'menu',
+            // "Bom dia as catracas…": a junção "diaas" soa como "dias", e trazia um cadastro com "Dias" no nome.
+            'diaas',
             'travado', 'travada', 'travou', 'quebrado', 'quebrada', 'quebrou', 'parado', 'parada', 'parou', 'funciona', 'funcionando',
             'abre', 'abrindo', 'fecha', 'fechando', 'desligado', 'desligada', 'apagou', 'apagada', 'apagado', 'imagem', 'defeito', 'conserto',
             'controle', 'acesso', 'instalar', 'instalacao', 'orcamento', 'financeiro', 'boleto', 'pagamento', 'sindico', 'sindica', 'predio', 'casa', 'nome',

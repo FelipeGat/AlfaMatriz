@@ -49,6 +49,27 @@ FR-A1) alteram. Quem tem `suporte` vê.
 - **Portão parado:** crítica, 3 h, abre atendimento.
 - **Boleto / segunda via:** portal do cliente, sem abrir atendimento.
 - **Comercial:** apresentação e encaminhamento para um atendente.
+- **Catraca em "Apresente o cartão" que não libera (AlfaSync)**, desde 06/11/2026: alta, sem abrir atendimento por si só,
+  antes dos outros roteiros de catraca. O Pedro orienta abrir o AlfaSync e, a quem pergunta se é toda manhã, responde o que
+  o Felipe respondeu: o ideal é não acontecer, o computador provavelmente está sendo desligado, e vale um lembrete. Só abre
+  atendimento se o programa não abrir, der erro ou aviso de licença, a catraca seguir parada, ou o problema voltar sempre.
+
+## O que já aconteceu com o cliente (06/11/2026)
+
+Felipe: "o Pedro tem que saber que ele entrou em contato no dia anterior, ler o que foi feito para ele no andamento e fazer
+o que eu fiz". O cliente escreveu em três manhãs seguidas sobre a mesma catraca, e o Pedro não tinha como saber:
+
+- **O dia nas mensagens:** quando a conversa vem de outro dia, cada dia leva uma marca (`[05/11, ontem]`). A conversa só de
+  hoje não leva nenhuma.
+- **Os andamentos no retrato:** `suporte_gestor_ler.php` manda os 15 mais novos de cada atendimento (texto de até 500
+  caracteres, o dia e a marca `pedro`). Máquina antiga, sem o campo, continua valendo. **Precisa do instalador na máquina.**
+- **O que vai ao pedido:** os 3 registros mais novos da equipe em cada chamado, e, do que o próprio Pedro anotou, só os dias:
+  é o relato de quem escreveu, e não trabalho de alguém. Fica de fora a troca de etapa sem texto ("Finalizado"), a cobrança
+  e a ordem da direção; a assinatura com o telefone também.
+- **Só para quem escreve do cadastro:** o andamento é histórico do cliente, e a regra de `identificacao.md` não mudou. Quem
+  escreve de outro número recebe o roteiro, que é geral, e nada do que aconteceu com o cliente.
+- **Quem faz o andamento existir é a equipe:** o que se resolve por telefone ou AnyDesk e não vai ao chamado, o Pedro não
+  sabe. Foi o que aconteceu nesse caso: a orientação do dia anterior não estava em andamento nenhum.
 
 ## Boleto: o usuário do portal
 

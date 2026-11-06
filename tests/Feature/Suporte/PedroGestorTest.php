@@ -343,10 +343,11 @@ class PedroGestorTest extends TestCase
     public function test_modo_no_gestor_confere_aberto_garantia_e_numero_citado(): void
     {
         $at = app(\App\Services\Suporte\Atendimento::class);
-        $this->assertSame(['modo' => 'reabrir', 'numero' => '782'], $at->modoNoGestor(13, 3), 'concluído há 15 dias, mesmo assunto');
-        $this->assertSame(['modo' => 'novo', 'numero' => null], $at->modoNoGestor(13, 27), 'outro assunto');
+        $pedido = 'O portão de saída voltou a travar';
+        $this->assertSame(['modo' => 'reabrir', 'numero' => '782'], $at->modoNoGestor(13, 3, null, $pedido), 'concluído há 15 dias, mesmo assunto e mesmo problema');
+        $this->assertSame(['modo' => 'novo', 'numero' => null], $at->modoNoGestor(13, 27, null, $pedido), 'outro assunto');
         config(['services.suporte_pedro.garantia_dias' => 10]);
-        $this->assertSame(['modo' => 'novo', 'numero' => null], $at->modoNoGestor(13, 3), 'fora da garantia');
+        $this->assertSame(['modo' => 'novo', 'numero' => null], $at->modoNoGestor(13, 3, null, $pedido), 'fora da garantia');
         $this->assertSame(['modo' => 'reabrir', 'numero' => '782'], $at->modoNoGestor(13, 27, '782'), 'o nº citado vale, se é do cliente');
         $this->assertSame(['modo' => 'novo', 'numero' => null], $at->modoNoGestor(20, 27, '782'), 'nº de outro cliente não vale');
     }
