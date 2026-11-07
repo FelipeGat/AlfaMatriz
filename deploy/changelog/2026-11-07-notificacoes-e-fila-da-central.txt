@@ -1,0 +1,11 @@
+<b>📋 AlfaMatriz — Changelog 07/11/2026</b>
+<i>Notificações em Acompanhamentos e fila da Central de IA</i>
+
+<b>✨ Novidades</b>
+• <b>As notificações se tratam uma a uma em Acompanhamentos.</b> A tela ganhou a seção "Notificações", com todos os avisos ainda não tratados, separados por gravidade (Críticas, Atenção e Demais) e com busca. Cada aviso tem três botões: Abrir leva aonde ele se resolve, Tratado tira o aviso da lista e Desfazer devolve. A aba Tratadas guarda os últimos 7 dias.
+• <b>O sino leva para Acompanhamentos.</b> Clicar num aviso abre a tela com ele destacado no topo, e ele só sai da lista quando você decidir. Aviso de tarefa abre a própria tarefa, e não mais o quadro inteiro.
+• <b>A Central de IA aproveita a espera.</b> Quando o projeto já está ocupado com outra implementação, o pedido novo começa lendo o código e deixa o plano no chat. Quando a pasta libera, ele implementa de onde parou. A linha da fila passa a dizer o motivo real da espera.
+• <b>Botão "Passar na frente".</b> O pedido urgente pausa o que está em andamento no mesmo projeto e roda. Quando ele termina, o pedido pausado volta sozinho de onde parou. O botão aparece depois que a máquina de cada pessoa atualizar o runner.
+
+<i>Versão v2026.11.07.2</i>
+<i>Alfa Soluções Tecnológicas</i>
