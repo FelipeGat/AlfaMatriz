@@ -270,7 +270,7 @@ class DiretorioGestor
         $inteiros = $casados->where('inteiro', true);
         $citados = $inteiros->isNotEmpty() ? $inteiros : $casados->filter(fn ($x) => $x['cobertura'] > 0.5);
         $ditos = $citados->flatMap(fn ($x) => $x['termos'])->unique()->all();
-        $todos = $casados->filter(fn ($x) => $x['inteiro'] || ($x['cobertura'] >= 0.5 && array_intersect($x['termos'], $ditos) !== []));
+        $todos = self::semOMesmoNoFunil($casados->filter(fn ($x) => $x['inteiro'] || ($x['cobertura'] >= 0.5 && array_intersect($x['termos'], $ditos) !== [])));
         if ($citados->isEmpty() || $todos->isEmpty()) {
             return [];
         }
@@ -283,6 +283,42 @@ class DiretorioGestor
 
         return $todos->filter(fn ($x) => $x['pontos'] >= $melhor / 2)->sortByDesc('pontos')
             ->map(fn ($x) => ['cliente' => $x['cliente'], 'inteiro' => $x['inteiro']])->values()->all();
+    }
+
+    /**
+     * O pré-cliente que é o próprio cliente, ainda no funil, não é outro cadastro (Felipe, 07/11/2026: o inquilino
+     * novo de uma sala disse por inteiro o nome do condomínio, igual à razão social do cliente, e o Pedro pediu o
+     * CNPJ, porque o mesmo condomínio estava também como pré-cliente, sem CNPJ e nunca convertido; o CNPJ que a
+     * pessoa mandou não conferia, e a conversa foi para um colega). No Gestor, 28 dos 141 clientes têm um
+     * pré-cliente não convertido de mesmo nome. É o mesmo com o mesmo CNPJ; sem CNPJ no pré-cliente, com o mesmo
+     * nome (as palavras que identificam, em qualquer dos três) e sem cidade diferente. CNPJ ou cidade diferentes
+     * continuam dois cadastros, e o Pedro pede o CNPJ, como antes. O cliente fica com a marca dele: se só o nome do
+     * funil foi dito por inteiro, o do cadastro continua só parecido, e o Pedro pergunta se é ele.
+     *
+     * @param  \Illuminate\Support\Collection<int, array{cliente: array, inteiro: bool}>  $achados
+     * @return \Illuminate\Support\Collection<int, array{cliente: array, inteiro: bool}>
+     */
+    private static function semOMesmoNoFunil(\Illuminate\Support\Collection $achados): \Illuminate\Support\Collection
+    {
+        $clientes = $achados->filter(fn ($x) => (int) ($x['cliente']['id'] ?? 0) > 0);
+
+        return $achados->reject(fn ($x) => (int) ($x['cliente']['id'] ?? 0) < 0
+            && $clientes->contains(fn ($c) => self::mesmoCadastro($x['cliente'], $c['cliente'])))->values();
+    }
+
+    private static function mesmoCadastro(array $pre, array $cliente): bool
+    {
+        if (($documento = self::digitos($pre['documento'] ?? '')) !== '') {
+            return $documento === self::digitos($cliente['documento'] ?? '');
+        }
+        $cidade = fn (array $c) => implode(' ', self::palavras((string) ($c['cidade'] ?? '')));
+        if ($cidade($pre) !== '' && $cidade($cliente) !== '' && $cidade($pre) !== $cidade($cliente)) {
+            return false;
+        }
+        $nomes = fn (array $c) => collect([$c['fantasia'] ?? null, $c['nome'] ?? null, $c['razao'] ?? null])
+            ->map(fn ($n) => collect(self::chaveDoNome(self::palavras((string) $n)))->sort()->implode(' '))->filter()->all();
+
+        return array_intersect($nomes($pre), $nomes($cliente)) !== [];
     }
 
     /** @var list<array{cliente: array, nomes: list<list<string>>, palavras: list<string>, juntas: list<string>}>|null os nomes já quebrados em palavras, uma vez por retrato */

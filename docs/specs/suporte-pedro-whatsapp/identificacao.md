@@ -172,3 +172,58 @@ Os testes estão em `tests/Feature/Suporte/PedroBuscaDoClienteNovoTest.php`, com
 anterior, 5 dos 8 falham e 1 dá erro (o método novo não existia); os outros dois ("palavra solta" e "número do
 cadastro de um deles") protegem a busca nova.
 
+
+## Cliente que também está no funil (07/11/2026)
+
+Em 06/11/2026, às 14:38, o inquilino novo de uma sala escreveu de um número fora do cadastro e disse por inteiro o
+nome do condomínio, igual à razão social do cliente no Gestor, pedindo a senha do alarme da sala. O Pedro pediu o
+CNPJ, porque o mesmo condomínio estava também no funil, como pré-cliente nunca convertido, sem CNPJ, sem cidade e
+sem atendimento. A busca viu nisso "dois de nome parecido" e aplicou a regra das duas Fit Club. O CNPJ que a pessoa
+mandou, duas vezes, não era o do cadastro (outra raiz), e o Pedro respondeu "não localizei" e passou a conversa a um
+colega, sem nada registrado no Gestor.
+
+Regra (correção, sem mudar a decisão de 02/11): **o pré-cliente que é o próprio cliente não é outro cadastro**.
+`DiretorioGestor::candidatosPorNome` tira da lista o pré-cliente que é o mesmo de um cliente achado junto com ele:
+
+- **com CNPJ no pré-cliente**, o mesmo CNPJ do cliente, com qualquer nome;
+- **sem CNPJ no pré-cliente**, o mesmo nome (as palavras que identificam, em qualquer dos três: fantasia, nome ou
+  razão) e nenhuma cidade diferente (cidade em branco não impede).
+
+CNPJ diferente ou cidade diferente continuam sendo dois cadastros, e o Pedro pede o CNPJ como antes: podem ser duas
+empresas de mesmo nome, ou duas unidades. O cliente fica com a marca dele. Se só o nome do funil foi dito por inteiro,
+o do cadastro continua só parecido, e o Pedro pergunta se é ele. Os pré-clientes sem cliente de mesmo nome continuam
+sendo achados.
+
+Medido em 07/11/2026 na cópia do retrato lida do Gestor de produção, só leitura, com o documento trocado por um
+fictício que preserva quem tem o mesmo (`C:\tmp\e812\nomes_ro.php`). A reprodução rodou fora do repositório e
+sem rede.
+
+- **No Gestor:** 28 dos 141 clientes ativos têm um pré-cliente não convertido de mesmo nome. Em 3 deles, o CNPJ
+  também é o mesmo.
+- **Nome fantasia dito por inteiro:** o número de clientes que levavam ao "PEÇA O CNPJ" caiu de 21 para 11.
+- **Razão social dita por inteiro:** caiu de 20 para 14.
+- **Os que continuam pedindo o CNPJ:** pelo nome fantasia, 9 dos 11 têm um cliente só e o resto pré-clientes. Em
+  todos eles, cada pré-cliente que ficou tem outro CNPJ ou outra cidade: são academias de mesmo nome em cidades
+  diferentes, unidades de uma mesma escola e nomes só parecidos.
+- **A conversa de 06/11:** a reprodução, mensagem a mensagem, dá "PEÇA O CNPJ" e depois "O CNPJ NÃO CONFERE" com o
+  código anterior. Com o novo, dá só o cliente, dito por inteiro.
+
+**Reconhecido, segue com o pedido, e não com um colega.** O ensaio com o modelo que o Pedro usa (Sonnet 5.5,
+dados fictícios, a mesma sequência de mensagens) mostrou o passo seguinte. Com o cliente achado, a IA reconheceu o
+condomínio, mas devolveu "transferir" nas duas rodadas ("um colega vai tratar da senha"). O pedido de identificação
+não tem as regras de abrir atendimento, e só o "responder" faz a conversa voltar ao Pedro com o problema
+(`Pedro::concluir`, T-478). Nessa etapa seguinte, nas duas rodadas, ele abriu o chamado no Gestor e anotou que a
+equipe confere a autorização com um contato cadastrado do condomínio, porque o número não é do cadastro.
+`Contexto::IDENTIFICOU_RESPONDE` entrou no pedido de identificação: ao devolver o cliente e o solicitante, a ação é
+"responder", qualquer que seja o pedido; "transferir" ali é só para quem pediu uma pessoa ou não quis se
+identificar. Com ela, nas três rodadas, nenhuma passou a conversa adiante: uma confirmou o condomínio e seguiu, e
+duas perguntaram "é o condomínio tal, em tal cidade?" antes de seguir, sem pedir CNPJ.
+
+Os testes estão em `tests/Feature/Suporte/PedroClienteTambemNoFunilTest.php`, com dados fictícios. Com o código
+anterior, 3 dos 7 falham. Os outros quatro protegem o que não podia mudar: outro CNPJ, outra cidade, outro nome sem
+CNPJ e pré-cliente sozinho.
+
+Visto na mesma conversa e **não corrigido**, porque não causou a falha: o próprio nome da pessoa ("Me chamo …",
+sem o nome do cliente) trouxe dois cadastros com esse nome e pôs "PEÇA O CNPJ" no pedido. Naquele
+momento, a IA pediu o nome do condomínio, e não o CNPJ. Separar o nome da pessoa do nome do cliente, sem perder o
+cliente pessoa física que diz o próprio nome, fica para uma decisão do Felipe.

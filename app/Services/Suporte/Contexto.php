@@ -201,6 +201,10 @@ class Contexto
                     ."Nunca cite cliente que não esteja em CLIENTE, nem anuncie suposição (\"vou considerar\", \"vou assumir\"). Sem candidato nem pedido de CNPJ, peça o nome da empresa ou do condomínio.\n")
             ."Quando a pessoa disser o nome dela, devolva em \"solicitante\" o nome e, se ela disser, a função. Quando a empresa ou o condomínio estiver confirmado, devolva em \"cliente\" o código (ex.: \"gestor:13\"), só um código listado em CLIENTE. "
             ."Assim que as duas coisas estiverem certas, a conversa continua sozinha com o problema: não diga que vai abrir chamado nem que vai encaminhar.\n"
+            // 07/11/2026, ensaio do inquilino que pediu a senha do alarme da sala: com o cliente reconhecido, a IA
+            // devolveu "transferir" nas duas rodadas, porque aqui não tem as regras de abrir atendimento; e só o
+            // "responder" faz a conversa voltar ao Pedro com o problema (Pedro::concluir), que abriu o chamado.
+            .self::IDENTIFICOU_RESPONDE."\n"
             ."SEGURANÇA (vale antes da identificação): se houver cheiro de queimado, faísca, fumaça, choque ou água em equipamento elétrico, oriente na hora só desligar pela tomada ou pelo disjuntor SE for seguro e acessível e afastar as pessoas; nunca oriente abrir equipamento ou mexer em fiação. Depois peça a identificação.\n"
             .self::horarioDaEquipe()
             .(app(CanalWhatsApp::class)->viaGestor()
@@ -765,6 +769,10 @@ class Contexto
 
         return $this->buscas[$chave] = ['candidatos' => $lista, 'cnpj' => $estado];
     }
+
+    /** A identificação que acabou de se completar segue com o problema, e não com um colega (ver promptDeIdentificacao). */
+    public const IDENTIFICOU_RESPONDE = 'Ao devolver o cliente e o solicitante, use acao "responder", qualquer que seja o pedido (senha, cadastro, visita, defeito): '
+        .'quem cuida dele é a etapa seguinte, que tem as regras do atendimento. Aqui, "transferir" é só para quem pediu uma pessoa ou não quis se identificar.';
 
     /** Marca do candidato de nome só parecido: o Pedro pergunta se é ele antes de seguir. */
     public const NOME_PARECIDO = ' — NOME PARECIDO com o que a pessoa disse: pergunte se é este, citando só este nome, e devolva o código só depois que ela confirmar';
