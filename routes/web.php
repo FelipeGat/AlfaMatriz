@@ -113,6 +113,9 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
         ->name('notificacoes.abrir');
     Route::post('notificacoes/{notificacao}/lida', [NotificacaoController::class, 'marcarLida'])->whereNumber('notificacao')
         ->name('notificacoes.lida');
+    // O Desfazer do "Tratado" em Acompanhamentos (07/11/2026).
+    Route::post('notificacoes/{notificacao}/nao-lida', [NotificacaoController::class, 'marcarNaoLida'])->whereNumber('notificacao')
+        ->name('notificacoes.nao-lida');
     Route::post('notificacoes/som', [NotificacaoController::class, 'som'])
         ->name('notificacoes.som');
 

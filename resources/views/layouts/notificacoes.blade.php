@@ -30,6 +30,7 @@
     $veCentroDeControle = $usuarioDoSino
         && ! $usuarioDoSino->temEscopoDeRevenda()
         && $usuarioDoSino->canPermissao('dashboard', 'ler');
+    $trataEmAcompanhamentos = \App\Models\Notificacao::trataEmAcompanhamentos($usuarioDoSino);
 @endphp
 
 {{-- Overlay: fecha ao clicar fora, e fica ABAIXO do painel. --}}
@@ -92,12 +93,24 @@
     </div>
 
     {{--
-        O sino conta o que MUDOU; a fila do Centro de Controle mostra o que
-        EXIGE AÇÃO e vale enquanto durar. São perguntas diferentes — "3 receitas
-        em atraso" não é um evento, é um estado —, e é por isso que o rodapé
-        leva de uma à outra em vez de as duas listas tentarem ser a mesma.
+        O painel mostra 12, numa linha cada; a lista inteira, com o título sem
+        corte e a ação de cada aviso, mora em Acompanhamentos (Felipe,
+        07/11/2026: "essa forma de ver as notificações é bem ruim"). Para quem
+        tem a tela, o rodapé leva para lá, com o total — o número diz quantas
+        o painel NÃO está mostrando.
+
+        Quem não a tem segue com a ponte antiga: o sino conta o que MUDOU, e a
+        fila do Centro de Controle mostra o que EXIGE AÇÃO e vale enquanto
+        durar — "3 receitas em atraso" não é um evento, é um estado.
     --}}
-    @if ($veCentroDeControle)
+    @if ($trataEmAcompanhamentos)
+        <footer class="h-[38px] shrink-0 flex items-center px-4 border-t border-line bg-head">
+            <a href="{{ route('secretario.acompanhamentos') }}#notificacoes"
+               class="font-mono text-[10px] uppercase tracking-caps text-ink-faint hover:text-brand transition">
+                Tratar uma a uma em Acompanhamentos<span x-show="naoLidas > 0"> · <span x-text="naoLidas">{{ $naoLidas ?? 0 }}</span></span>
+            </a>
+        </footer>
+    @elseif ($veCentroDeControle)
         <footer class="h-[38px] shrink-0 flex items-center px-4 border-t border-line bg-head">
             <a href="{{ route('centro-controle') }}"
                class="font-mono text-[10px] uppercase tracking-caps text-ink-faint hover:text-brand transition">

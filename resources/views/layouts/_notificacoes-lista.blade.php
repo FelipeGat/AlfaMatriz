@@ -7,11 +7,19 @@
 
     Espera: $notificacoes (coleção de App\Models\Notificacao).
 --}}
+@php
+    // Quem tem Acompanhamentos trata o aviso lá, um a um (Felipe, 07/11/2026:
+    // "ela precisa me direcionar para resolver de forma individual cada uma nos
+    // acompanhamentos"): o clique leva à lista com ESTE aviso no topo, sem dar
+    // por lido — ele continua a tratar até a pessoa decidir. Quem não tem a
+    // tela continua indo direto ao destino.
+    $emAcompanhamentos = \App\Models\Notificacao::trataEmAcompanhamentos(auth()->user());
+@endphp
 @forelse ($notificacoes ?? [] as $aviso)
     @php
         // O mesmo vocabulário de gravidade da fila de ação: o aviso não pode
         // mudar de cor conforme a tela em que aparece.
-        $tom = ['critico' => 'crit', 'atencao' => 'warn', 'marca' => 'brand'][$aviso->nivel] ?? 'brand';
+        $tom = $aviso->tom();
     @endphp
 
     {{--
@@ -19,7 +27,7 @@
         fundo não bastaria: num painel de doze linhas, um cinza levemente mais
         claro sem a barra se lê como zebra de tabela, e não como "isto é novo".
     --}}
-    <a href="{{ route('notificacoes.abrir', $aviso->id) }}"
+    <a href="{{ $emAcompanhamentos ? route('secretario.acompanhamentos', ['notificacao' => $aviso->id]).'#notificacoes' : route('notificacoes.abrir', $aviso->id) }}"
        @class([
            'flex items-start gap-2.5 px-4 py-2.5 border-b border-rule last:border-b-0 border-l-2 transition hover:bg-chip',
            'bg-chip' => $aviso->naoLida(),

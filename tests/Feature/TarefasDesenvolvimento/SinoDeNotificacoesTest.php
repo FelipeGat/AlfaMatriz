@@ -124,7 +124,9 @@ class SinoDeNotificacoesTest extends TestCase
         $this->assertStringContainsString('Notificações', $html);
         $this->assertStringContainsString('Camila Reis perguntou', $html);
         $this->assertStringContainsString('Marcar lidas', $html);
-        $this->assertStringContainsString('Ver tudo que exige ação', $html);
+        // Quem tem Acompanhamentos trata a lista inteira lá (07/11/2026); a
+        // ponte para o Centro de Controle fica para quem não tem a tela.
+        $this->assertStringContainsString('Tratar uma a uma em Acompanhamentos', $html);
 
         // Quem não tem aviso nenhum não ganha badge — nem o botão "Marcar
         // lidas", que sobre uma lista vazia só ensina que ele não faz nada.
@@ -164,7 +166,9 @@ class SinoDeNotificacoesTest extends TestCase
         $this->assertNotNull($primeira->fresh()->lida_em);
         $this->assertNull($segunda->fresh()->lida_em, 'só a marcada');
 
-        $this->actingAs($dev)->get(route('notificacoes.abrir', $segunda->id))->assertRedirect($segunda->rota ?: url('/'));
+        // Abre a própria tarefa, e não o quadro inteiro (07/11/2026).
+        $this->actingAs($dev)->get(route('notificacoes.abrir', $segunda->id))
+            ->assertRedirect(route('tarefas.index', ['esperando' => '1', 'tarefa' => $tarefa->id]));
         $this->assertNotNull($segunda->fresh()->lida_em);
 
         // O aviso de outra pessoa não se abre nem se marca.

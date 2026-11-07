@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Notificacao;
 use App\Models\SecretarioAcompanhamento;
 use App\Models\SecretarioItem;
 use App\Models\SecretarioPreferencia;
@@ -23,6 +24,9 @@ use Illuminate\View\View;
  */
 class SecretarioAcompanhamentosController extends Controller
 {
+    /** Quantas não lidas a seção de notificações desenha (ver `notificacoes()`). */
+    public const NOTIFICACOES_NA_TELA = 300;
+
     public function index(Request $request, Politica $politica, CentralDeGestao $central): View
     {
         $user = $request->user();
@@ -42,7 +46,40 @@ class SecretarioAcompanhamentosController extends Controller
             'doAviso' => ($ids = $this->idsDoAviso($request))
                 ? SecretarioAcompanhamento::de($user)->whereIn('id', $ids)->orderByRaw("prioridade = 'alta' desc")->orderBy('referencia_em')->get()
                 : collect(),
-        ]);
+        ] + $this->notificacoes($request));
+    }
+
+    /**
+     * As notificações da conta, para tratar uma a uma (Felipe, 07/11/2026: "em
+     * acompanhamentos preciso mostrar todas as notificações para tratar elas
+     * individualmente"). O sino mostra 12; aqui vão TODAS as não lidas.
+     *
+     * Tratada é a mesma `lida_em` do sino, de propósito: o número da bolinha e
+     * esta lista contam a mesma coisa, e tratar aqui baixa o número lá.
+     *
+     * O teto de 300 é de tela, não de regra — a conta que acumulou mais do que
+     * isso vê as mais recentes e o número das que ficaram de fora, que é o que
+     * a tela consegue entregar sem virar uma página de vários megabytes.
+     *
+     * Por `destinatario_id`, sempre: aviso é da pessoa, administrador incluído.
+     * O destaque (`?notificacao=`) de outra conta simplesmente não acha nada.
+     */
+    private function notificacoes(Request $request): array
+    {
+        $id = $request->user()->id;
+        $daConta = fn () => Notificacao::where('destinatario_id', $id);
+
+        return [
+            'notificacoes' => $daConta()->whereNull('lida_em')
+                ->orderByRaw("case nivel when 'critico' then 0 when 'atencao' then 1 else 2 end")
+                ->latest('id')->limit(self::NOTIFICACOES_NA_TELA)->get(),
+            'notificacoesTotal' => $daConta()->whereNull('lida_em')->count(),
+            'tratadas' => $daConta()->whereNotNull('lida_em')->where('lida_em', '>=', now()->subDays(7))
+                ->latest('lida_em')->limit(50)->get(),
+            'notificacaoFoco' => $request->integer('notificacao') > 0
+                ? $daConta()->find($request->integer('notificacao'))
+                : null,
+        ];
     }
 
     /** Os itens do aviso: pelo envio do sino (`?aviso=`), só da própria pessoa. @return list<int> */

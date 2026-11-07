@@ -117,6 +117,47 @@ class Notificacao extends Model
     }
 
     /**
+     * O tom de cor pela gravidade — o mesmo vocabulário da fila de ação.
+     *
+     * Num lugar só porque três telas o pintam (o painel do sino, o card
+     * flutuante e a lista de Acompanhamentos): o aviso não pode mudar de cor
+     * conforme a tela em que aparece.
+     */
+    public function tom(): string
+    {
+        return ['critico' => 'crit', 'atencao' => 'warn', 'marca' => 'brand'][$this->nivel] ?? 'brand';
+    }
+
+    /**
+     * Aonde "Abrir" leva: o lugar em que o aviso se resolve (Felipe, 07/11/2026).
+     *
+     * Duas correções sobre a `rota` gravada. Aviso de tarefa guardava só o
+     * quadro (`/tarefas`), e abrir caía no quadro inteiro, procurando o card
+     * entre dezenas; com a tarefa, abre a própria (`?tarefa=N`, o mesmo
+     * endereço do "O que espera você"), sem perder o resto da query
+     * (`esperando=1`). E a rota é refeita no endereço em que o sistema está
+     * AGORA: os avisos de antes da troca de domínio guardaram o host da
+     * tailnet, e abri-los levava para fora. Toda `rota` nasce de `route()`,
+     * então ela é sempre daqui, e trocar o host não muda o destino.
+     */
+    public function destino(): ?string
+    {
+        if (! $this->rota) {
+            return null;
+        }
+
+        $partes = parse_url($this->rota);
+        $caminho = '/'.ltrim($partes['path'] ?? '', '/');
+        parse_str($partes['query'] ?? '', $query);
+
+        if ($this->tarefa_id && rtrim($caminho, '/') === '/tarefas') {
+            $query['tarefa'] = $this->tarefa_id;
+        }
+
+        return url($caminho).($query ? '?'.http_build_query($query) : '').(isset($partes['fragment']) ? '#'.$partes['fragment'] : '');
+    }
+
+    /**
      * Avisa alguém — menos ele mesmo.
      *
      * Quem age já sabe o que fez: notificar o autor da própria ação enche o
@@ -131,6 +172,18 @@ class Notificacao extends Model
         }
 
         return self::create(['destinatario_id' => $destinatarioId] + $atributos);
+    }
+
+    /**
+     * Quem trata os avisos em Acompanhamentos — a mesma régua do menu: a tela
+     * é da matriz (revenda não a vê) e pede o Secretário. O sino pergunta isto
+     * para decidir se leva a pessoa para lá ou direto ao destino.
+     */
+    public static function trataEmAcompanhamentos(?User $usuario): bool
+    {
+        return $usuario !== null
+            && ! $usuario->temEscopoDeRevenda()
+            && $usuario->canPermissao('secretario', 'ler');
     }
 
     /** As não lidas desta pessoa, mais recentes primeiro. */

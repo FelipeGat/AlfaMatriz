@@ -17,6 +17,7 @@ class NotificacaoController extends Controller
     /**
      * Abre o aviso: dá por lido e leva para a tela onde a coisa se resolve (Felipe,
      * 22/10/2026: "preciso clicar nelas para resolver"). Só o aviso da própria pessoa.
+     * O endereço sai de `destino()`: a tarefa, e não o quadro inteiro (07/11/2026).
      */
     public function abrir(Request $request, int $notificacao)
     {
@@ -25,7 +26,7 @@ class NotificacaoController extends Controller
             $n->forceFill(['lida_em' => now()])->save();
         }
 
-        return redirect($n->rota ?: url('/'));
+        return redirect($n->destino() ?? url('/'));
     }
 
     /** Marca UM aviso como lido, sem sair da tela (o botão de cada linha do sino). */
@@ -35,6 +36,20 @@ class NotificacaoController extends Controller
         if ($n->naoLida()) {
             $n->forceFill(['lida_em' => now()])->save();
         }
+
+        return response()->json(['nao_lidas' => Notificacao::naoLidasDe($request->user()->id)->count()]);
+    }
+
+    /**
+     * Devolve UM aviso para "a tratar" — o Desfazer e o "Voltar a tratar" de
+     * Acompanhamentos (07/11/2026). Tratar é um toque só, sem confirmação, e o
+     * "Marcar lidas" do sino trata o painel inteiro de uma vez: sem volta, um
+     * toque errado sumiria com o aviso de todas as listas.
+     */
+    public function marcarNaoLida(Request $request, int $notificacao)
+    {
+        Notificacao::where('destinatario_id', $request->user()->id)->findOrFail($notificacao)
+            ->forceFill(['lida_em' => null])->save();
 
         return response()->json(['nao_lidas' => Notificacao::naoLidasDe($request->user()->id)->count()]);
     }
@@ -72,12 +87,12 @@ class NotificacaoController extends Controller
             'ultimo_sonoro_id' => (int) Notificacao::where('destinatario_id', $id)->where('sonora', true)->max('id'),
             // A mais recente, já pronta para o card flutuante mostrar título e
             // prévia — em vez de só "N novas". O `tom` sai do mesmo mapa do
-            // painel (`_notificacoes-lista`), para o card não pintar o aviso de
+            // painel (`Notificacao::tom`), para o card não pintar o aviso de
             // uma cor e a lista de outra.
             'ultima' => $ultima ? [
                 'titulo' => $ultima->titulo,
                 'meta' => $ultima->meta,
-                'tom' => ['critico' => 'crit', 'atencao' => 'warn', 'marca' => 'brand'][$ultima->nivel] ?? 'brand',
+                'tom' => $ultima->tom(),
             ] : null,
         ]);
     }

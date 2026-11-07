@@ -62,6 +62,10 @@
                 @endforeach
             </div>
 
+            {{-- As notificações do sino, todas, para tratar uma a uma (07/11/2026). Antes da tabela:
+                 é aonde o sino traz a pessoa, e cair abaixo de uma tabela comprida esconderia o aviso. --}}
+            @include('secretario._notificacoes')
+
             @endif
 
             {{-- O que o aviso do sino trouxe (22/10/2026): os itens dele, com a ação de cada um. --}}
