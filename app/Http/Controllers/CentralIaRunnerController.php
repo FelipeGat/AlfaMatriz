@@ -136,9 +136,12 @@ class CentralIaRunnerController extends Controller
             'acao_em' => ['nullable', 'date', 'before_or_equal:'.now()->addSeconds(5)->toIso8601String()],
             'fala' => ['nullable', 'string', 'max:240'],
             'acoes' => ['nullable', 'integer', 'min:0'],
+            // A máquina sabe parar o agente a pedido ("Passar na frente"):
+            // sem isso, a tela não oferece o botão.
+            'pode_pausar' => ['nullable', 'boolean'],
         ]);
-        app(\App\Services\CentralIa\ProgressoService::class)->registrar($user, $dados['maquina'], $execucao, $dados);
-        return response()->json(['ok' => true]);
+        $pausar = app(\App\Services\CentralIa\ProgressoService::class)->registrar($user, $dados['maquina'], $execucao, $dados);
+        return response()->json(['ok' => true, 'pausar' => $pausar]);
     }
 
     /**
@@ -177,7 +180,9 @@ class CentralIaRunnerController extends Controller
     {
         $user = $this->conta($request);
         $dados = $request->validate([
-            'status' => ['required', 'in:'.CentralIaExecucao::CONCLUIDA.','.CentralIaExecucao::FALHOU],
+            // `pausada`: a pessoa pediu para outro pedido passar na frente
+            // (docs/specs/central-ia-fila-por-projeto).
+            'status' => ['required', 'in:'.CentralIaExecucao::CONCLUIDA.','.CentralIaExecucao::FALHOU.','.CentralIaExecucao::PAUSADA],
             'resposta' => ['required_if:status,'.CentralIaExecucao::CONCLUIDA, 'nullable', 'string', 'max:1000000'],
             'erro' => ['nullable', 'string', 'max:2000'],
             'sessao_agente' => ['nullable', 'string', 'max:128'],

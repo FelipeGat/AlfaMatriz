@@ -35,14 +35,22 @@ class ProgressoService
             'qual o status', 'qual o andamento', 'travou', 'esta travado', 'ainda esta executando'], true);
     }
 
-    public function registrar(User $user, string $maquina, int $id, array $dados): void
+    /**
+     * Guarda o andamento e devolve se a pessoa pediu para esta execução
+     * pausar ("Passar na frente", docs/specs/central-ia-fila-por-projeto): é
+     * pela resposta do andamento, a cada 30 s, que a máquina fica sabendo.
+     * O ocupante da pasta só ganha a marca quando o levantamento do urgente
+     * já parou (AgentesService::passarNaFrente); até lá, segue trabalhando.
+     */
+    public function registrar(User $user, string $maquina, int $id, array $dados): bool
     {
-        DB::transaction(function () use ($user, $maquina, $id, $dados) {
+        return DB::transaction(function () use ($user, $maquina, $id, $dados) {
             $runner = CentralIaRunner::where('user_id', $user->id)->where('maquina', $maquina)->first();
             $e = CentralIaExecucao::where('user_id', $user->id)->whereKey($id)->lockForUpdate()->first();
             abort_unless($runner && $e && $e->runner_id === $runner->id, 404);
+            $pausar = $e->status === CentralIaExecucao::EXECUTANDO && isset($e->roteamento['pausar']);
             if ($e->status !== CentralIaExecucao::EXECUTANDO || ($e->progresso['sequencia'] ?? 0) >= $dados['sequencia']) {
-                return;
+                return $pausar;
             }
             // Nunca a saída bruta nem o conteúdo de arquivos. Desde 17/10/2026
             // vão também a última ação (ferramenta + alvo, curta) e a última
@@ -50,13 +58,15 @@ class ProgressoService
             // alguma amostra do que está sendo feito". O runner já corta; aqui
             // ainda passa pela máscara de segredos, porque um comando pode
             // levar um token na linha.
-            $progresso = array_intersect_key($dados, array_flip(['sequencia', 'etapa', 'atividade_em', 'processo_ativo', 'acao', 'acao_em', 'fala', 'acoes']));
+            $progresso = array_intersect_key($dados, array_flip(['sequencia', 'etapa', 'atividade_em', 'processo_ativo', 'acao', 'acao_em', 'fala', 'acoes', 'pode_pausar']));
             foreach (['acao', 'fala'] as $campo) {
                 if (isset($progresso[$campo])) {
                     $progresso[$campo] = Str::limit(ProtecaoDeSegredos::texto($progresso[$campo]), 200);
                 }
             }
             $e->update(['progresso' => $progresso, 'progresso_em' => now()]);
+
+            return $pausar;
         });
     }
 

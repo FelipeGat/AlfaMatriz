@@ -40,6 +40,14 @@ class CentralIaExecucao extends Model
     public const EXPIRADA = 'expirada';
 
     /**
+     * Parada a pedido da pessoa para outro pedido do mesmo projeto passar na
+     * frente (docs/specs/central-ia-fila-por-projeto). Encerra esta execução;
+     * quem continua o trabalho é a retomada, que nasce pendente com a sessão
+     * do agente.
+     */
+    public const PAUSADA = 'pausada';
+
+    /**
      * Estados da confirmação pedida pela máquina (ver
      * `AgentesService::confirmacao`). `aguardando` e `codigo_errado` esperam
      * a pessoa; os outros encerram a espera.
@@ -70,7 +78,7 @@ class CentralIaExecucao extends Model
 
     protected $fillable = [
         'user_id', 'pedido_id', 'resposta_id', 'runner_id', 'tarefa_id', 'agente', 'projeto', 'modo', 'roteamento', 'checkpoint', 'instrucao',
-        'progresso', 'progresso_em', 'status_avisado_em', 'confirmacao', 'auditoria', 'status', 'sessao_agente', 'branch', 'erro', 'iniciada_em', 'concluida_em',
+        'progresso', 'progresso_em', 'status_avisado_em', 'confirmacao', 'auditoria', 'status', 'prioridade', 'sessao_agente', 'branch', 'erro', 'iniciada_em', 'concluida_em',
     ];
 
     protected $casts = [
@@ -79,6 +87,7 @@ class CentralIaExecucao extends Model
         'progresso' => 'array',
         'confirmacao' => 'array',
         'auditoria' => 'array',
+        'prioridade' => 'integer',
         'progresso_em' => 'datetime',
         'status_avisado_em' => 'datetime',
         'iniciada_em' => 'datetime',

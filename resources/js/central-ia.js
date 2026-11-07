@@ -44,7 +44,7 @@ export function centralIa(config) {
         relatorioAtividade: { eventos: [], execucoes: [] }, relatorioConsumo: { consumo: [] }, modoProjetos: ler('central-ia:modo-projetos') || 'cards',
         perguntaAberta: null, respostaPergunta: '', detalhesChat: false,
         // Pedidos parados esperando o código que a MÁQUINA mandou ao Telegram.
-        confirmacoes: [], codigos: {}, confirmando: null, acoesAbertas: {},
+        confirmacoes: [], codigos: {}, confirmando: null, passandoNaFrente: null, acoesAbertas: {},
         pops: [], popEditando: null, salvandoPop: false,
         // Novidades por chat (dono, 13/10/2026: "imagina 5 chats simultâneos —
         // o próprio chat tem que comunicar que finalizou ou está aguardando").
@@ -142,8 +142,10 @@ export function centralIa(config) {
             const etapas = { preparando: 'Preparando a execução', anexos: 'Preparando os anexos', agente: 'Aguardando resposta do agente',
                 comando: 'Executando uma ferramenta ou comando', resposta: 'Recebendo saída do agente', finalizando: 'Registrando o resultado' };
             const recente = a.progresso_em && this.agora - new Date(a.progresso_em).getTime() < 90000;
+            // Pendente: o motivo real que o servidor deu (projeto ocupado, limite,
+            // levantamento), e não "aguardando o agente" para tudo.
             const estado = a.status === 'pendente'
-                ? (this.maquina.online ? 'Na fila — aguardando o agente' : 'Máquina desconectada — aguardando reconexão')
+                ? (this.maquina.online ? (a.espera || 'Na fila — aguardando o agente') : 'Máquina desconectada — aguardando reconexão')
                 : !recente ? 'Sem confirmação recente desta execução'
                 : etapas[a.progresso?.etapa] || 'Aguardando informação do runner';
             return a.agente + ' · ' + estado + ' · ' + tempo;
@@ -221,7 +223,8 @@ export function centralIa(config) {
                 alteracoes: 'alterou', pasta_mudou: 'pasta mudou', pop_atualizado: 'POP', pop_apagado: 'POP apagado', analise_alterou: 'ANÁLISE ALTEROU', escalada: 'escalada', escalada_esgotada: 'escalada parou',
                 escalada_sem_alternativa: 'sem alternativa', confirmacao_pedida: 'pediu código', confirmacao_aceita: 'confirmado',
                 confirmacao_recusada: 'RECUSADO', confirmacao_expirada: 'código expirou', confirmacao_codigo_errado: 'código errado',
-                confirmacao_digitada: 'código digitado' }[t] || t;
+                confirmacao_digitada: 'código digitado', levantamento: 'levantamento', levantamento_com_duvida: 'levantamento perguntou',
+                passar_na_frente: 'passou na frente', pausada: 'pausado', retomada: 'retomada' }[t] || t;
         },
 
         /** A barra de projetos agrupada, já filtrada pela busca. */
@@ -925,6 +928,23 @@ export function centralIa(config) {
             catch (erro) { this.falhou(erro); }
         },
 
+        /**
+         * "Passar na frente": pausa a implementação que ocupa a pasta do
+         * projeto; ela volta sozinha, de onde parou, quando esta terminar.
+         */
+        async passarNaFrente(a) {
+            if (this.passandoNaFrente) return;
+            const ocupado = (a.espera || '').replace(/^Na fila — /, '');
+            if (!confirm('Passar este pedido na frente?\n\n' + (ocupado ? ocupado + '.\n' : '') + 'O outro pedido pausa entre um passo e outro (até 30 s) e retoma sozinho, de onde parou, quando este terminar.')) return;
+            this.passandoNaFrente = a.id;
+            try {
+                await this.pedir(config.passarNaFrente.replace('__E__', a.id), 'POST', {});
+                this.aviso = 'Pedido na frente. O outro pausa em até 30 s e retoma depois deste.';
+                this.reconectar();
+            } catch (erro) { this.falhou(erro); }
+            finally { this.passandoNaFrente = null; }
+        },
+
         async mudarTarefa(id, status) {
             try { await this.pedir(config.statusTarefa.replace('__T__', id), 'POST', { status }); this.reconectar(); }
             catch (erro) { this.falhou(erro); }
@@ -1018,10 +1038,10 @@ export function centralIa(config) {
                 aberta: 'text-ink-mute border-line', pausada: 'text-ink-faint border-line', ocioso: 'text-ink-faint border-line' }[e] || 'text-ink-mute border-line';
         },
         execucao(s) {
-            return { pendente: 'na fila', executando: 'trabalhando…', concluida: 'concluído', falhou: 'falhou', expirada: 'sem resposta' }[s] || s;
+            return { pendente: 'na fila', executando: 'trabalhando…', concluida: 'concluído', falhou: 'falhou', expirada: 'sem resposta', pausada: 'pausado' }[s] || s;
         },
         corDaExecucao(s) {
-            return { pendente: 'text-ink-mute', executando: 'text-brand-text', concluida: 'text-good', falhou: 'text-crit', expirada: 'text-crit' }[s] || 'text-ink-mute';
+            return { pendente: 'text-ink-mute', executando: 'text-brand-text', concluida: 'text-good', falhou: 'text-crit', expirada: 'text-crit', pausada: 'text-warn' }[s] || 'text-ink-mute';
         },
         entrega(status) {
             return { pendente: 'Indo para o Telegram…', enviando: 'Indo para o Telegram…', entregue: 'Entregue no Telegram',

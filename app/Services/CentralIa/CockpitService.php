@@ -249,6 +249,8 @@ class CockpitService
             ->whereNotIn('status', [CentralIaExecucao::PENDENTE, CentralIaExecucao::EXECUTANDO])
             ->with('tarefa')->orderByDesc('id')->limit(12)->get();
 
+        $esperas = $this->agentes->esperas($user, $ativas);
+
         return $ativas->concat($encerradas)->map(fn (CentralIaExecucao $e) => [
             'id' => $e->id,
             'projeto' => $e->projeto,
@@ -264,6 +266,9 @@ class CockpitService
             'criada_em' => $e->created_at->toIso8601String(),
             'iniciada_em' => $e->iniciada_em?->toIso8601String(),
             'concluida_em' => $e->concluida_em?->toIso8601String(),
+            // Por que o pendente ainda não saiu, e se dá para passar na frente.
+            'espera' => $esperas[$e->id]['texto'] ?? null,
+            'pode_passar_na_frente' => $esperas[$e->id]['pode_passar_na_frente'] ?? false,
         ])->values()->all();
     }
 

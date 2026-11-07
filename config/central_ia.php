@@ -47,6 +47,10 @@ return [
         // Implementar direto na pasta do projeto (como no VS Code), e não numa
         // worktree. Com isso, um projeto só tem uma implementação por vez.
         'implementar_na_pasta' => (bool) env('CENTRAL_IA_IMPLEMENTAR_NA_PASTA', true),
+        // Implementação parada só pela trava do projeto, com vaga livre: a
+        // mesma IA já faz o levantamento, só lendo, e a implementação continua
+        // a conversa dela quando a pasta liberar (docs/specs/central-ia-fila-por-projeto).
+        'levantamento_na_espera' => (bool) env('CENTRAL_IA_LEVANTAMENTO_NA_ESPERA', true),
         // Franquia mensal de requisições premium do plano do Copilot (Pro: 300,
         // Pro+: 1500). Sem ela, a tela mostra só o usado — não há como ler o
         // plano da máquina.

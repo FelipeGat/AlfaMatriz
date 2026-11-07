@@ -190,6 +190,19 @@ class CentralIaController extends Controller
         return $this->semCache(['ok' => true]);
     }
 
+    /**
+     * "Passar na frente": o pedido que espera a pasta do projeto pausa quem
+     * a ocupa (docs/specs/central-ia-fila-por-projeto). Acionar agente é a
+     * mesma régua de pedir um.
+     */
+    public function passarNaFrente(Request $request, int $execucao): JsonResponse
+    {
+        abort_unless($request->user()->canPermissao('central_ia_agentes', 'incluir'), 403, 'Sua conta não pode acionar agentes.');
+        $e = app(\App\Services\CentralIa\AgentesService::class)->passarNaFrente($request->user(), $execucao);
+
+        return $this->semCache(['ok' => true, 'prioridade' => $e->prioridade]);
+    }
+
     public function administracao(Request $request): JsonResponse
     {
         $g = app(\App\Services\CentralIa\Governanca::class);

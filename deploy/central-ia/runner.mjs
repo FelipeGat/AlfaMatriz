@@ -676,7 +676,10 @@ function comando(job, cwd, branch, saida, acesso) {
     // pedido para o agente ir direto às consultas, sem redescobrir.
     const pops = (job.pops || []).length ? ['## POPs — procedimentos já aprendidos (siga-os; se estiverem errados ou incompletos, corrija e devolva o POP atualizado no bloco final)',
         ...job.pops.map(p => `### ${p.sistema} · ${p.titulo} (versão ${p.versao})\n${p.conteudo}`)].join('\n\n') : null;
-    const prompt = [instrucoes(job, branch), remoto, pops, memoria(job), job.dadosOficiais, historicoDaSessao(job.importar), job.contexto, job.contextoAnexos,
+    // Retomando a sessão de um levantamento ou de uma pausa, ela já tem o
+    // histórico: vai só a nota curta da fase (docs/specs/central-ia-fila-por-projeto).
+    const contexto = sessao && job.retomada?.contexto ? job.retomada.contexto : job.contexto;
+    const prompt = [instrucoes(job, branch), remoto, pops, memoria(job), job.dadosOficiais, historicoDaSessao(job.importar), contexto, job.contextoAnexos,
         `Pedido:\n${job.instrucao}`, job.bloco].filter(Boolean).join('\n\n');
     // Acesso total (dono, 10/10/2026: "lá tem que ter acesso total igual
     // aqui, senão fico travado"): só para implementar, só com o teto desta
@@ -723,7 +726,14 @@ function comando(job, cwd, branch, saida, acesso) {
 const filhos = new Set();
 let parar = false;
 
-function rodar(bin, args, cwd, minutos, progresso, auditor = null, entrada = null, extra = {}) {
+// O agente e tudo o que ele abriu (testes, servidores): SIGTERM no grupo e,
+// se não sair em 10 s, SIGKILL — o mesmo do teto de tempo.
+function encerrarGrupo(filho) {
+    try { process.kill(-filho.pid, 'SIGTERM'); } catch {}
+    setTimeout(() => { try { process.kill(-filho.pid, 'SIGKILL'); } catch {} }, 10000).unref();
+}
+
+function rodar(bin, args, cwd, minutos, progresso, auditor = null, entrada = null, extra = {}, aoCriar = null) {
     return new Promise(resolvePromise => {
         const env = { ...process.env };
         delete env.ALFAMATRIZ_RUNNER_TOKEN;
@@ -736,6 +746,7 @@ function rodar(bin, args, cwd, minutos, progresso, auditor = null, entrada = nul
         const filho = spawn(bin, args, { cwd, env, stdio: [entrada === null ? 'ignore' : 'pipe', 'pipe', 'pipe'], detached: true });
         if (entrada !== null) { filho.stdin.on('error', () => {}); filho.stdin.end(entrada); }
         filhos.add(filho);
+        aoCriar?.(filho);
         progresso?.processo(true);
         let out = '', err = '', estourou = false;
         filho.stdout.on('data', d => { progresso?.saida(d); auditor?.saida(d); out += d; if (out.length > 4_000_000) out = out.slice(-4_000_000); });
@@ -791,6 +802,25 @@ function interpretar(job, r, saida, nomeCopilot) {
     return { resposta: r.out.trim(), sessao: nomeCopilot };
 }
 
+/**
+ * A sessão do agente parado no meio ("Passar na frente"), para a retomada
+ * continuar dela. Do Claude, só se já houve um turno dele: parado antes disso,
+ * a sessão nem chegou a ser gravada, e retomá-la falharia — melhor a retomada
+ * começar do zero, com o histórico.
+ */
+function sessaoDaPausa(job, r, nomeCopilot) {
+    const out = r?.out || '';
+    if (job.agente === 'claude') return job.sessaoPrevista && out.includes('"type":"assistant"') ? job.sessaoPrevista : null;
+    if (job.agente === 'codex') {
+        let sessao = job.continuar?.sessao || null;
+        for (const l of out.split('\n')) {
+            try { const e = JSON.parse(l); if (e.type === 'thread.started' && e.thread_id) sessao = e.thread_id; } catch {}
+        }
+        return sessao;
+    }
+    return r ? nomeCopilot || null : null;
+}
+
 function resumoDaBranch(cwd, branch) {
     try {
         const status = git(cwd, 'status', '--short');
@@ -806,12 +836,24 @@ async function executar(job) {
     let resultado;
     const progresso = acompanharProgresso();
     let publicando = false;
+    // "Passar na frente" (docs/specs/central-ia-fila-por-projeto): a pessoa
+    // pediu para outro pedido do mesmo projeto rodar antes deste. O servidor
+    // avisa na resposta do andamento; o agente para (o grupo do processo
+    // inteiro, como no teto de tempo) e a conclusão vai como `pausada`, com a
+    // sessão, para a retomada continuar de onde parou.
+    const pausar = () => {
+        if (job.pausado) return;
+        job.pausado = true;
+        log(`#${job.id} pausado a pedido: outro pedido do projeto passa na frente`);
+        if (job.filho) encerrarGrupo(job.filho);
+    };
     const informar = async () => {
         if (publicando) return;
         publicando = true;
         try {
-            const r = await api(`execucoes/${job.id}/progresso`, { maquina: cfg.maquina, ...progresso.retrato() });
+            const r = await api(`execucoes/${job.id}/progresso`, { maquina: cfg.maquina, ...progresso.retrato(), pode_pausar: true });
             if (r.status !== 200) log(`#${job.id} progresso recusado`, r.status);
+            else if (r.json?.pausar) pausar();
         } catch (e) { log(`#${job.id} progresso indisponível:`, e.message); }
         finally { publicando = false; }
     };
@@ -891,7 +933,7 @@ async function executar(job) {
             progresso.etapa('confirmacao');
             await informar();
             releTelegram();
-            const c = await confirmar({ job, cwd, acesso, cfg, api, parar: () => parar });
+            const c = await confirmar({ job, cwd, acesso, cfg, api, parar: () => parar || job.pausado });
             if (!c.ok) throw new Error(`não executado: ${c.motivo}`);
             marcarChatConfirmado(CONFIRMADOS, chaveChat);
         } else {
@@ -931,9 +973,19 @@ async function executar(job) {
         // Parada pedida enquanto preparava: não cria um processo que ninguém
         // vai esperar.
         if (parar) throw new Error('interrompida porque o runner foi parado ou reiniciado antes de começar');
+        if (job.pausado) {
+            resultado = { status: 'pausada', sessao_agente: null, checkpoint: checkpoint(cwd, dir) };
+            break execucao;
+        }
         progresso.etapa('agente');
         antesGit = retratoGit(git, cwd);
-        const r = await rodar(bin, args, cwd, job.timeout_minutos, progresso, auditor, entrada ?? null, quadro.env);
+        const r = await rodar(bin, args, cwd, job.timeout_minutos, progresso, auditor, entrada ?? null, quadro.env,
+            filho => { job.filho = filho; if (job.pausado) encerrarGrupo(filho); });
+        job.filho = null;
+        if (job.pausado && !parar) {
+            resultado = { status: 'pausada', sessao_agente: sessaoDaPausa(job, r, nomeCopilot), checkpoint: checkpoint(cwd, dir) };
+            break execucao;
+        }
         if (r.estourou) throw new Error(`passou de ${job.timeout_minutos} minutos e foi encerrado`);
         if (parar) throw new Error('interrompida porque o runner foi parado ou reiniciado; o estado do git ficou registrado e a tarefa pode ser retomada');
 
@@ -963,7 +1015,10 @@ async function executar(job) {
             for (const l of job.sementeLida) if (l.copia) rmSync(l.arquivo, { force: true });
         }
     } } catch (e) {
-        resultado = { status: 'falhou', erro: String(e.message || e).slice(0, 1900), sessao_agente: job.sessaoPrevista || null };
+        // Pausada durante a preparação ou a espera do código: nada rodou, e a
+        // retomada começa do zero.
+        resultado = job.pausado && !parar ? { status: 'pausada', sessao_agente: null }
+            : { status: 'falhou', erro: String(e.message || e).slice(0, 1900), sessao_agente: job.sessaoPrevista || null };
         // Mesmo na falha o estado do git interessa (quem assumir parte dele),
         // e a pasta é o que permite retomar a sessão do agente depois.
         if (cwd && existsSync(cwd)) resultado.checkpoint = checkpoint(cwd, dir);

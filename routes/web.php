@@ -352,6 +352,8 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
         ->middleware(['permissao:central_ia,editar', 'throttle:30,1,central-ia-pops'])->whereNumber('pop');
     Route::post('central-ia/execucoes/{execucao}/confirmar', [CentralIaController::class, 'confirmar'])->name('central-ia.execucoes.confirmar')
         ->middleware(['permissao:central_ia,incluir', 'throttle:10,1,central-ia-confirmar'])->whereNumber('execucao');
+    Route::post('central-ia/execucoes/{execucao}/passar-na-frente', [CentralIaController::class, 'passarNaFrente'])->name('central-ia.execucoes.passar-na-frente')
+        ->middleware(['permissao:central_ia,incluir', 'throttle:10,1,central-ia-passar'])->whereNumber('execucao');
     Route::post('central-ia/mensagens', [CentralIaController::class, 'enviar'])->name('central-ia.enviar')
         ->middleware(['permissao:central_ia,incluir', 'throttle:20,1,central-ia-enviar']);
     // Parear e desparear o Telegram mexem no canal, não criam conversa: `editar`.

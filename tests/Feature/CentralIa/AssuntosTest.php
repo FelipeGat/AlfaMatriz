@@ -198,9 +198,16 @@ class AssuntosTest extends TestCase
         $runner = CentralIaRunner::where('user_id', $u->id)->first();
 
         $pegos = [];
-        while (count($pegos) < 5 && ($job = $agentes->proxima($u, $runner))) $pegos[] = $job['id'];
+        while (count($pegos) < 5 && ($job = $agentes->proxima($u, $runner))) $pegos[] = $job;
 
-        $this->assertSame(array_slice($ids, 0, 3), $pegos, 'os dois Geral rodam juntos; o 2º do gestor espera o 1º');
+        $this->assertSame(array_slice($ids, 0, 3), array_column(array_slice($pegos, 0, 3), 'id'), 'os dois Geral rodam juntos; o 2º do gestor espera o 1º');
+        // A 4ª vaga não fica ociosa: o 2º do gestor faz só o levantamento
+        // (docs/specs/central-ia-fila-por-projeto), e a implementação dele
+        // continua esperando a pasta.
+        $this->assertCount(4, $pegos);
+        $this->assertSame('analisar', $pegos[3]['modo']);
+        $this->assertSame($ids[3], CentralIaExecucao::find($pegos[3]['id'])->roteamento['levantamento_de']);
+        $this->assertSame(CentralIaExecucao::PENDENTE, CentralIaExecucao::find($ids[3])->status);
     }
 
     public function test_assunto_sem_projeto_aciona_ia_sempre_e_implementa_na_raiz(): void

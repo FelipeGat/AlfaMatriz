@@ -35,6 +35,7 @@
                 telegramDesvincular: '{{ route('central-ia.telegram.desvincular') }}',
                 telegramBot: '{{ route('central-ia.telegram.bot') }}',
                 confirmar: '{{ url('central-ia/execucoes/__E__/confirmar') }}',
+                passarNaFrente: '{{ url('central-ia/execucoes/__E__/passar-na-frente') }}',
                 pops: '{{ route('central-ia.pops.criar') }}',
                 maquinas: '{{ route('central-ia.maquinas') }}',
                 maquinasInstalacao: '{{ route('central-ia.maquinas.instalacao') }}',
@@ -614,7 +615,13 @@
                         <p x-show="aba.recibo && !pedidosAtivos.length" x-text="aba.recibo" class="text-ink-mute"></p>
                         <template x-for="a in pedidosAtivos" :key="a.id">
                             <div>
-                                <p class="flex items-center gap-2 text-brand-text"><span class="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-brand"></span><span x-text="andamento(a)"></span></p>
+                                <p class="flex items-center gap-2 text-brand-text"><span class="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-brand"></span><span x-text="andamento(a)"></span>
+                                    {{-- Pausa a implementação que ocupa a pasta do projeto e a retoma depois (docs/specs/central-ia-fila-por-projeto). --}}
+                                    @if ($podeAcionar)
+                                        <button type="button" x-show="a.pode_passar_na_frente" x-cloak @click="passarNaFrente(a)" :disabled="passandoNaFrente === a.id"
+                                            class="rounded-badge border border-line bg-panel px-2 py-px font-semibold text-ink hover:bg-chip disabled:opacity-60">Passar na frente</button>
+                                    @endif
+                                </p>
                                 <p x-show="detalheDoAndamento(a)" x-text="detalheDoAndamento(a)" class="ml-3.5 line-clamp-2 break-words text-ink-mute"></p>
                             </div>
                         </template>

@@ -611,7 +611,7 @@ class AgentesService
             $projetosOcupados = config('central_ia.agentes.implementar_na_pasta')
                 ? array_values(array_filter((clone $rodando)->where('modo', 'implementar')->pluck('projeto')->all(), 'filled')) : [];
 
-            $execucao = CentralIaExecucao::where('user_id', $user->id)->where('status', CentralIaExecucao::PENDENTE)
+            $fila = CentralIaExecucao::where('user_id', $user->id)->where('status', CentralIaExecucao::PENDENTE)
                 ->whereIn('agente', $runner->agentes)
                 ->whereIn('agente', array_keys(array_filter(app(Preferencias::class)->ler($user)['habilitados'])))
                 ->where(fn ($q) => $q->whereNull('tarefa_id')->orWhereHas('tarefa', fn ($t) => $t->where('status', '!=', CentralIaTarefa::ARQUIVADA)))
@@ -619,11 +619,23 @@ class AgentesService
                 // `NOT IN` com nulo nunca casa: o pedido sem tarefa (anterior
                 // ao cockpit) entra pelo `whereNull`.
                 ->where(fn ($q) => $q->whereNull('tarefa_id')
-                    ->orWhereNotIn('tarefa_id', (clone $rodando)->whereNotNull('tarefa_id')->select('tarefa_id')))
+                    ->orWhereNotIn('tarefa_id', (clone $rodando)->whereNotNull('tarefa_id')->select('tarefa_id')));
+            // O urgente ("Passar na frente") e a retomada do que ele pausou
+            // saem antes; entre iguais, a ordem de chegada.
+            $execucao = (clone $fila)
                 // Sem projeto ocupado, nenhum filtro: o `['']` de antes barrava
                 // o assunto sem projeto, que implementa na raiz (Chats Business).
                 ->when($projetosOcupados, fn ($q) => $q->where(fn ($q) => $q->where('modo', '!=', 'implementar')->orWhereNotIn('projeto', $projetosOcupados)))
-                ->orderBy('id')->lockForUpdate()->first();
+                ->orderByDesc('prioridade')->orderBy('id')->lockForUpdate()->first();
+
+            // Nada que rode inteiro, mas vaga livre e implementação parada só
+            // pela trava do projeto: em vez de a vaga ficar ociosa (Felipe,
+            // 07/11/2026: o #823 esperou 24 min com três vagas livres), a
+            // mesma IA já faz o levantamento, só lendo.
+            if (! $execucao && $projetosOcupados && config('central_ia.agentes.levantamento_na_espera')) {
+                $execucao = $this->levantamento($user, (clone $fila)->where('modo', 'implementar')->whereIn('projeto', $projetosOcupados)
+                    ->orderByDesc('prioridade')->orderBy('id')->lockForUpdate()->get());
+            }
 
             if ($execucao) {
                 $execucao->update(['status' => CentralIaExecucao::EXECUTANDO, 'runner_id' => $runner->id, 'iniciada_em' => now()]);
@@ -686,6 +698,23 @@ class AgentesService
                 'motivo' => trim(($execucao->roteamento['motivo'] ?? '').' · '.$comoFoi.', ~'.number_format($r['tokens_estimados'] / 1000, 1, ',', '').' mil tokens', ' ·')])]);
         }
 
+        // Levantamento e retomada (docs/specs/central-ia-fila-por-projeto):
+        // a nota diz em que fase o agente está; a continuação vale também no
+        // chat de assunto, porque é o MESMO pedido seguindo, e não um novo.
+        // O histórico inteiro continua no `contexto` para o runner que não
+        // conseguir retomar (ou o antigo); o novo usa só a nota ao retomar.
+        $fase = $this->fase($execucao);
+        if ($fase['continuar']) {
+            $continuar = $fase['continuar'];
+        }
+        $contexto = $this->comVixOrganize($user, $tarefa, $execucao, $assunto ? $assunto['texto'] : ($tarefa && ($anterior || $corte) ? Dossie::paraPrompt($tarefa, $anterior && $anterior->agente !== $execucao->agente ? $anterior->nomeDoAgente() : null)
+            // Chat novo num projeto começa sabendo dos chats recentes dele
+            // (dono, 13/10/2026: "abrir um novo chat… ele saberia o contexto do projeto").
+            : ($tarefa && $execucao->projeto !== '' ? $this->contextoDoProjeto($user, $execucao->projeto, $tarefa->id) : null)));
+        if ($fase['nota']) {
+            $contexto = trim(($contexto ?? '')."\n\n".$fase['nota']);
+        }
+
         // As opções da pessoa (T-374), lidas uma vez para as duas chaves.
         $opcoes = app(Preferencias::class)->ler($user);
 
@@ -712,10 +741,11 @@ class AgentesService
                 'branch' => $tarefa->branch,
                 'commit_base' => $tarefa->commit_base,
             ] : null,
-            'contexto' => $this->comVixOrganize($user, $tarefa, $execucao, $assunto ? $assunto['texto'] : ($tarefa && ($anterior || $corte) ? Dossie::paraPrompt($tarefa, $anterior && $anterior->agente !== $execucao->agente ? $anterior->nomeDoAgente() : null)
-                // Chat novo num projeto começa sabendo dos chats recentes dele
-                // (dono, 13/10/2026: "abrir um novo chat… ele saberia o contexto do projeto").
-                : ($tarefa && $execucao->projeto !== '' ? $this->contextoDoProjeto($user, $execucao->projeto, $tarefa->id) : null))),
+            'contexto' => $contexto,
+            // O que o runner novo põe no lugar do `contexto` quando de fato
+            // retoma a sessão: ela já tem o histórico, e mandá-lo de novo
+            // dobraria o pedido.
+            'retomada' => $fase['continuar'] ? ['contexto' => $fase['nota']] : null,
             'bloco' => (($execucao->roteamento['coordenador'] ?? false) ? "Você atua como coordenador deste pedido. Nesta etapa apenas responda, planeje e proponha quem deve fazer o trabalho; não implemente, não execute ferramentas ou comandos e não altere arquivos. Claude faz análise de código e desenvolvimento; Codex faz análise de dados; Copilot faz Git e QA. Identifique fontes disponíveis e impedimentos, não invente números. Delegação automática ainda não está habilitada: descreva a próxima etapa, sem afirmar que outro agente executou algo.\n" : '').Dossie::instrucaoDoBloco()."\nRegras de evidência: nunca invente dados, valores, fontes ou consultas. Relatórios de dados exigem período explícito e fonte autorizada identificada, data da consulta e critérios dos totais. Sem acesso à fonte, informe a limitação e solicite os dados; código, exemplos e testes não comprovam saldos reais. Para esta semana, confirme no texto as datas usadas. Para pedidos executivos com esta semana, use segunda-feira até hoje no fuso local e explicite as datas; para esta semana útil, segunda a sexta (até hoje se ainda estiver em curso). Pergunte somente se a ambiguidade alterar materialmente a decisão ou tornar a consulta insegura. Sem período informado, mantenha o pedido de esclarecimento. Claude só deve apoiar análise de dados quando houver impedimento técnico identificado; não troque de agente apenas para tentar obter números ausentes.",
             'fontes' => $this->comAgendaDoMatriz($user, $execucao->roteamento['fontes'] ?? []),
             // Opções da pessoa (T-374), desligadas por padrão: a regra do cstk
@@ -739,7 +769,10 @@ class AgentesService
             'continuar' => $continuar,
             // `nenhum`: runner atual tira todas as ferramentas; runner antigo não
             // conhece o valor e cai na leitura (acessoEfetivo), nunca no total.
-            'acesso' => ($execucao->roteamento['sem_ferramentas'] ?? false) ? 'nenhum' : config('central_ia.agentes.acesso'),
+            // O levantamento é só leitura MESMO na máquina com análise total
+            // (CENTRAL_IA_ANALISE=total): a pasta é do outro agente agora.
+            'acesso' => ($execucao->roteamento['sem_ferramentas'] ?? false) ? 'nenhum'
+                : (isset($execucao->roteamento['levantamento_de']) ? 'leitura' : config('central_ia.agentes.acesso')),
             // Assunto sem projeto implementa na raiz dos projetos: não há
             // repositório onde abrir worktree.
             'na_pasta' => (bool) config('central_ia.agentes.implementar_na_pasta') || ($tarefa?->ehAssunto() && $execucao->projeto === ''),
@@ -753,6 +786,259 @@ class AgentesService
                 && ! CentralIaExecucao::where('tarefa_id', $tarefa?->id)->where('agente', $execucao->agente)->where('id', '<', $execucao->id)->exists()
                 ? $sessaoDoVsCode : null,
         ];
+    }
+
+    /**
+     * O levantamento de uma implementação parada só pela trava do projeto
+     * (docs/specs/central-ia-fila-por-projeto). Execução própria, em análise
+     * e só leitura, com a MESMA IA: é a sessão dela que a implementação
+     * continua quando a pasta liberar. O original fica pendente, e a regra de
+     * uma execução por tarefa o segura até o levantamento acabar.
+     *
+     * @param  \Illuminate\Support\Collection<int, CentralIaExecucao>  $esperando
+     */
+    private function levantamento(User $user, \Illuminate\Support\Collection $esperando): ?CentralIaExecucao
+    {
+        // Um levantamento por pedido. A retomada de uma pausa já está no meio
+        // do trabalho; o coordenador e o pedido sem ferramentas não implementam.
+        $original = $esperando->first(fn (CentralIaExecucao $e) => $e->tarefa_id
+            && ! isset($e->roteamento['levantamento']) && ! isset($e->roteamento['retomada_de'])
+            && ! ($e->roteamento['coordenador'] ?? false) && ! ($e->roteamento['sem_ferramentas'] ?? false));
+        if (! $original) {
+            return null;
+        }
+
+        $quem = $this->nomeDoChat($this->ocupanteDoProjeto($user, $original->projeto), 'Outro pedido');
+        $aviso = $this->conversas->registrarDoAgente($user, 'Central',
+            "🔎 {$quem} está implementando em {$original->projeto} agora, e duas IAs não escrevem na mesma pasta ao mesmo tempo. "
+            ."Para não esperar parado, {$original->nomeDoAgente()} já começa o levantamento deste pedido, só lendo o código. "
+            .'A implementação continua a mesma conversa quando a pasta liberar. Se este for mais urgente, use "Passar na frente".',
+            CentralIaMensagem::AUTOR_SISTEMA, $original->projeto, $original->tarefa_id);
+
+        $rota = $original->roteamento ?? [];
+        unset($rota['escalada'], $rota['pausar'], $rota['contexto']);
+        $rota['levantamento_de'] = $original->id;
+        $rota['fallback'] = ['pedido_original' => $rota['fallback']['pedido_original'] ?? $original->pedido_id];
+        $rota['motivo'] = "Levantamento só leitura enquanto {$quem} implementa em {$original->projeto}";
+        $levantamento = CentralIaExecucao::create(['user_id' => $user->id, 'pedido_id' => $aviso->id, 'tarefa_id' => $original->tarefa_id,
+            'agente' => $original->agente, 'projeto' => $original->projeto, 'modo' => 'analisar',
+            'instrucao' => $original->instrucao, 'roteamento' => $rota, 'prioridade' => $original->prioridade]);
+        $original->update(['roteamento' => array_merge($original->roteamento ?? [], ['levantamento' => $levantamento->id])]);
+        Eventos::registrar($user, 'levantamento', "{$original->nomeDoAgente()} faz o levantamento do pedido #{$original->id} enquanto {$quem} usa a pasta de {$original->projeto}",
+            Eventos::da($levantamento) + ['origem' => 'central']);
+
+        return $levantamento;
+    }
+
+    /** A implementação que ocupa a pasta do projeto agora, se houver. */
+    private function ocupanteDoProjeto(User $user, string $projeto): ?CentralIaExecucao
+    {
+        if ($projeto === '' || ! config('central_ia.agentes.implementar_na_pasta')) {
+            return null;
+        }
+
+        return CentralIaExecucao::where('user_id', $user->id)->where('status', CentralIaExecucao::EXECUTANDO)
+            ->where('modo', 'implementar')->where('projeto', $projeto)->with('tarefa')->orderBy('id')->first();
+    }
+
+    private function nomeDoChat(?CentralIaExecucao $e, string $semNome): string
+    {
+        return filled($e?->tarefa?->titulo) ? '«'.$e->tarefa->titulo.'»' : $semNome;
+    }
+
+    /**
+     * Em que fase o pedido está: levantamento (fase 1, só leitura),
+     * implementação depois do levantamento (fase 2) ou retomada de uma pausa.
+     * Com a sessão anterior da MESMA IA, a continuação dela.
+     *
+     * @return array{nota: ?string, continuar: ?array}
+     */
+    private function fase(CentralIaExecucao $e): array
+    {
+        $rota = $e->roteamento ?? [];
+        if (isset($rota['levantamento_de'])) {
+            return ['continuar' => null, 'nota' => "FASE 1 DE 2 — LEVANTAMENTO, SÓ LEITURA. Outro agente está implementando agora no mesmo projeto ({$e->projeto}), e duas IAs não escrevem na mesma pasta ao mesmo tempo. "
+                .'Para não esperar parado, você começa já: leia o código, ache a causa e escreva o plano (arquivos, mudanças, testes, riscos). '
+                .'NÃO altere arquivos, nem pelo shell, e não rode nada que escreva, testes inclusive. '
+                .'Quando a pasta liberar, a Central continua ESTA MESMA conversa com acesso para implementar: não diga que terminou. '
+                .'Para a pessoa, responda curto: o que encontrou e o plano. Se faltar uma decisão que só ela pode tomar, use o campo "duvida": aí a implementação espera a resposta. '
+                .'No bloco final, "tarefa_concluida": false.'];
+        }
+        $de = $rota['retomada_de'] ?? $rota['levantamento'] ?? null;
+        if (! $de) {
+            return ['continuar' => null, 'nota' => null];
+        }
+        $anterior = CentralIaExecucao::where('user_id', $e->user_id)->whereKey((int) $de)->first();
+        $temSessao = $anterior && $anterior->agente === $e->agente && filled($anterior->sessao_agente)
+            && in_array($anterior->status, [CentralIaExecucao::CONCLUIDA, CentralIaExecucao::PAUSADA], true);
+        $continuar = $temSessao ? ['sessao' => $anterior->sessao_agente, 'cwd' => $anterior->checkpoint['cwd'] ?? $e->tarefa?->worktree, 'fork' => false] : null;
+        $conferir = 'Antes de editar, rode `git status` e `git diff`: outro agente mexeu na pasta nesse intervalo. Ajuste ao que mudou e preserve o que não for seu.';
+        if (isset($rota['retomada_de'])) {
+            return ['continuar' => $continuar, 'nota' => $temSessao
+                ? 'RETOMADA: a pessoa pausou você no meio deste pedido para outro, mais urgente, passar na frente no mesmo projeto. Ele terminou. Continue de onde parou, sem refazer o que já está feito. '.$conferir
+                : 'RETOMADA: este pedido foi pausado no meio para outro, mais urgente, passar na frente no mesmo projeto, e o que já tinha sido feito ficou na pasta. Continue a partir daí. '.$conferir];
+        }
+
+        return ['continuar' => $continuar, 'nota' => $temSessao
+            ? 'FASE 2 DE 2 — IMPLEMENTAÇÃO: a pasta liberou. Você já fez o levantamento deste pedido nesta conversa, só lendo, enquanto outro agente implementava no mesmo projeto. Agora implemente o seu plano. '.$conferir
+            : 'A pasta liberou: implemente o pedido. Se o levantamento dele estiver no histórico do chat, parta dele. '.$conferir];
+    }
+
+    /**
+     * "Passar na frente" (docs/specs/central-ia-fila-por-projeto): o pedido
+     * que espera a pasta do projeto ganha prioridade, e quem a ocupa recebe o
+     * pedido de pausa. A máquina o lê no andamento seguinte (até 30 s), para o
+     * agente e conclui como `pausada`; a retomada nasce sozinha.
+     *
+     * Com o levantamento do próprio pedido rodando, ele para PRIMEIRO, e só
+     * então a pausa passa ao ocupante (`depois`): parando os dois juntos, a
+     * pasta ficava livre enquanto o levantamento não parava, e a retomada do
+     * ocupante, também com prioridade, passava antes do urgente.
+     */
+    public function passarNaFrente(User $user, int $id): CentralIaExecucao
+    {
+        return DB::transaction(function () use ($user, $id) {
+            User::whereKey($user->id)->lockForUpdate()->first();
+            $e = CentralIaExecucao::where('user_id', $user->id)->whereKey($id)->lockForUpdate()->firstOrFail();
+            abort_unless($e->status === CentralIaExecucao::PENDENTE && $e->modo === 'implementar' && $e->projeto !== '', 422, 'Este pedido não está esperando a pasta de um projeto.');
+            $ocupante = $this->ocupanteDoProjeto($user, $e->projeto);
+            abort_unless($ocupante, 422, 'A pasta do projeto já está livre: o pedido sai na próxima consulta da máquina.');
+            $ocupante = CentralIaExecucao::whereKey($ocupante->id)->lockForUpdate()->first();
+            abort_unless($ocupante->progresso['pode_pausar'] ?? false, 422, 'A máquina que roda o outro pedido ainda não sabe pausar: atualize o runner dela.');
+            if (isset($ocupante->roteamento['pausar']) || $e->prioridade > 0) {
+                return $e;
+            }
+
+            $levantamento = isset($e->roteamento['levantamento'])
+                ? CentralIaExecucao::where('user_id', $user->id)->whereKey($e->roteamento['levantamento'])->where('status', CentralIaExecucao::EXECUTANDO)->lockForUpdate()->first()
+                : null;
+            $agora = now()->toIso8601String();
+            $e->update(['prioridade' => 1]);
+            $levantamento
+                ? $levantamento->update(['roteamento' => array_merge($levantamento->roteamento ?? [], ['pausar' => ['por' => $e->id, 'em' => $agora, 'depois' => $ocupante->id]])])
+                : $this->pedirPausa($ocupante, $e->id);
+
+            $urgente = $this->nomeDoChat($e, "o pedido #{$e->id}");
+            $this->conversas->registrarDoAgente($user, 'Central',
+                "⏸ {$ocupante->nomeDoAgente()} vai pausar aqui para {$urgente} passar na frente em {$e->projeto}. Ele para entre um passo e outro (até 30 s), "
+                .'a conversa dele fica salva, e este pedido volta sozinho, de onde parou, quando o urgente terminar.',
+                CentralIaMensagem::AUTOR_SISTEMA, $ocupante->projeto, $ocupante->tarefa_id);
+            $this->conversas->registrarDoAgente($user, 'Central',
+                "⏩ Este pedido passa na frente em {$e->projeto}: {$this->nomeDoChat($ocupante, "o pedido #{$ocupante->id}")} pausa e retoma depois dele."
+                .($levantamento ? ' O levantamento para antes, e a implementação continua a conversa dele.' : ''),
+                CentralIaMensagem::AUTOR_SISTEMA, $e->projeto, $e->tarefa_id);
+            Eventos::registrar($user, 'passar_na_frente', "Pedido #{$e->id} passa na frente em {$e->projeto}; #{$ocupante->id} pausa e retoma depois",
+                Eventos::da($e) + ['origem' => 'web'], 'aviso');
+
+            return $e;
+        });
+    }
+
+    private function pedirPausa(CentralIaExecucao $e, int $por): void
+    {
+        if ($e->status === CentralIaExecucao::EXECUTANDO && ! isset($e->roteamento['pausar'])) {
+            $e->update(['roteamento' => array_merge($e->roteamento ?? [], ['pausar' => ['por' => $por, 'em' => now()->toIso8601String()]])]);
+        }
+    }
+
+    /** O levantamento parou ou acabou: a pausa que esperava por ele passa ao ocupante da pasta. */
+    private function pausarOcupanteDepois(CentralIaExecucao $levantamento): void
+    {
+        $pausa = $levantamento->roteamento['pausar'] ?? null;
+        if (! isset($pausa['depois'])) {
+            return;
+        }
+        $ocupante = CentralIaExecucao::where('user_id', $levantamento->user_id)->whereKey($pausa['depois'])->lockForUpdate()->first();
+        if ($ocupante) {
+            $this->pedirPausa($ocupante, (int) $pausa['por']);
+        }
+    }
+
+    /**
+     * A máquina parou o agente a pedido ("Passar na frente"). A execução
+     * encerra como `pausada`, com a sessão e o git, e o trabalho segue numa
+     * retomada pendente, com prioridade, que continua a sessão. O
+     * levantamento pausado não ganha retomada: quem o continua é o próprio
+     * pedido que passou na frente.
+     */
+    private function pausada(User $user, CentralIaExecucao $e, ?CentralIaTarefa $tarefa, array $dados): CentralIaExecucao
+    {
+        $levantamento = isset($e->roteamento['levantamento_de']);
+        $aviso = $this->conversas->registrarDoAgente($user, 'Central', $levantamento
+            ? "⏸ Levantamento interrompido: este pedido passou na frente, e a implementação começa assim que a pasta liberar, continuando a conversa de {$e->nomeDoAgente()}."
+            : "⏸ {$e->nomeDoAgente()} pausou aqui para outro pedido passar na frente em {$e->projeto}. O que já foi feito ficou na pasta; este pedido volta sozinho, de onde parou, quando o urgente terminar.",
+            CentralIaMensagem::AUTOR_SISTEMA, $e->projeto ?: null, $e->tarefa_id);
+        $e->update([
+            'status' => CentralIaExecucao::PAUSADA,
+            'resposta_id' => $aviso->id,
+            'sessao_agente' => $dados['sessao_agente'] ?? null,
+            'checkpoint' => is_array($dados['checkpoint'] ?? null) ? $dados['checkpoint'] : null,
+            'auditoria' => is_array($dados['auditoria'] ?? null) ? $dados['auditoria'] : null,
+            'concluida_em' => now(),
+        ]);
+        Eventos::registrar($user, 'pausada', "{$e->nomeDoAgente()} pausado no pedido #{$e->id} para outro passar na frente".($levantamento ? ' (levantamento)' : '; a retomada está na fila'),
+            Eventos::da($e) + ['origem' => 'runner'], 'aviso');
+        $this->registrarRastro($user, $e);
+
+        if ($levantamento) {
+            $this->pausarOcupanteDepois($e);
+        } else {
+            $rota = $e->roteamento ?? [];
+            unset($rota['pausar'], $rota['escalada'], $rota['levantamento'], $rota['contexto']);
+            $rota['retomada_de'] = $e->id;
+            $rota['fallback'] = ['pedido_original' => $e->roteamento['fallback']['pedido_original'] ?? $e->pedido_id];
+            $rota['motivo'] = "Retomada do pedido #{$e->id}, pausado para outro passar na frente";
+            $retomada = CentralIaExecucao::create(['user_id' => $user->id, 'pedido_id' => $aviso->id, 'tarefa_id' => $e->tarefa_id,
+                'agente' => $e->agente, 'projeto' => $e->projeto, 'modo' => $e->modo, 'instrucao' => $e->instrucao,
+                'roteamento' => $rota, 'prioridade' => 1]);
+            Eventos::registrar($user, 'retomada', "Retomada do pedido #{$e->id} na fila, com a sessão de {$e->nomeDoAgente()}", Eventos::da($retomada) + ['origem' => 'central']);
+        }
+        $tarefa?->update(['status' => CentralIaTarefa::ABERTA, 'ultima_atividade_em' => now()]);
+
+        return $e;
+    }
+
+    /**
+     * Por que cada pedido pendente ainda não saiu (a tela dizia "aguardando o
+     * agente" para tudo, e o motivo quase sempre era outro), e se dá para
+     * passar na frente.
+     *
+     * @param  \Illuminate\Support\Collection<int, CentralIaExecucao>  $ativas  pendentes e rodando, com a tarefa
+     * @return array<int, array{texto: ?string, pode_passar_na_frente: bool}>
+     */
+    public function esperas(User $user, \Illuminate\Support\Collection $ativas): array
+    {
+        $rodando = $ativas->where('status', CentralIaExecucao::EXECUTANDO);
+        $limite = min(max(1, (int) config('central_ia.agentes.paralelo')), app(Preferencias::class)->ler($user)['paralelo']);
+        $naPasta = (bool) config('central_ia.agentes.implementar_na_pasta');
+        $esperas = [];
+        foreach ($ativas->where('status', CentralIaExecucao::PENDENTE) as $e) {
+            $texto = null;
+            $pode = false;
+            $daTarefa = $e->tarefa_id ? $rodando->firstWhere('tarefa_id', $e->tarefa_id) : null;
+            $ocupante = $naPasta && $e->modo === 'implementar' && $e->projeto !== ''
+                ? $rodando->first(fn ($r) => $r->modo === 'implementar' && $r->projeto === $e->projeto && $r->tarefa_id !== $e->tarefa_id) : null;
+            $pausando = $ocupante && (($ocupante->roteamento['pausar']['por'] ?? null) === $e->id
+                || ($daTarefa && ($daTarefa->roteamento['pausar']['por'] ?? null) === $e->id));
+            if ($pausando) {
+                $texto = 'Passando na frente — pausando '.$this->nomeDoChat($ocupante, "o pedido #{$ocupante->id}").' (até 30 s)';
+            } elseif ($daTarefa && ($daTarefa->roteamento['levantamento_de'] ?? null) === $e->id) {
+                $texto = 'Levantamento em andamento (só leitura) — implementa quando a pasta de '.$e->projeto.' liberar';
+            } elseif ($daTarefa) {
+                $texto = 'Na fila — esperando o pedido anterior deste chat terminar';
+            } elseif ($ocupante) {
+                $texto = 'Na fila — o projeto '.$e->projeto.' está ocupado com '.$this->nomeDoChat($ocupante, "o pedido #{$ocupante->id}")
+                    .(isset($e->roteamento['levantamento']) ? ' · levantamento pronto' : '');
+            } elseif ($rodando->count() >= $limite) {
+                $texto = "Na fila — {$rodando->count()} pedidos rodando (limite {$limite})";
+            }
+            if ($ocupante && ! $pausando && $e->prioridade === 0 && ! isset($e->roteamento['retomada_de']) && ! isset($ocupante->roteamento['pausar'])) {
+                $pode = (bool) ($ocupante->progresso['pode_pausar'] ?? false);
+            }
+            $esperas[$e->id] = ['texto' => $texto, 'pode_passar_na_frente' => $pode];
+        }
+
+        return $esperas;
     }
 
     /**
@@ -821,12 +1107,26 @@ class AgentesService
                 return $execucao;
             }
 
-            $ok = $dados['status'] === CentralIaExecucao::CONCLUIDA;
-            [$texto, $bloco] = $ok ? Dossie::extrair($dados['resposta'] ?? '') : ['Não consegui concluir: '.($dados['erro'] ?? 'erro desconhecido').'.', null];
-            $bloco = $bloco === null ? null : ProtecaoDeSegredos::dados($bloco);
             // Travada: a correção da memória (corrigirMemoria) também trava a
             // tarefa — sem isto, o dossiê lido aqui gravava por cima dela.
             $tarefa = $execucao->tarefa_id ? CentralIaTarefa::whereKey($execucao->tarefa_id)->lockForUpdate()->first() : null;
+            if ($dados['status'] === CentralIaExecucao::PAUSADA) {
+                return $this->pausada($user, $execucao, $tarefa, $dados);
+            }
+
+            $ok = $dados['status'] === CentralIaExecucao::CONCLUIDA;
+            // O levantamento (docs/specs/central-ia-fila-por-projeto) é a
+            // primeira metade de um pedido que segue na fila: não troca de IA,
+            // não escala nem delega, e a falha dele só faz a implementação
+            // começar do zero.
+            $levantamentoDe = $execucao->roteamento['levantamento_de'] ?? null;
+            [$texto, $bloco] = $ok ? Dossie::extrair($dados['resposta'] ?? '')
+                : [$levantamentoDe ? 'O levantamento não terminou ('.($dados['erro'] ?? 'erro desconhecido').'). A implementação segue na fila e começa do zero quando a pasta liberar.'
+                    : 'Não consegui concluir: '.($dados['erro'] ?? 'erro desconhecido').'.', null];
+            $bloco = $bloco === null ? null : ProtecaoDeSegredos::dados($bloco);
+            if ($ok && $levantamentoDe) {
+                $texto = "🔎 Levantamento (só leitura). A implementação continua esta conversa quando a pasta liberar.\n\n".$texto;
+            }
 
             // Pedido do Secretário (frase que as regras não entenderam): o bloco
             // vira proposta a CONFIRMAR, validada aqui — nunca item direto.
@@ -867,7 +1167,10 @@ class AgentesService
                 : Eventos::registrar($user, 'falhou', "{$execucao->nomeDoAgente()} falhou: ".($dados['erro'] ?? 'erro desconhecido'), Eventos::da($execucao) + ['origem' => 'runner'], 'erro');
 
             $this->registrarRastro($user, $execucao);
-            if ($ok && $bloco && is_array($bloco['delegar'] ?? null) && $tarefa) {
+            if ($levantamentoDe) {
+                $this->fimDoLevantamento($user, $execucao, (int) $levantamentoDe, $ok && filled($bloco['duvida'] ?? null));
+            }
+            if ($ok && $bloco && is_array($bloco['delegar'] ?? null) && $tarefa && ! $levantamentoDe) {
                 $this->delegar($user, $execucao, $bloco['delegar']);
             }
             if ($ok && $bloco && isset($bloco['pop'])) {
@@ -933,7 +1236,9 @@ class AgentesService
                 }
             }
 
-            if (! $ok) {
+            if ($levantamentoDe) {
+                // Nada a trocar: a implementação já está na fila.
+            } elseif (! $ok) {
                 FalhaDeProvedor::tipo($dados['erro'] ?? '')
                     ? $this->tentarOutroProvedor($user, $execucao, $dados['erro'] ?? '')
                     : $this->escalar($user, $execucao, 'falhou: '.Str::limit((string) ($dados['erro'] ?? 'erro desconhecido'), 200));
@@ -943,6 +1248,31 @@ class AgentesService
 
             return $execucao;
         });
+    }
+
+    /**
+     * O levantamento acabou. Com uma pergunta para a pessoa, a implementação
+     * sai da fila: seguir sem a resposta seria implementar o que ela ainda
+     * não decidiu, e a resposta dela vira o pedido seguinte. E a pausa que
+     * esperava por ele ("Passar na frente") passa ao ocupante da pasta.
+     */
+    private function fimDoLevantamento(User $user, CentralIaExecucao $levantamento, int $originalId, bool $comDuvida): void
+    {
+        $this->pausarOcupanteDepois($levantamento);
+        if (! $comDuvida) {
+            return;
+        }
+        $original = CentralIaExecucao::where('user_id', $user->id)->whereKey($originalId)->lockForUpdate()->first();
+        if (! $original || $original->status !== CentralIaExecucao::PENDENTE) {
+            return;
+        }
+        $aviso = $this->conversas->registrarDoAgente($user, 'Central',
+            'A implementação deste pedido saiu da fila: o levantamento terminou com uma pergunta. Responda aqui e o pedido segue com a sua resposta.',
+            CentralIaMensagem::AUTOR_SISTEMA, $original->projeto ?: null, $original->tarefa_id);
+        $original->update(['status' => CentralIaExecucao::EXPIRADA, 'resposta_id' => $aviso->id, 'concluida_em' => now(),
+            'erro' => 'Fila: o levantamento terminou com uma pergunta para você']);
+        Eventos::registrar($user, 'levantamento_com_duvida', "Pedido #{$original->id} saiu da fila: o levantamento perguntou algo a você",
+            Eventos::da($original) + ['origem' => 'central'], 'aviso');
     }
 
     /**
