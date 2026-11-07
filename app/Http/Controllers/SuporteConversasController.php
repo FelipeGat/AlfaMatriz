@@ -85,8 +85,10 @@ class SuporteConversasController extends Controller
             'pedro' => $q->where('situacao', 'pedro'),
             'humano' => $q->where('situacao', 'humano')->where(fn ($w) => $w->whereNull('humano_ate')->orWhere('humano_ate', '>', now())),
             'gestor' => $q->where('situacao', 'gestor'),
-            // Esperando uma pessoa: passou pelo Pedro e ninguém assumiu.
-            'fila' => $q->where('situacao', 'humano')->whereNull('humano_id')->whereNotNull('fila_desde')->where('humano_ate', '>', now()),
+            // Esperando uma pessoa: passou pelo Pedro e o cliente não teve resposta. Pela marca que o lembrete acerta a cada
+            // minuto (Transferencia::lembrarFila), e não pelo prazo da conversa com a pessoa: vencido ele, o cliente
+            // continua esperando; e desde 07/11/2026 a conversa sem nome já nasce com o responsável, e não sem ninguém.
+            'fila' => $q->where('situacao', 'humano')->whereNotNull('fila_desde'),
             'avaliacao' => $q->where('situacao', 'avaliacao'),
             'esperando' => $q->where('situacao', '!=', 'gestor')->whereColumn('ultima_entrada_em', '>=', 'ultima_mensagem_em')
                 ->where('ultima_entrada_em', '<', now()->subMinutes(self::ESPERA_MINUTOS))
@@ -143,7 +145,7 @@ class SuporteConversasController extends Controller
             'primeira_resposta' => $tempos ? (int) round(array_sum($tempos) / count($tempos)) : null,
             'especialista_hoje' => $pedidos('especialista'),
             'atendimentos_hoje' => $pedidos('abrir_atendimento'),
-            'na_fila' => $ativas->filter(fn ($c) => $c->situacao === 'humano' && ! $c->humano_id && $c->fila_desde && $c->comHumano())->count(),
+            'na_fila' => $ativas->filter(fn ($c) => $c->situacao === 'humano' && $c->fila_desde)->count(),
             // A nota média dos últimos 30 dias e quantas responderam (encerramento.md).
             'avaliacao' => \App\Models\SuporteAvaliacao::whereNotNull('nota')->where('respondida_em', '>=', now()->subDays(30))->selectRaw('AVG(nota) as media, COUNT(*) as n')->first(),
         ];

@@ -87,6 +87,8 @@ class PedroFilaEAvaliacaoTest extends TestCase
 
     public function test_nome_desconhecido_vai_para_a_fila_e_a_fila_parada_e_lembrada(): void
     {
+        // A fila geral só sobra sem o responsável pelos chamados na equipe: com ele, a conversa fica com ele (PedroCobraOResponsavelTest).
+        config(['services.suporte_pedro.responsavel_chamados' => 'fora-da-equipe@teste.local']);
         $this->chega('quero falar com a Marta', 'wamid.1');
         $this->responde(['resposta' => 'Certo.', 'acao' => 'transferir', 'resumo' => 'quer a Marta', 'atendente' => 'Marta']);
         $c = SuporteConversa::sole();

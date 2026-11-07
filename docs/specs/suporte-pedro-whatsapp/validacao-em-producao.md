@@ -238,6 +238,24 @@ teste que seja telefone do cadastro de um cliente de teste; nada aqui abre chama
    escreva de novo sobre o problema. **Esperado:** ele diz que viu o contato anterior, citando o dia, e usa o que foi registrado.
 4. Repita o passo 3 de um número fora do cadastro. **Esperado:** ele orienta abrir o AlfaSync e não conta o que foi registrado.
 
+## K. O Pedro cobra o responsável (07/11/2026)
+
+Pré-requisito: a publicação. Na lista da casa (Suporte › Pedro), a linha do Alexandre com o número que ele usa no dia a
+dia e, de preferência, `alexandreblankl@outlook.com` na 4ª coluna. Ele escreve "bom dia" ao Pedro desse número antes de
+começar (abre as 24 h do WhatsApp dele). De um número de teste fora da lista da casa, no horário de atendimento; nada aqui
+abre chamado.
+
+1. Peça "quero falar com uma pessoa". **Esperado:** o Pedro diz que chamou um colega; em Suporte › Conversas, a conversa
+   aparece "Com Alexandre" e em "Na fila"; o sino é só do Alexandre; o Telegram diz "Para Alexandre".
+2. Não responda. Passados 15 min, **esperado:** o Alexandre recebe no WhatsApp, do Pedro, "Cliente esperando resposta: …",
+   com até que horas o WhatsApp aceita resposta e o link. Com dois números de teste esperando, uma mensagem só, com os dois.
+3. O Alexandre responde pela tela, pelo link. **Esperado:** nenhum lembrete 15 min depois.
+4. Escreva de novo do número de teste e não responda. **Esperado:** passados 15 min, o lembrete volta, com "escreveu de
+   novo: …".
+5. Clique "Devolver ao Pedro" (ou "Encerrar e pedir avaliação"). **Esperado:** nenhum lembrete depois.
+6. Peça uma pessoa pelo nome de alguém da equipe (o Rossini). **Esperado:** a conversa vai para ele, o lembrete sai no sino
+   e no Telegram dele, e nada vai ao WhatsApp do Alexandre.
+
 ## Fora do alcance desta semana
 
 - Consultar boleto ou NF individual: o Pedro não tem essa fonte hoje. Exige uma leitura autorizada no

@@ -4,6 +4,7 @@ namespace App\Services\Suporte;
 
 use App\Models\Orcamento;
 use App\Models\SecretarioGestorRetrato;
+use App\Models\SuporteConversa;
 use App\Models\User;
 use App\Services\Secretario\MontadorDeBriefing;
 use Carbon\CarbonImmutable;
@@ -133,6 +134,21 @@ class AcessoInterno
         $usuario = app(DiretorioGestor::class)->daEquipe($telefone)['usuario'] ?? null;
 
         return ['gestor_email' => $usuario, 'gestor_email_de' => $usuario ? 'cadastro' : null] + $linha;
+    }
+
+    /**
+     * A conversa da pessoa da casa com o Pedro, pelo e-mail dela no Gestor (a 4ª coluna da linha, ou o cadastro de
+     * funcionário com o número, como no deQuem): é por ela que o Pedro escreve à pessoa (encerramento.md, FR-F7),
+     * porque a conta da Meta não inicia conversa. A mais recente dos números dela nas últimas 24 h, ou null.
+     */
+    public function conversaDe(string $email): ?SuporteConversa
+    {
+        $email = mb_strtolower(trim($email));
+        $chaves = $email === '' ? collect() : collect($this->lista())->filter(fn ($p) => ($this->deQuem($p['telefone'])['gestor_email'] ?? null) === $email)
+            ->map(fn ($p) => CanalWhatsApp::chave($p['telefone']))->unique()->values();
+
+        return $chaves->isEmpty() ? null : SuporteConversa::where('ultima_entrada_em', '>=', now()->subHours(SuporteConversa::JANELA_HORAS))
+            ->orderByDesc('ultima_entrada_em')->get()->first(fn (SuporteConversa $c) => $chaves->contains(CanalWhatsApp::chave((string) $c->telefone)));
     }
 
     /** Lançar, corrigir e cancelar visitas da agenda: só diretor e gestor (pedro-dia-do-tecnico, FR-017). */
