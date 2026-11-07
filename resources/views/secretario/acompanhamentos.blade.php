@@ -21,10 +21,25 @@
         $corPrio = ['alta' => ['bg-crit-tint text-crit', 'bg-crit', 'Alta'], 'normal' => ['bg-warn-tint text-warn', 'bg-warn', 'Média'], 'baixa' => ['bg-brand/10 text-brand-text', 'bg-brand', 'Baixa']];
         $porAba = $linhas->countBy('aba');
         $resumo = $linhas->countBy('status')->sortDesc();
+        // De quem é cada linha (Felipe, 07/11/2026; App\Services\Secretario\Areas). A escolha fica no navegador,
+        // para a tela abrir de novo no que a pessoa estava olhando.
+        $quemVe = auth()->user();
+        $chaveDe = fn (array $de) => \App\Services\Secretario\Areas::chave($de, $quemVe);
+        $rotuloDe = fn (array $de) => \App\Services\Secretario\Areas::rotulo($de, $quemVe, $filtroQuem['nomes']);
+        $contasQuem = collect($filtroQuem['botoes'])->mapWithKeys(fn ($b) => [$b['chave'] => $b['n']])->all();
+        $quemPadrao = ($contasQuem['eu'] ?? 0) > 0 ? 'eu' : 'todos';
+        $linhasQuem = $linhas->map(fn ($l) => ['aba' => $l['aba'], 'q' => $chaveDe($l['de'])])->values();
     @endphp
     <div x-data="{ aba: 'todos', busca: '', prio: '', origem: '', filtros: false,
+                   quem: (() => { try { const q = localStorage.getItem('acompanhamentos.quem'); if ([...@js(array_keys($contasQuem)), 'todos'].includes(q)) return q; } catch (e) {} return @js($quemPadrao); })(),
+                   contas: @js((object) $contasQuem), linhasQuem: @js($linhasQuem),
+                   escolher(q) { this.quem = q; try { localStorage.setItem('acompanhamentos.quem', q); } catch (e) {} },
+                   passa(q) { return this.quem === 'todos' || q === this.quem; },
+                   total() { return Object.values(this.contas).reduce((a, b) => a + b, 0); },
+                   naAba(k) { return this.linhasQuem.filter(l => (k === 'todos' || l.aba === k) && this.passa(l.q)).length; },
                    mostra(l) { return (this.aba === 'todos' || l.aba === this.aba) && (!this.prio || l.prio === this.prio) && (!this.origem || l.fonte === this.origem)
-                       && (!this.busca || l.texto.includes(this.busca.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''))); } }"
+                       && this.passa(l.q) && (!this.busca || l.texto.includes(this.busca.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''))); } }"
+         @tratou="contas[$event.detail.q] = Math.max(0, (contas[$event.detail.q] ?? 0) + $event.detail.delta)"
          class="mx-auto grid w-full max-w-7xl grid-cols-1 gap-4 2xl:grid-cols-[minmax(0,1fr)_320px]">
         <div class="min-w-0 space-y-4">
             <div class="flex flex-wrap items-end gap-3">
@@ -61,6 +76,33 @@
                     </a>
                 @endforeach
             </div>
+
+            {{-- De quem é (Felipe, 07/11/2026: "tem que distinguir o que é para mim, o que é para o Rossini e o
+                 que é para o Alexandre"). Um filtro só para as notificações e a tabela, acima das duas: é a
+                 primeira pergunta diante de cem avisos, antes da gravidade e da categoria. O número é o que
+                 está a tratar, e baixa com o Tratado (evento `tratou`, da seção de notificações). --}}
+            <section aria-label="De quem é" class="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-panel border border-line bg-surface px-4 py-3">
+                <span class="font-mono text-[10.5px] uppercase tracking-caps text-ink-faint">De quem é</span>
+                <div class="flex flex-wrap gap-1.5">
+                    @foreach ([...$filtroQuem['botoes'], ['chave' => 'todos', 'rotulo' => 'Todos', 'n' => null]] as $b)
+                        <button type="button" @click="escolher('{{ $b['chave'] }}')" data-quem="{{ $b['chave'] }}"
+                                class="inline-flex h-[30px] items-center gap-1.5 rounded-control border px-3 text-[12.5px] font-semibold"
+                                :class="quem === '{{ $b['chave'] }}' ? 'border-brand bg-brand text-on-brand' : 'border-btn-line text-ink-dim hover:border-brand hover:text-brand'">
+                            {{ $b['rotulo'] }}
+                            <span class="rounded-full px-1.5 text-[11px] font-semibold" :class="quem === '{{ $b['chave'] }}' ? 'bg-surface text-brand-text' : 'bg-head text-ink-mute'"
+                                  x-text="{{ $b['n'] === null ? 'total()' : "contas['".$b['chave']."']" }}">{{ $b['n'] ?? array_sum($contasQuem) }}</span>
+                        </button>
+                    @endforeach
+                </div>
+                <p class="w-full text-[12px] text-ink-mute">
+                    @php
+                        $donoDe = fn ($area) => ($u = $donosDasAreas[$area] ?? null) ? ($u->id === $quemVe->id ? 'você' : \Illuminate\Support\Str::before(trim($u->name), ' ')) : 'sem dono';
+                    @endphp
+                    Comercial: {{ $donoDe('comercial') }} · Administrativo: {{ $donoDe('administrativo') }} ·
+                    Sistemas e desenvolvimento: {{ $donoDe('desenvolvimento') }} · Suporte: {{ $donoDe('suporte') }}.
+                    Pergunta, tarefa ou prazo dirigido a você é seu, de qualquer área; notícia de tarefa é de quem está com ela.
+                </p>
+            </section>
 
             {{-- As notificações do sino, todas, para tratar uma a uma (07/11/2026). Antes da tabela:
                  é aonde o sino traz a pessoa, e cair abaixo de uma tabela comprida esconderia o aviso. --}}
@@ -109,7 +151,7 @@
                             <button type="button" @click="aba = '{{ $k }}'" class="flex shrink-0 items-center gap-1.5 border-b-2 px-2.5 pb-2 pt-1 text-[13px]"
                                     :class="aba === '{{ $k }}' ? 'border-brand font-semibold text-ink' : 'border-transparent text-ink-mute hover:text-ink'">
                                 {{ $rotulo }}
-                                <span class="rounded-full px-1.5 text-[11px] font-semibold" :class="aba === '{{ $k }}' ? 'bg-brand text-on-brand' : 'bg-head text-ink-mute'">{{ $n }}</span>
+                                <span class="rounded-full px-1.5 text-[11px] font-semibold" :class="aba === '{{ $k }}' ? 'bg-brand text-on-brand' : 'bg-head text-ink-mute'" x-text="naAba('{{ $k }}')">{{ $n }}</span>
                             </button>
                         @endforeach
                     </nav>
@@ -147,20 +189,23 @@
                         @foreach (\App\Services\Secretario\CentralDeGestao::ABAS as $grupo => $rotuloGrupo)
                             @php $doGrupo = $linhas->where('aba', $grupo)->values(); @endphp
                             @continue($doGrupo->isEmpty())
-                            <tbody x-show="aba === 'todos' || aba === '{{ $grupo }}'" x-data="{ todos: false }" class="divide-y divide-line border-b border-line">
+                            {{-- `qs`: de quem é cada linha do grupo, para os 5 primeiros e a contagem valerem para quem está no filtro. --}}
+                            <tbody x-show="(aba === 'todos' || aba === '{{ $grupo }}') && qs.some(q => passa(q))"
+                                   x-data="{ todos: false, qs: @js($doGrupo->map(fn ($l) => $chaveDe($l['de']))->values()), doFiltro() { return this.qs.filter(q => this.passa(q)).length; } }"
+                                   class="divide-y divide-line border-b border-line">
                                 <tr class="bg-head/60">
                                     <td colspan="5" class="px-4 py-2">
                                         <span class="text-[12.5px] font-semibold text-ink">{{ $rotuloGrupo }}</span>
-                                        <span class="ml-1.5 rounded-full bg-surface px-1.5 text-[11px] font-semibold text-ink-mute">{{ $doGrupo->count() }}</span>
+                                        <span class="ml-1.5 rounded-full bg-surface px-1.5 text-[11px] font-semibold text-ink-mute" x-text="doFiltro()">{{ $doGrupo->count() }}</span>
                                     </td>
                                 </tr>
                                 @foreach ($doGrupo as $i => $l)
                                     @php
-                                        $chave = ['aba' => $l['aba'], 'prio' => $l['prioridade'], 'fonte' => $l['chip'],
-                                            'texto' => \App\Services\Secretario\Memoria\BuscaNaMemoria::normalizar($l['assunto'].' '.$l['sub'].' '.$l['origem'])];
+                                        $chave = ['aba' => $l['aba'], 'prio' => $l['prioridade'], 'fonte' => $l['chip'], 'q' => $chaveDe($l['de']),
+                                            'texto' => \App\Services\Secretario\Memoria\BuscaNaMemoria::normalizar($l['assunto'].' '.$l['sub'].' '.$l['origem'].' '.$rotuloDe($l['de']))];
                                         [$prioCor, $prioPonto, $prioRotulo] = $corPrio[$l['prioridade']] ?? $corPrio['normal'];
                                     @endphp
-                                    <tr x-show="mostra(@js($chave)) && (todos || {{ $i }} < 5 || busca || prio || origem)" class="align-top hover:bg-head/50">
+                                    <tr x-show="mostra(@js($chave)) && (todos || qs.slice(0, {{ $i }}).filter(q => passa(q)).length < 5 || busca || prio || origem)" class="align-top hover:bg-head/50">
                                         <td class="px-4 py-3">
                                             <div class="flex gap-3">
                                                 <span class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-ctl bg-head text-ink-dim"><span class="h-[18px] w-[18px]"><x-nav-icon :name="$l['icone']" peso="1.7" /></span></span>
@@ -168,7 +213,10 @@
                                                     <p class="line-clamp-2 text-[13.5px] font-semibold text-ink" title="{{ $l['assunto'] }}">
                                                         @if ($l['link'])<a href="{{ $l['link'] }}" @if (! str_starts_with($l['link'], url('/'))) target="_blank" rel="noopener noreferrer" @endif class="hover:text-brand">{{ $l['assunto'] }}</a>@else{{ $l['assunto'] }}@endif
                                                     </p>
-                                                    <p class="text-[12px] text-ink-mute">{{ $l['sub'] }}</p>
+                                                    {{-- De quem é antes do resto, como na linha da notificação: na coluna da origem, estreita, o rótulo quebrava ao meio. --}}
+                                                    <p class="text-[12px] text-ink-mute">
+                                                        <span class="mr-1 inline-block rounded-badge px-1.5 py-0.5 text-[11px] {{ $chaveDe($l['de']) === 'eu' ? 'bg-brand/10 font-semibold text-brand-text' : 'bg-head text-ink-dim' }}">{{ $rotuloDe($l['de']) }}</span>{{ $l['sub'] }}
+                                                    </p>
                                                 </div>
                                             </div>
                                         </td>
@@ -203,10 +251,10 @@
                                     </tr>
                                 @endforeach
                                 @if ($doGrupo->count() > 5)
-                                    <tr x-show="!busca && !prio && !origem">
+                                    <tr x-show="!busca && !prio && !origem && doFiltro() > 5">
                                         <td colspan="5" class="px-4 py-2 text-center">
                                             <button type="button" @click="todos = !todos" class="text-[12.5px] font-semibold text-brand-text hover:text-brand"
-                                                    x-text="todos ? 'Mostrar só os 5 primeiros' : 'Ver todos os {{ $doGrupo->count() }}'"></button>
+                                                    x-text="todos ? 'Mostrar só os 5 primeiros' : `Ver todos os ${doFiltro()}`"></button>
                                         </td>
                                     </tr>
                                 @endif
@@ -215,6 +263,8 @@
                 </x-tabela>
                 @if ($linhas->isEmpty())
                     <p class="px-4 py-6 text-center text-[13.5px] text-ink-mute">Nada pedindo acompanhamento agora.</p>
+                @else
+                    <p x-show="naAba('todos') === 0" x-cloak class="px-4 py-6 text-center text-[13.5px] text-ink-mute">Nada na tabela para quem está escolhido em “De quem é”.</p>
                 @endif
                 <p class="border-t border-line px-4 py-2.5 text-[12px] text-ink-mute">
                     @if ($gestor)

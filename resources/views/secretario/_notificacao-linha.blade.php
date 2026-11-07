@@ -5,9 +5,16 @@
     para Tratado e Desfazer valerem sem recarregar uma tela de cem linhas e
     sem perder a rolagem de quem está no meio dela.
 
-    Espera: $n (App\Models\Notificacao); $destaque (bool, opcional).
+    De quem é (Felipe, 07/11/2026) vai na linha de baixo, antes da origem: é
+    o que decide se o aviso é para tratar agora ou para cobrar de alguém.
+
+    Espera: $n (App\Models\Notificacao); $destaque (bool, opcional); da tela,
+    $deAviso, $chaveDe e $rotuloDe.
 --}}
-@php $tom = $n->tom(); @endphp
+@php
+    $tom = $n->tom();
+    $de = $deAviso[$n->id] ?? null;
+@endphp
 <li id="notificacao-{{ $n->id }}" @unless ($destaque ?? false) x-show="visivel({{ $n->id }})" @endunless
     class="flex flex-wrap items-start gap-3 px-4 py-2.5 border-l-2 border-l-transparent"
     :style="feito[{{ $n->id }}] ? '' : 'border-left-color: rgb(var(--{{ $tom }}))'">
@@ -22,6 +29,9 @@
     <div class="min-w-0 flex-1">
         <p class="break-words text-[13.5px] font-semibold" :class="feito[{{ $n->id }}] ? 'text-ink-faint line-through' : 'text-ink'">{{ $n->titulo }}</p>
         <p class="text-[12px] text-ink-mute">
+            @if ($de)
+                <span class="mr-1 inline-block rounded-badge px-1.5 py-0.5 text-[11px] {{ $chaveDe($de) === 'eu' ? 'bg-brand/10 font-semibold text-brand-text' : 'bg-head text-ink-dim' }}">{{ $rotuloDe($de) }}</span>
+            @endif
             {{ $n->meta ? $n->meta.' · ' : '' }}{{ $n->created_at->format('d/m H:i') }} · {{ $n->created_at->diffForHumans(short: true) }}
         </p>
     </div>

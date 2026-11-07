@@ -6,14 +6,17 @@ use App\Models\Notificacao;
 use App\Models\SecretarioAcompanhamento;
 use App\Models\SecretarioItem;
 use App\Models\SecretarioPreferencia;
+use App\Models\User;
 use App\Services\Secretario\Acompanhamento\Politica;
 use App\Services\Secretario\Acompanhamento\Regras;
+use App\Services\Secretario\Areas;
 use App\Services\Secretario\CentralDeGestao;
 use App\Services\Secretario\Despachante;
 use App\Services\Secretario\Itens;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
@@ -27,17 +30,19 @@ class SecretarioAcompanhamentosController extends Controller
     /** Quantas não lidas a seção de notificações desenha (ver `notificacoes()`). */
     public const NOTIFICACOES_NA_TELA = 300;
 
-    public function index(Request $request, Politica $politica, CentralDeGestao $central): View
+    public function index(Request $request, Politica $politica, CentralDeGestao $central, Areas $areas): View
     {
         $user = $request->user();
         $config = Regras::de($user);
         $agora = CarbonImmutable::now();
+        $linhas = $central->linhas($user, $agora);
+        $notificacoes = $this->notificacoes($request);
 
         return view('secretario.acompanhamentos', [
             // Etapa 8: a Central de gestão no topo (números, Grupo Soluções, VixCard).
             'numeros' => $central->numeros($user, $agora),
             'gestor' => $central->grupoSolucoes($user),
-            'linhas' => $central->linhas($user, $agora),
+            'linhas' => $linhas,
             'atividade' => $central->atividade($user),
             'dispensados' => SecretarioAcompanhamento::de($user)->where('situacao', SecretarioAcompanhamento::DISPENSADO)->count(),
             'config' => $config,
@@ -46,7 +51,28 @@ class SecretarioAcompanhamentosController extends Controller
             'doAviso' => ($ids = $this->idsDoAviso($request))
                 ? SecretarioAcompanhamento::de($user)->whereIn('id', $ids)->orderByRaw("prioridade = 'alta' desc")->orderBy('referencia_em')->get()
                 : collect(),
-        ] + $this->notificacoes($request));
+        ] + $notificacoes + $this->deQuem($user, $areas, $notificacoes, $linhas));
+    }
+
+    /**
+     * De quem é cada linha da tela (Felipe, 07/11/2026; ver `Areas`): os
+     * avisos por id, e o filtro com a contagem do que está A TRATAR — as
+     * notificações não lidas e a tabela. As tratadas ganham o rótulo, mas não
+     * contam: o número diz quanto falta.
+     *
+     * @return array{deAviso: array<int, array{quem: ?int, area: ?string}>, filtroQuem: array, donosDasAreas: array<string, ?User>}
+     */
+    private function deQuem(User $user, Areas $areas, array $n, Collection $linhas): array
+    {
+        $avisos = $n['notificacoes']->concat($n['tratadas'])->when($n['notificacaoFoco'], fn ($c, $foco) => $c->push($foco))->unique('id');
+        $deAviso = $areas->dosAvisos($avisos, $user);
+        $aTratar = $n['notificacoes']->map(fn ($a) => $deAviso[$a->id])->values()->all();
+
+        return [
+            'deAviso' => $deAviso,
+            'filtroQuem' => $areas->filtro([...$aTratar, ...$linhas->pluck('de')->all()], $user, array_values($deAviso)),
+            'donosDasAreas' => $areas->donos(),
+        ];
     }
 
     /**

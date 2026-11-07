@@ -24,7 +24,7 @@ class CentralDeGestao
     /** As que têm calendário próprio na Minha agenda; as demais caem em "Outros". */
     public const COM_CALENDARIO = ['grupo_solucoes' /* , 'vixcard' */];
 
-    public function __construct(private AgendaConsolidada $agenda) {}
+    public function __construct(private AgendaConsolidada $agenda, private Areas $areas) {}
 
     /** @return array{compromissos: int, da_agenda: int, do_secretario: int, nao_lidos: int, prioritarios: int, vencidas: int, alertas: int} */
     public function numeros(User $user, CarbonImmutable $agora): array
@@ -104,7 +104,8 @@ class CentralDeGestao
     /**
      * A tabela da Central (desenho de 17/10/2026): pontos lançados, alertas
      * das regras e os itens do retrato do Gestor numa lista só, cada linha com
-     * aba, origem, prazo, situação e prioridade.
+     * aba, origem, prazo, situação e prioridade. E de quem é (`de`, ver
+     * `Areas`): o do Gestor pela área do bloco; pontos e alertas, de quem vê.
      *
      * @return Collection<int, array>
      */
@@ -117,7 +118,7 @@ class CentralDeGestao
             $linhas->push(['aba' => 'pontos', 'icone' => 'flag', 'assunto' => $i->titulo, 'sub' => 'Lançado por você',
                 'origem' => self::EMPRESAS[$i->empresa] ?? $i->empresa, 'chip' => 'Ponto de gestão', 'quando' => $quando, 'so_data' => $i->so_data,
                 'status' => $atrasado ? 'Vencido' : 'Em aberto', 'prioridade' => $i->prioridade, 'link' => null,
-                'acoes' => [['Concluir', route('secretario.acompanhamentos.pontos.concluir', $i->id)]]]);
+                'acoes' => [['Concluir', route('secretario.acompanhamentos.pontos.concluir', $i->id)]], 'de' => $this->areas->daPessoa($user, null)]);
         }
         foreach (SecretarioAcompanhamento::de($user)->ativos()->where('chave', '!=', 'proposta_parada:gestor')->get() as $a) {
             $linhas->push(['aba' => self::CATEGORIA_DA_REGRA[$a->regra] ?? 'tarefas', 'icone' => ['cliente_sem_resposta' => 'envelope', 'proposta_parada' => 'document',
@@ -125,7 +126,9 @@ class CentralDeGestao
                 'assunto' => $a->texto, 'sub' => \App\Services\Secretario\Acompanhamento\Regras::REGRAS[$a->regra][0] ?? $a->regra,
                 'origem' => 'Secretário', 'chip' => 'Alerta · regra', 'quando' => $a->referencia_em ? CarbonImmutable::instance($a->referencia_em) : null, 'so_data' => false,
                 'status' => $a->adiado() ? 'Adiado' : ($a->regra === 'tarefa_vencida' ? 'Vencido' : 'Em aberto'), 'prioridade' => $a->prioridade, 'link' => $a->link,
-                'acoes' => array_values(array_filter([['Resolvido', route('secretario.acompanhamentos.resolver', $a->id)], $a->adiado() ? null : ['Adiar 1 dia', route('secretario.acompanhamentos.adiar', $a->id)]]))]);
+                'acoes' => array_values(array_filter([['Resolvido', route('secretario.acompanhamentos.resolver', $a->id)], $a->adiado() ? null : ['Adiar 1 dia', route('secretario.acompanhamentos.adiar', $a->id)]])),
+                // O alerta nasce do e-mail, da agenda e dos itens da própria conta: é de quem vê.
+                'de' => $this->areas->daPessoa($user, in_array($a->regra, ['cliente_sem_resposta', 'proposta_parada'], true) ? 'comercial' : null)]);
         }
         $gestor = $this->grupoSolucoes($user);
         foreach ($gestor['blocos'] ?? [] as $chave => $b) {
@@ -139,7 +142,8 @@ class CentralDeGestao
                 $linhas->push(['aba' => $aba, 'icone' => $aba === 'financeiro' ? 'banknotes' : ($aba === 'propostas' ? 'document' : 'users'),
                     'assunto' => $assunto, 'sub' => $b['rotulo'].(isset($it['valor']) ? ' · R$ '.number_format($it['valor'], 2, ',', '.') : ''),
                     'origem' => $cliente ?: 'Grupo Soluções', 'chip' => 'Gestor', 'quando' => isset($it['data']) ? CarbonImmutable::parse($it['data']) : null,
-                    'so_data' => true, 'status' => $status, 'prioridade' => $prioridade, 'link' => null, 'acoes' => []]);
+                    'so_data' => true, 'status' => $status, 'prioridade' => $prioridade, 'link' => null, 'acoes' => [],
+                    'de' => $this->areas->doBlocoDoGestor($chave)]);
             }
         }
         // VixOrganize desligado em 31/10/2026 (o Matriz ficou só com a Alfa e o Grupo Soluções).

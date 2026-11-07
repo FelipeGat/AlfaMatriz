@@ -72,6 +72,16 @@ return [
         'token' => env('SUPORTE_GESTOR_TOKEN'),
     ],
 
+    // De quem é cada área em Acompanhamentos (Felipe, 07/11/2026: "tudo que for suporte é Alexandre, tudo que for
+    // suporte e desenvolvimento é Rossini, tudo que for comercial e administrativo para mim"), pelo e-mail da conta,
+    // como os responsáveis do suporte. Só diz de quem é na tela; quem recebe o aviso continua o mesmo.
+    'areas' => [
+        'comercial' => env('AREA_COMERCIAL', 'felipehenriquegat@gmail.com'),
+        'administrativo' => env('AREA_ADMINISTRATIVO', 'felipehenriquegat@gmail.com'),
+        'suporte' => env('AREA_SUPORTE', 'alexandreblankl@outlook.com'),
+        'desenvolvimento' => env('AREA_DESENVOLVIMENTO', 'rossinidesouza06@gmail.com'),
+    ],
+
     'suporte_pedro' => [
         'ligado' => env('SUPORTE_PEDRO_LIGADO', true),
         'conta' => env('SUPORTE_PEDRO_CONTA', 'felipehenriquegat@gmail.com'),

@@ -11,7 +11,11 @@
     acompanha porque esta seção escreve no `naoLidas` do `shell` (o x-data da
     moldura, que a envolve).
 
-    Espera: $notificacoes, $notificacoesTotal, $tratadas, $notificacaoFoco.
+    "De quem é" (Felipe, 07/11/2026) mora acima, na tela: `quem` e `passa()`
+    vêm do x-data dela, e o Tratado avisa a contagem de lá pelo evento `tratou`.
+
+    Espera: $notificacoes, $notificacoesTotal, $tratadas, $notificacaoFoco,
+    $deAviso (id => de quem é) e, da tela, $chaveDe e $rotuloDe.
 --}}
 @php
     $grupo = fn ($n) => in_array($n->nivel, ['critico', 'atencao'], true) ? $n->nivel : 'demais';
@@ -23,7 +27,8 @@
     // lista: dois elementos com o mesmo id quebrariam a âncora do sino.
     $todas = $aTratar->concat($jaTratadas)->when($notificacaoFoco, fn ($c) => $c->concat([$notificacaoFoco]));
     $lista = fn ($n) => $n->naoLida() ? 'a_tratar' : ($n->lida_em->gte(now()->subDays(7)) ? 'tratadas' : 'antiga');
-    $itens = $todas->map(fn ($n) => ['id' => $n->id, 'lista' => $lista($n), 'g' => $grupo($n), 't' => $normalizar($n)])->values();
+    $itens = $todas->map(fn ($n) => ['id' => $n->id, 'lista' => $lista($n), 'g' => $grupo($n), 'q' => $chaveDe($deAviso[$n->id]),
+        't' => $normalizar($n).' '.\App\Services\Secretario\Memoria\BuscaNaMemoria::normalizar($rotuloDe($deAviso[$n->id]))])->values();
     $feito = $todas->mapWithKeys(fn ($n) => [$n->id => ! $n->naoLida()]);
     $abas = ['todas' => 'Todas', 'critico' => 'Críticas', 'atencao' => 'Atenção', 'demais' => 'Demais', 'tratadas' => 'Tratadas · 7 dias'];
 @endphp
@@ -35,6 +40,7 @@
             casa(i) {
                 const termo = this.procura.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
                 if (termo && ! i.t.includes(termo)) return false;
+                if (! this.passa(i.q)) return false;
                 return this.filtro === 'tratadas' ? i.lista === 'tratadas' : i.lista === 'a_tratar' && (this.filtro === 'todas' || i.g === this.filtro);
             },
             visivel(id) {
@@ -42,8 +48,8 @@
                 return pos >= 0 && (this.expandida || this.procura !== '' || pos < 20);
             },
             quantas(aba) {
-                return this.itens.filter(i => aba === 'tratadas' ? i.lista === 'tratadas'
-                    : i.lista === 'a_tratar' && ! this.feito[i.id] && (aba === 'todas' || i.g === aba)).length;
+                return this.itens.filter(i => this.passa(i.q) && (aba === 'tratadas' ? i.lista === 'tratadas'
+                    : i.lista === 'a_tratar' && ! this.feito[i.id] && (aba === 'todas' || i.g === aba))).length;
             },
             async alternar(id, tratar) {
                 try {
@@ -51,6 +57,11 @@
                         headers: { Accept: 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content ?? '' } });
                     if (! r.ok) return;
                     this.naoLidas = (await r.json()).nao_lidas;
+                    // Só o que estava a tratar conta em De quem é: tratar uma tratada (Voltar a tratar) devolve.
+                    const item = this.itens.find(i => i.id === id);
+                    if (item && this.feito[id] !== tratar) {
+                        this.$dispatch('tratou', { q: item.q, delta: tratar ? -1 : 1 });
+                    }
                     this.feito[id] = tratar;
                 } catch (e) {
                     // Sem rede: a linha fica como estava, e a pessoa tenta de novo.
