@@ -1,0 +1,131 @@
+openapi: 3.1.0
+info:
+  license: { name: Proprietary }
+  title: AlfaMatriz — API Executiva (somente leitura)
+  version: "1.0.0"
+  description: >
+    Consulta do briefing executivo da Alfa. Só GET. Todo bloco devolve o envelope
+    (fonte, periodo, consultado_em, atualizado_em, situacao, motivo, dados).
+    Valor ausente é null, nunca zero. Valores financeiros em centavos.
+    Resultado de caixa NÃO é lucro. A tarefa 4.4 (origem das movimentações) está
+    pendente: a conciliação do financeiro compara só totais.
+servers:
+  - url: https://matriz.alfasolucoes.cloud
+security:
+  - bearerAuth: []
+paths:
+  /api/executivo:
+    get:
+      operationId: indiceExecutivo
+      summary: Lista os blocos disponíveis
+      responses:
+        "200": { $ref: "#/components/responses/Envelope" }
+        "401": { $ref: "#/components/responses/Recusa" }
+        "403": { $ref: "#/components/responses/Recusa" }
+        "429": { $ref: "#/components/responses/Recusa" }
+  /api/executivo/agenda:
+    get:
+      operationId: agendaExecutiva
+      summary: Agenda consolidada (Matriz + Google), até 14 dias
+      parameters:
+        - { $ref: "#/components/parameters/de" }
+        - { $ref: "#/components/parameters/ate" }
+      responses:
+        "200": { $ref: "#/components/responses/Envelope" }
+        "401": { $ref: "#/components/responses/Recusa" }
+        "403": { $ref: "#/components/responses/Recusa" }
+        "429": { $ref: "#/components/responses/Recusa" }
+        "422": { description: Intervalo inválido (invertido ou acima de 14 dias) }
+  /api/executivo/emails:
+    get:
+      operationId: emailsExecutivo
+      summary: Situação das caixas e contagens de e-mail (sem remetente, assunto ou corpo)
+      responses:
+        "200": { $ref: "#/components/responses/Envelope" }
+        "401": { $ref: "#/components/responses/Recusa" }
+        "403": { $ref: "#/components/responses/Recusa" }
+        "429": { $ref: "#/components/responses/Recusa" }
+  /api/executivo/pendencias:
+    get:
+      operationId: pendenciasExecutivas
+      summary: O que espera o Felipe e números da Central de Gestão
+      responses:
+        "200": { $ref: "#/components/responses/Envelope" }
+        "401": { $ref: "#/components/responses/Recusa" }
+        "403": { $ref: "#/components/responses/Recusa" }
+        "429": { $ref: "#/components/responses/Recusa" }
+  /api/executivo/alertas:
+    get:
+      operationId: alertasExecutivos
+      summary: Notificações não lidas, erros do vigia e alertas do monitor
+      responses:
+        "200": { $ref: "#/components/responses/Envelope" }
+        "401": { $ref: "#/components/responses/Recusa" }
+        "403": { $ref: "#/components/responses/Recusa" }
+        "429": { $ref: "#/components/responses/Recusa" }
+  /api/executivo/pedro:
+    get:
+      operationId: pedroExecutivo
+      summary: Fila e avaliações do Pedro (só contagens e idade)
+      responses:
+        "200": { $ref: "#/components/responses/Envelope" }
+        "401": { $ref: "#/components/responses/Recusa" }
+        "403": { $ref: "#/components/responses/Recusa" }
+        "429": { $ref: "#/components/responses/Recusa" }
+  /api/executivo/fontes:
+    get:
+      operationId: fontesExecutivas
+      summary: Saúde das fontes (Google Agenda, e-mail, vigia, monitor)
+      responses:
+        "200": { $ref: "#/components/responses/Envelope" }
+        "401": { $ref: "#/components/responses/Recusa" }
+        "403": { $ref: "#/components/responses/Recusa" }
+        "429": { $ref: "#/components/responses/Recusa" }
+  /api/executivo/financeiro:
+    get:
+      operationId: financeiroExecutivo
+      summary: Financeiro da Alfa (realizado, a receber/pagar, vencido, previsto, MRR)
+      description: >
+        Períodos anteriores a 01/10/2026 voltam desatualizados (a fonte da Alfa era o Gestor).
+        Máximo 366 dias.
+      parameters:
+        - { $ref: "#/components/parameters/de" }
+        - { $ref: "#/components/parameters/ate" }
+        - name: referencia
+          in: query
+          required: false
+          schema: { type: string, format: date }
+          description: Data de referência para vencidos e projeção (padrão hoje).
+      responses:
+        "200": { $ref: "#/components/responses/Envelope" }
+        "401": { $ref: "#/components/responses/Recusa" }
+        "403": { $ref: "#/components/responses/Recusa" }
+        "429": { $ref: "#/components/responses/Recusa" }
+        "422": { description: Período inválido }
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer }
+  parameters:
+    de:  { name: de,  in: query, required: false, schema: { type: string, format: date } }
+    ate: { name: ate, in: query, required: false, schema: { type: string, format: date } }
+  responses:
+    Envelope:
+      description: Envelope padrão
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              fonte: { type: string }
+              periodo: { type: [string, "null"] }
+              consultado_em: { type: string }
+              atualizado_em: { type: [string, "null"] }
+              situacao: { type: string, enum: [ok, desatualizado, falha, nao_configurado] }
+              motivo: { type: [string, "null"] }
+              dados:
+                description: Objeto por bloco; vazio vira `[]` em JSON quando a fonte não tem dados.
+                oneOf:
+                  - { type: object, additionalProperties: true }
+                  - { type: array, maxItems: 0 }
+    Recusa:
+      description: Sem token, token inválido ou sem a capacidade executivo:ler (401/403), ou limite de 30 chamadas por minuto (429)
