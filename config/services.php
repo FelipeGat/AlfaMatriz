@@ -89,6 +89,8 @@ return [
         'validade_dias' => (int) env('EXECUTIVO_TOKEN_DIAS', 30),
         // Sem leitura da caixa há mais que isso, o e-mail vai como `desatualizado`. 60 é escolha, não medida.
         'email_desatualizado_min' => (int) env('EXECUTIVO_EMAIL_DESATUALIZADO_MIN', 60),
+        // Desde quando o Matriz é a fonte do financeiro da Alfa (antes, o Gestor). Premissa a confirmar com o Felipe.
+        'financeiro_desde' => env('EXECUTIVO_FINANCEIRO_DESDE', '2026-10-01'),
     ],
 
     'suporte_pedro' => [

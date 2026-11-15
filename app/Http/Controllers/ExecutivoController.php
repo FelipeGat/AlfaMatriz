@@ -27,11 +27,13 @@ class ExecutivoController extends Controller
     {
         abort_unless(in_array($bloco, Blocos::NOMES, true), 404);
 
-        $parametros = $bloco === 'agenda' ? $request->validate([
+        $parametros = in_array($bloco, ['agenda', 'financeiro'], true) ? $request->validate([
             'de' => ['nullable', 'date_format:Y-m-d'],
             'ate' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:de'],
+            'referencia' => $bloco === 'financeiro' ? ['nullable', 'date_format:Y-m-d'] : ['prohibited'],
         ]) : [];
 
+        // O financeiro tem o próprio teto (366 dias), conferido no serviço.
         if ($bloco === 'agenda' && ($parametros['de'] ?? null) && ($parametros['ate'] ?? null)
             && \Carbon\CarbonImmutable::parse($parametros['de'])->diffInDays($parametros['ate']) > 14) {
             return response()->json(['message' => 'O período da agenda vai até 14 dias.'], 422);

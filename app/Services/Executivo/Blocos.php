@@ -30,7 +30,7 @@ use Illuminate\Support\Str;
  */
 class Blocos
 {
-    public const NOMES = ['agenda', 'emails', 'pendencias', 'alertas', 'pedro', 'fontes'];
+    public const NOMES = ['agenda', 'emails', 'pendencias', 'alertas', 'pedro', 'fontes', 'financeiro'];
 
     /** Título de compromisso e de aviso: o que vem de fora (terceiros) não sai inteiro. */
     private const TITULO = 80;
@@ -44,6 +44,7 @@ class Blocos
         private OQueEsperaVoce $espera,
         private CentralDeGestao $gestao,
         private IndicadoresDoDia $pedro,
+        private FinanceiroExecutivo $financeiro,
     ) {}
 
     /** @return array<string, mixed> */
@@ -56,6 +57,7 @@ class Blocos
             'alertas' => $this->alertas($user),
             'pedro' => $this->pedro($user),
             'fontes' => $this->fontes($user),
+            'financeiro' => $this->financeiro->montar($user, $parametros),
         };
     }
 

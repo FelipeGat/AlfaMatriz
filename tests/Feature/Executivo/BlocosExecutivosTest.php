@@ -57,7 +57,7 @@ class BlocosExecutivosTest extends TestCase
 
     public function test_indice_lista_os_blocos(): void
     {
-        $this->bloco('')->assertOk()->assertJsonCount(6, 'dados.blocos');
+        $this->bloco('')->assertOk()->assertJsonCount(7, 'dados.blocos');
     }
 
     public function test_bloco_inexistente_da_404(): void

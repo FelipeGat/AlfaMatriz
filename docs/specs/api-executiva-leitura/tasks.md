@@ -51,13 +51,13 @@ Ref: FR-004, FR-005, FR-006, FR-007
 
 Ref: FR-007 · Critérios fixados pelo Felipe em 15/11/2026 (pedido da Fase 4); implementada localmente, aguardando QA independente
 
-- [ ] 4.1 (15/11, critérios ditos no pedido da fase) Confirmar com o Felipe os critérios de realizado e previsto usados nas telas
-- [ ] 4.2 `GET /api/executivo/financeiro?de&ate&referencia` (`FinanceiroExecutivo`): realizado, previsto e lucro separados, em centavos, `null` quando ausente, critério escrito
-- [ ] 4.3 `FinanceiroExecutivoTest` (17 testes, base fictícia). Paridade com as telas é PROPOSITALMENTE parcial: saldo e MRR iguais; entradas/saídas e vencido divergem de `IndicadoresService::entradasDoMes` e dos cards (ajuste/transferência e cancelado) — ver docblock
+- [x] 4.1 (15/11, critérios ditos no pedido da fase) Confirmar com o Felipe os critérios de realizado e previsto usados nas telas
+- [x] 4.2 `GET /api/executivo/financeiro?de&ate&referencia` (`FinanceiroExecutivo`): realizado, previsto e lucro separados, em centavos, `null` quando ausente, critério escrito
+- [x] 4.3 `FinanceiroExecutivoTest` (17 testes, base fictícia). Paridade com as telas é PROPOSITALMENTE parcial: saldo e MRR iguais; entradas/saídas e vencido divergem de `IndicadoresService::entradasDoMes` e dos cards (ajuste/transferência e cancelado) — ver docblock
 - [ ] 4.4 Decisão do Felipe: `financeiro_desde` (2026-10-01) e o que fazer com a origem não gravada em `movimentacoes_financeiras` (`origem_*` fora do `$fillable`)
 
 ## FASE 5 - Fechamento
 
-- [ ] 5.1 Suíte inteira (`php artisan test`)
+- [x] 5.1 (15/11) Suíte inteira: 2.348 testes, 0 falhas, 30 pulados (`run-tests.py`, 50 do Executivo)
 - [ ] 5.2 Teste local; commit e publicação só com autorização do Felipe
 - [ ] 5.3 Exposição à internet: decisão 3, fora desta spec
