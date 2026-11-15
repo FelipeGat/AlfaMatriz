@@ -33,12 +33,6 @@ class ExecutivoController extends Controller
             'referencia' => $bloco === 'financeiro' ? ['nullable', 'date_format:Y-m-d'] : ['prohibited'],
         ]) : [];
 
-        // O financeiro tem o próprio teto (366 dias), conferido no serviço.
-        if ($bloco === 'agenda' && ($parametros['de'] ?? null) && ($parametros['ate'] ?? null)
-            && \Carbon\CarbonImmutable::parse($parametros['de'])->diffInDays($parametros['ate']) > 14) {
-            return response()->json(['message' => 'O período da agenda vai até 14 dias.'], 422);
-        }
-
         return response()->json($blocos->montar($bloco, $request->user(), $parametros));
     }
 }

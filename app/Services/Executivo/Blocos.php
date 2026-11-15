@@ -13,9 +13,10 @@ use App\Services\Secretario\AgendaConsolidada;
 use App\Services\Secretario\CentralDeGestao;
 use App\Services\Secretario\ConsultaDeEmails;
 use App\Services\Suporte\IndicadoresDoDia;
+use App\Services\Vigia\VigiaDeLogs;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
-use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Os blocos de leitura da API Executiva (spec `api-executiva-leitura`).
@@ -23,8 +24,8 @@ use Illuminate\Support\Str;
  * Cada bloco é uma camada fina sobre o serviço que a tela já usa — a regra
  * nunca é reescrita aqui — e devolve o `Envelope`: de onde veio, de que período,
  * quando foi consultado e em que situação está a fonte. O que sai é lista
- * branca: título truncado, nome de remetente sem endereço, contagem sem nome de
- * cliente. Nada aqui grava, marca como lido ou chama o Google.
+ * branca: texto livre omitido, contagem sem nome de cliente. Nada aqui grava,
+ * marca como lido ou chama o Google.
  *
  * Tudo escopado em `$user`, que é sempre o dono do token (`ExecutivoDaConta`).
  */
@@ -32,10 +33,8 @@ class Blocos
 {
     public const NOMES = ['agenda', 'emails', 'pendencias', 'alertas', 'pedro', 'fontes', 'financeiro'];
 
-    /** Título de compromisso e de aviso: o que vem de fora (terceiros) não sai inteiro. */
-    private const TITULO = 80;
-    private const ASSUNTO = 90;
     private const MAX_DIAS_AGENDA = 14;
+
     private const MAX_ITENS = 20;
 
     public function __construct(
@@ -68,6 +67,10 @@ class Blocos
     {
         $inicio = $de ? CarbonImmutable::parse($de)->startOfDay() : CarbonImmutable::now()->startOfDay();
         $fim = $ate ? CarbonImmutable::parse($ate)->endOfDay() : $inicio->addDay()->endOfDay();
+        // Valida datas efetivas, inclusive quando o pedido omite um dos limites.
+        if ($fim->startOfDay()->lt($inicio) || $inicio->diffInDays($fim->startOfDay(), true) > self::MAX_DIAS_AGENDA) {
+            throw ValidationException::withMessages(['ate' => 'O término deve ser igual ou posterior ao início e o intervalo deve ter no máximo 14 dias.']);
+        }
         $periodo = $inicio->format('Y-m-d').' a '.$fim->format('Y-m-d');
 
         return Envelope::proteger('Agenda consolidada (Matriz, Secretário e Google)', $periodo, function () use ($user, $inicio, $fim, $periodo) {
@@ -82,7 +85,7 @@ class Blocos
 
             $itens = $this->agenda->periodo($user, $inicio, $fim)->take(200)->map(fn ($i) => [
                 'origem' => $i['origem'],
-                'titulo' => $this->curto((string) $i['titulo'], self::TITULO),
+                'titulo' => $this->textoOmitido(),
                 'inicio' => $i['inicio']->toIso8601String(),
                 'fim' => $i['fim']?->toIso8601String(),
                 'dia_inteiro' => (bool) $i['dia_inteiro'],
@@ -96,10 +99,52 @@ class Blocos
         });
     }
 
-    /** No máximo `$max` caracteres contando as reticências — "80 caracteres" é o teto, não 80 mais três. */
-    private function curto(string $texto, int $max): string
+    /**
+     * Tipos de notificação que o sistema cria hoje. Lista fechada de propósito:
+     * `tipo` é string livre na tabela, e regex de formato deixava passar texto
+     * sensível em minúsculas. Tipo novo cai em `outro` até entrar aqui.
+     */
+    private const TIPOS_DE_NOTIFICACAO = [
+        'acompanhamento', 'apontamento', 'arquivamento', 'bloqueio', 'cobranca_revendas',
+        'comentario', 'compromisso', 'conta', 'desarquivamento', 'destravamento',
+        'direcionamento', 'exclusao', 'faturamento', 'lead_convertido', 'lembrete',
+        'licenca', 'licenca_pendente', 'locacao_cliente', 'locacao_sistema', 'perfil',
+        'pergunta', 'ponto', 'pr_aberto', 'resposta', 'retorno', 'seguranca', 'senha',
+        'sincronizacao', 'tarefa', 'teste_staging', 'triagem',
+    ];
+
+    /**
+     * Campo de classificação que a origem grava como texto livre (o vigia aceita
+     * `nivel` como string; o monitor, `kind` e `severity`) só sai se estiver na
+     * lista fechada. Fora dela vira `$padrao`: o valor cru nunca é devolvido,
+     * porque ali pode ter ido um documento ou um endereço.
+     *
+     * @param  list<string>  $permitidos
+     */
+    private function classificacao(mixed $valor, array $permitidos, string $padrao): string
     {
-        return Str::limit($texto, $max - 3);
+        $v = is_string($valor) ? strtolower(trim($valor)) : '';
+
+        return in_array($v, $permitidos, true) ? $v : $padrao;
+    }
+
+    /** Níveis do vigia e do sino; desconhecido vira `desconhecido`, nunca o texto gravado. */
+    private function nivelSeguro(mixed $valor): string
+    {
+        return $this->classificacao($valor, [
+            'debug', 'info', 'notice', 'warning', 'error', 'critical', 'alert', 'emergency', 'fatal',
+            'critico', 'atencao', 'marca',
+        ], 'desconhecido');
+    }
+
+    /**
+     * Texto livre não tem classificação confiável de dados pessoais/sensíveis.
+     * Omitimos integralmente, em vez de declarar segura uma máscara por regex.
+     * Datas, contagens e classificações estruturadas mantêm a utilidade executiva.
+     */
+    private function textoOmitido(): string
+    {
+        return 'Conteúdo omitido por privacidade';
     }
 
     // ───────────────────────── e-mails
@@ -131,23 +176,23 @@ class Blocos
                 'importantes_hoje' => $dia['importantes']->take(self::MAX_ITENS)->map(fn ($e) => $this->email($e))->values()->all(),
                 'aguardando_resposta' => $this->emails->aguardandoLista($user)->take(self::MAX_ITENS)->map(fn ($e) => $this->email($e))->values()->all(),
                 'caixas' => array_map(fn ($c) => [
-                    'rotulo' => $c['rotulo'], 'situacao' => $c['estado'], 'lida_em' => $c['lida_em']?->toIso8601String(),
+                    'rotulo' => $this->textoOmitido(), 'situacao' => $c['estado'], 'lida_em' => $c['lida_em']?->toIso8601String(),
                 ], $s['caixas']),
             ]);
         });
     }
 
-    /** Lista branca: nome do remetente (nunca o endereço), assunto curto, marcas. Sem corpo, anexo ou id de mensagem. */
+    /** Lista branca: texto livre omitido; só datas e marcas. Sem corpo, anexo ou id de mensagem. */
     private function email($e): array
     {
         return [
             'recebido_em' => $e->recebido_em->toIso8601String(),
-            'remetente' => $e->de_nome ?: null,
-            'assunto' => Str::limit((string) $e->assunto, self::ASSUNTO),
-            'tipo' => $e->tipo,
+            'remetente' => null,
+            'assunto' => $this->textoOmitido(),
+            'tipo' => in_array($e->tipo, ['orcamento', 'proposta', 'cobranca', 'documento', 'reuniao', 'prazo', 'outro'], true) ? $e->tipo : 'outro',
             'urgente' => $e->urgencia === 'alta',
             'aguardando_resposta' => (bool) ($e->pede_retorno && ! $e->respondido),
-            'caixa' => $e->conta?->rotulo,
+            'caixa' => null,
         ];
     }
 
@@ -165,10 +210,10 @@ class Blocos
             $esperam = $this->espera->podeVer($user)
                 ? $this->espera->pendencias($user)->take(self::MAX_ITENS)->map(fn ($p) => [
                     'tipo' => $p['tipo'],
-                    'motivo' => Str::limit((string) $p['motivo'], self::TITULO),
-                    'nivel' => $p['nivel'] ?? null,
+                    'motivo' => $this->textoOmitido(),
+                    'nivel' => isset($p['nivel']) ? $this->nivelSeguro($p['nivel']) : null,
                     'desde' => $p['desde'] ? CarbonImmutable::parse($p['desde'])->toIso8601String() : null,
-                    'tarefa' => ['codigo' => '#'.$p['tarefa']->id, 'titulo' => Str::limit((string) $p['tarefa']->titulo, self::TITULO)],
+                    'tarefa' => ['codigo' => '#'.$p['tarefa']->id, 'titulo' => $this->textoOmitido()],
                 ])->values()->all()
                 : null;
 
@@ -196,9 +241,9 @@ class Blocos
         return Envelope::proteger($fonte, $periodo, function () use ($user, $fonte, $periodo) {
             // Só lê: marcar como lida é decisão da pessoa, em Acompanhamentos.
             $notificacoes = Notificacao::naoLidasDe($user->id)->limit(self::MAX_ITENS)->get()->map(fn ($n) => [
-                'tipo' => $n->tipo,
-                'nivel' => $n->nivel,
-                'titulo' => Str::limit((string) $n->titulo, self::TITULO * 2),
+                'tipo' => $this->classificacao($n->tipo, self::TIPOS_DE_NOTIFICACAO, 'outro'),
+                'nivel' => $this->nivelSeguro($n->nivel),
+                'titulo' => $this->textoOmitido(),
                 'criada_em' => $n->created_at?->toIso8601String(),
             ])->all();
 
@@ -210,10 +255,10 @@ class Blocos
                 $desde = now()->subDay();
                 $erros = VigiaErro::with('sistema:id,nome')->where('ignorado', false)->where('ultima_vez', '>=', $desde)
                     ->orderByDesc('total')->limit(10)->get()->map(fn ($e) => [
-                        'sistema' => $e->sistema?->nome,
-                        'ambiente' => $e->ambiente,
-                        'nivel' => $e->nivel,
-                        'padrao' => Str::limit((string) $e->padrao, 160),
+                        'sistema' => $this->textoOmitido(),
+                        'ambiente' => $this->classificacao($e->ambiente, array_keys(VigiaDeLogs::AMBIENTES), 'desconhecido'),
+                        'nivel' => $this->nivelSeguro($e->nivel),
+                        'padrao' => $this->textoOmitido(),
                         'total' => $e->total,
                         'ultima_vez' => $e->ultima_vez->toIso8601String(),
                         'tem_tarefa' => $e->tarefa_id !== null,
@@ -225,9 +270,9 @@ class Blocos
                 $veHostinger = (bool) $user->canPermissao('monitor_hostinger', 'ler');
                 $monitor = MonitorAlerta::query()->when(! $veHostinger, fn ($q) => $q->semAssinaturasDaHostinger())
                     ->where('aberto', true)->orderByDesc('caiu_em')->limit(self::MAX_ITENS)->get()->map(fn ($a) => [
-                        'nome' => Str::limit($a->nome(), self::TITULO),
-                        'tipo' => $a->kind,
-                        'severidade' => $a->severity,
+                        'nome' => $this->textoOmitido(),
+                        'tipo' => $this->classificacao($a->kind, array_keys(MonitorAlerta::KINDS), 'outro'),
+                        'severidade' => $this->classificacao($a->severity, array_keys(MonitorAlerta::SEVERIDADES), 'desconhecido'),
                         'caiu_em' => $a->caiu_em?->toIso8601String(),
                     ])->all();
                 $ultimo = MonitorAlerta::max('ultimo_evento_em');

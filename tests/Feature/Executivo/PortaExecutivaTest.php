@@ -6,6 +6,8 @@ use App\Models\Auditoria;
 use App\Models\Revenda;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Routing\Middleware\SubstituteBindings;
+use Illuminate\Support\Facades\Route;
 use Tests\TestCase;
 
 /**
@@ -179,33 +181,94 @@ class PortaExecutivaTest extends TestCase
 
     /**
      * O token executivo não serve a NENHUMA outra rota protegida: nem as de
-     * token (MCP, vigia, changelog, monitor, runner), nem as da tela.
+     * token Sanctum (MCP, changelog, runner), nem as da tela. Vigia/monitor
+     * autenticam no controller e têm um teste separado.
      */
     public function test_token_executivo_nao_autentica_em_nenhuma_outra_rota_protegida(): void
     {
         $token = $this->token($this->felipe());
         $testadas = 0;
+        $parametrizadas = 0;
+        $this->withoutMiddleware(SubstituteBindings::class);
 
-        foreach (\Illuminate\Support\Facades\Route::getRoutes() as $rota) {
+        foreach (Route::getRoutes() as $rota) {
             $mid = $rota->gatherMiddleware();
             $protegida = collect($mid)->contains(fn ($m) => is_string($m)
                 && (str_starts_with($m, 'auth') || str_contains($m, 'sanctum') || str_starts_with($m, 'abilities') || str_starts_with($m, 'permissao')));
 
-            if (! $protegida || str_starts_with($rota->uri(), 'api/executivo') || str_contains($rota->uri(), '{')) {
+            if (! $protegida || str_starts_with($rota->uri(), 'api/executivo')) {
                 continue;
             }
 
             $metodo = collect($rota->methods())->first(fn ($m) => ! in_array($m, ['HEAD', 'OPTIONS'], true));
-            $r = $this->withToken($token)->call($metodo, '/'.ltrim($rota->uri(), '/'), [], [], [], ['HTTP_ACCEPT' => 'application/json']);
+            // IDs fictícios sintaticamente válidos. Sem binding: a recusa deve
+            // vir da autenticação/capacidade, nunca de um recurso inexistente.
+            $uri = preg_replace_callback('/\{([^}?]+)\??\}/', fn ($m) => $m[1] === 'anexo'
+                ? '00000000-0000-4000-8000-000000000001' : ($m[1] === 'data' ? '2026-11-14' : '1'), $rota->uri());
+            app('auth')->forgetGuards();
+            app('auth')->shouldUse('web');
+            $r = $this->withToken($token)->call($metodo, '/'.ltrim($uri, '/'), [], [], [], ['HTTP_ACCEPT' => 'application/json', 'HTTP_AUTHORIZATION' => 'Bearer '.$token]);
 
             $this->assertContains(
                 $r->getStatusCode(),
-                [301, 302, 401, 403, 404, 405, 419],
+                [401, 403, 419],
                 $metodo.' /'.$rota->uri().' respondeu '.$r->getStatusCode().' ao token executivo',
             );
             $testadas++;
+            $parametrizadas += str_contains($rota->uri(), '{') ? 1 : 0;
         }
 
         $this->assertGreaterThan(20, $testadas);
+        $this->assertGreaterThan(0, $parametrizadas);
+    }
+
+    public function test_capacidades_sanctum_existentes_nao_abrem_blocos_executivos(): void
+    {
+        $u = $this->felipe();
+        $capacidades = collect(Route::getRoutes())->flatMap(fn ($r) => $r->gatherMiddleware())
+            ->filter(fn ($m) => is_string($m) && str_starts_with($m, 'abilities:'))
+            ->flatMap(fn ($m) => explode(',', substr($m, strlen('abilities:'))))
+            ->reject(fn ($c) => $c === 'executivo:ler')->unique();
+        $this->assertNotEmpty($capacidades->all());
+        foreach ($capacidades as $capacidade) {
+            foreach (['', '/agenda', '/emails', '/pendencias', '/alertas', '/pedro', '/fontes', '/financeiro'] as $bloco) {
+                app('auth')->forgetGuards();
+                $this->withToken($this->token($u, [$capacidade]))->getJson(self::URL.$bloco)->assertForbidden();
+            }
+        }
+    }
+
+    public function test_rotas_sanctum_parametrizadas_requerem_autenticacao_e_capacidade(): void
+    {
+        $this->withoutMiddleware(SubstituteBindings::class);
+        $u = $this->felipe();
+        $total = 0;
+        foreach (Route::getRoutes() as $rota) {
+            if (! in_array('auth:sanctum', $rota->gatherMiddleware(), true) || str_starts_with($rota->uri(), 'api/executivo')) {
+                continue;
+            }
+            $this->assertTrue(collect($rota->gatherMiddleware())->contains(fn ($m) => str_starts_with($m, 'abilities:')), $rota->uri());
+            $uri = '/'.preg_replace_callback('/\{([^}?]+)\??\}/', fn ($m) => $m[1] === 'anexo'
+                ? '00000000-0000-4000-8000-000000000001' : ($m[1] === 'data' ? '2026-11-14' : '1'), $rota->uri());
+            $metodo = $rota->methods()[0];
+            foreach (['', '999|invalido', $this->token($u)] as $token) {
+                app('auth')->forgetGuards();
+                $this->withToken($token)->call($metodo, $uri, [], [], [], ['HTTP_ACCEPT' => 'application/json', 'HTTP_AUTHORIZATION' => 'Bearer '.$token])
+                    ->assertStatus($token === '' || $token === '999|invalido' ? 401 : 403);
+            }
+            $total++;
+        }
+        $this->assertGreaterThan(0, $total);
+    }
+
+    public function test_token_executivo_nao_abre_apis_com_autenticacao_propria(): void
+    {
+        $u = $this->felipe();
+        foreach (['/api/vigia/erros', '/api/monitor/eventos'] as $uri) {
+            foreach (['', '999|invalido', $this->token($u)] as $token) {
+                app('auth')->forgetGuards();
+                $this->withToken($token)->withHeader('X-AlfaMonitor-Token', $token)->postJson($uri, [])->assertUnauthorized();
+            }
+        }
     }
 }

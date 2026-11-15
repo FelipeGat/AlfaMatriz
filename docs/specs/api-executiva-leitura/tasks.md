@@ -61,3 +61,17 @@ Ref: FR-007 · Critérios fixados pelo Felipe em 15/11/2026 (pedido da Fase 4); 
 - [x] 5.1 (15/11) Suíte inteira: 2.348 testes, 0 falhas, 30 pulados (`run-tests.py`, 50 do Executivo)
 - [ ] 5.2 Teste local; commit e publicação só com autorização do Felipe
 - [ ] 5.3 Exposição à internet: decisão 3, fora desta spec
+
+## Correções após QA independente — 15/11/2026
+
+- [x] Reproduzir os achados com testes fictícios antes de corrigir (três falhas observadas).
+- [x] Minimizar texto livre na serialização executiva e proteger campos equivalentes (ver `qa-correcoes.md`).
+- [x] Validar intervalo efetivo da agenda, inclusive apenas `ate`.
+- [x] Ampliar isolamento para parâmetros, Bearer explícito e capacidades nos dois sentidos.
+- [x] Validação final: 56 testes Executivo (825 assertions) e suíte completa com 2.354 testes (15.741 assertions), sem falhas, 30 pulados; duas depreciações do PHPUnit. Pint aprovado nos quatro arquivos PHP alterados; `git diff --check` aprovado.
+- [ ] Nova revisão independente pelo Codex; homologação não autorizada.
+
+A redação original dos itens 1.7 e 3.7 descrevia cobertura maior que a prova;
+o alcance corrigido e os limites estão em `qa-correcoes.md`. A política de
+minimização substitui a premissa anterior de remetente/título como texto livre.
+A tarefa 4.4 continua pendente e o financeiro aprovado não foi modificado.
