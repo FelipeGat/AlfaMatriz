@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\Executivo\Blocos;
 use App\Services\Executivo\Envelope;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 /**
  * API Executiva: só leitura. A regra de cada bloco mora no serviço que a tela
@@ -17,8 +19,24 @@ class ExecutivoController extends Controller
         return response()->json(Envelope::montar(
             fonte: 'AlfaMatriz',
             periodo: null,
-            dados: ['blocos' => []],
+            dados: ['blocos' => array_map(fn ($b) => ['nome' => $b, 'rota' => url('/api/executivo/'.$b)], Blocos::NOMES)],
         ));
     }
 
+    public function bloco(Request $request, Blocos $blocos, string $bloco): JsonResponse
+    {
+        abort_unless(in_array($bloco, Blocos::NOMES, true), 404);
+
+        $parametros = $bloco === 'agenda' ? $request->validate([
+            'de' => ['nullable', 'date_format:Y-m-d'],
+            'ate' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:de'],
+        ]) : [];
+
+        if ($bloco === 'agenda' && ($parametros['de'] ?? null) && ($parametros['ate'] ?? null)
+            && \Carbon\CarbonImmutable::parse($parametros['de'])->diffInDays($parametros['ate']) > 14) {
+            return response()->json(['message' => 'O período da agenda vai até 14 dias.'], 422);
+        }
+
+        return response()->json($blocos->montar($bloco, $request->user(), $parametros));
+    }
 }

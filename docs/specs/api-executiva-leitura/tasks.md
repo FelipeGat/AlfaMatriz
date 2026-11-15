@@ -31,21 +31,21 @@ Ref: FR-001, FR-002, FR-003, FR-008, FR-009
 
 Ref: FR-006
 
-- [ ] 2.1 Testes de caracterização de `ConsultaDeEmails::importantes/aguardando` (texto atual)
-- [ ] 2.2 Extrair consulta estruturada de e-mail; os métodos de texto passam a usá-la
-- [ ] 2.3 `situacaoEmail(User)` por conta: `falha`, `desatualizado`, `desconectado`, `ok`
+- [x] 2.1 Testes de caracterização de `ConsultaDeEmails::importantes/aguardando` (texto atual)
+- [x] 2.2 Extrair consulta estruturada de e-mail; os métodos de texto passam a usá-la
+- [x] 2.3 `situacaoEmail(User)` por conta: `falha`, `desatualizado`, `desconectado`, `ok`
 
 ## FASE 3 - Blocos `[A]`
 
 Ref: FR-004, FR-005, FR-006, FR-007
 
-- [ ] 3.1 `agenda` (com `situacaoGoogle`, sem participantes, título truncado)
-- [ ] 3.2 `emails` (só metadados, lista branca)
-- [ ] 3.3 `pendencias` (`OQueEsperaVoce`, `CentralDeGestao::numeros`)
-- [ ] 3.4 `alertas` (`Notificacao`, `VigiaErro`, `MonitorAlerta`; não marca como lida)
-- [ ] 3.5 `pedro` (contagens e idade)
-- [ ] 3.6 `fontes` (painel de saúde)
-- [ ] 3.7 Teste de lista branca: sem corpo, e-mail de remetente, telefone, documento
+- [x] 3.1 `agenda` (com `situacaoGoogle`, sem participantes, título truncado)
+- [x] 3.2 `emails` (só metadados, lista branca)
+- [x] 3.3 `pendencias` (`OQueEsperaVoce`, `CentralDeGestao::numeros`)
+- [x] 3.4 `alertas` (`Notificacao`, `VigiaErro`, `MonitorAlerta`; não marca como lida)
+- [x] 3.5 `pedro` (contagens e idade)
+- [x] 3.6 `fontes` (painel de saúde)
+- [x] 3.7 Teste de lista branca: sem corpo, e-mail de remetente, telefone, documento
 
 ## FASE 4 - Financeiro `[C]`
 

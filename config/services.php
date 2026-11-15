@@ -87,6 +87,8 @@ return [
     'executivo' => [
         'conta' => env('EXECUTIVO_CONTA', 'felipehenriquegat@gmail.com'),
         'validade_dias' => (int) env('EXECUTIVO_TOKEN_DIAS', 30),
+        // Sem leitura da caixa há mais que isso, o e-mail vai como `desatualizado`. 60 é escolha, não medida.
+        'email_desatualizado_min' => (int) env('EXECUTIVO_EMAIL_DESATUALIZADO_MIN', 60),
     ],
 
     'suporte_pedro' => [

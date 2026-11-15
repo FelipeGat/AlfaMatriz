@@ -42,9 +42,7 @@ class ConsultaDeEmails
 
     public function importantes(User $user, CarbonImmutable $dia): string
     {
-        $todos = SecretarioEmail::de($user)->with('conta')->where('enviado', false)
-            ->whereBetween('recebido_em', [$dia->startOfDay(), $dia->endOfDay()])->orderBy('recebido_em')->get();
-        $importantes = $todos->filter(fn ($e) => $e->urgencia === 'alta' || ($e->pede_retorno && ! $e->respondido));
+        ['todos' => $todos, 'importantes' => $importantes] = $this->importantesDoDia($user, $dia);
         $quando = $dia->isToday() ? 'hoje' : Datas::porExtenso($dia, true);
         $linhas = ["📧 E-mails importantes {$quando}: ".$importantes->count().' de '.$todos->count().' recebido(s).'];
         foreach ($importantes->take(15) as $e) {
@@ -56,7 +54,7 @@ class ConsultaDeEmails
 
     public function aguardando(User $user): string
     {
-        $lista = SecretarioEmail::de($user)->with('conta')->aguardando()->where('recebido_em', '>=', now()->subDays(7))->orderBy('recebido_em')->get();
+        $lista = $this->aguardandoLista($user);
         $linhas = ['📨 Aguardando sua resposta (últimos 7 dias): '.$lista->count().'.'];
         foreach ($lista->take(15) as $e) {
             $linhas[] = '• '.$this->linha($e, true);
@@ -66,6 +64,24 @@ class ConsultaDeEmails
         }
 
         return implode("\n", array_merge($linhas, [$this->rodape($user)]));
+    }
+
+    /**
+     * Os recebidos do dia e, dentre eles, os importantes (urgência alta, ou pede
+     * retorno e ainda não foi respondido). É a consulta que `importantes()` usa
+     * para o texto e a API Executiva usa para os metadados: uma regra só.
+     *
+     * @return array{todos: Collection<int, SecretarioEmail>, importantes: Collection<int, SecretarioEmail>}
+     */
+    public function importantesDoDia(User $user, CarbonImmutable $dia): array
+    {
+        $todos = SecretarioEmail::de($user)->with('conta')->where('enviado', false)
+            ->whereBetween('recebido_em', [$dia->startOfDay(), $dia->endOfDay()])->orderBy('recebido_em')->get();
+
+        return [
+            'todos' => $todos,
+            'importantes' => $todos->filter(fn ($e) => $e->urgencia === 'alta' || ($e->pede_retorno && ! $e->respondido))->values(),
+        ];
     }
 
     /** @return Collection<int, SecretarioEmail> */
@@ -82,6 +98,44 @@ class ConsultaDeEmails
 
         return "{$quando} ".($e->de_nome ?: $e->de_email).' — '.Str::limit($e->assunto, 90)
             .($marcas ? ' ('.implode(', ', $marcas).')' : '').' · '.$e->conta?->rotulo;
+    }
+
+    /**
+     * Como está cada caixa e a pior delas, para quem precisa saber se pode
+     * confiar na lista (a API Executiva) — o `rodape()` é o mesmo dado em texto.
+     *
+     * Estados, do pior ao melhor: `falha` (a última leitura deu erro),
+     * `desconectado` (cadastrada e nunca lida), `desatualizado` (sem leitura há
+     * mais de `services.executivo.email_desatualizado_min`, 60 por padrão),
+     * `ok`; `nao_configurado` quando a pessoa não tem caixa.
+     *
+     * @return array{estado: string, lida_em: ?\Carbon\CarbonInterface, caixas: list<array{rotulo: string, estado: string, lida_em: ?\Carbon\CarbonInterface}>}
+     */
+    public function situacaoEmail(User $user): array
+    {
+        $limite = (int) config('services.executivo.email_desatualizado_min', 60);
+        $caixas = SecretarioEmailConta::de($user)->orderBy('rotulo')->get()->map(fn ($c) => [
+            'rotulo' => (string) $c->rotulo,
+            'estado' => match (true) {
+                $c->situacao === 'erro' => 'falha',
+                ! $c->lida_em => 'desconectado',
+                $c->lida_em->lessThan(now()->subMinutes($limite)) => 'desatualizado',
+                default => 'ok',
+            },
+            'lida_em' => $c->lida_em,
+        ])->all();
+
+        $ordem = ['falha', 'desconectado', 'desatualizado', 'ok'];
+        $pior = $caixas === [] ? 'nao_configurado'
+            : collect($ordem)->first(fn ($e) => in_array($e, array_column($caixas, 'estado'), true));
+        $lidas = array_filter(array_column($caixas, 'lida_em'));
+
+        return [
+            'estado' => $pior,
+            // A fonte vale o que a caixa MAIS atrasada vale.
+            'lida_em' => $lidas && count($lidas) === count($caixas) ? collect($lidas)->min() : null,
+            'caixas' => $caixas,
+        ];
     }
 
     /** Diz quando cada caixa foi lida, e a que está com erro (FR-007). */

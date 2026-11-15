@@ -123,32 +123,7 @@ class SuporteConversasController extends Controller
     /** Os números do dia, sobre as mensagens e os pedidos do Pedro (não sobre a lista filtrada). */
     private function indicadores(): array
     {
-        $ativas = SuporteConversa::where('ultima_entrada_em', '>', now()->subHours(SuporteConversa::JANELA_HORAS))->get();
-        $hoje = SuporteMensagem::where('direcao', 'entrada')->where('created_at', '>=', today());
-        // 1ª resposta: da primeira mensagem do cliente no dia até a primeira resposta depois dela.
-        $tempos = [];
-        foreach ((clone $hoje)->selectRaw('conversa_id, MIN(id) as primeira')->groupBy('conversa_id')->get() as $r) {
-            $entrada = SuporteMensagem::find($r->primeira);
-            $resposta = SuporteMensagem::where('conversa_id', $r->conversa_id)->where('id', '>', $r->primeira)->where('direcao', '!=', 'entrada')->orderBy('id')->first();
-            if ($entrada && $resposta) {
-                $tempos[] = $entrada->created_at->diffInSeconds($resposta->created_at);
-            }
-        }
-        $pedidos = fn (string $acao) => SuportePedido::where('acao', $acao)->where('created_at', '>=', today())->count();
-
-        return [
-            'recebidas_hoje' => (clone $hoje)->distinct()->count('conversa_id'),
-            'com_pedro' => $ativas->where('situacao', 'pedro')->count(),
-            'com_humano' => $ativas->filter->comHumano()->count(),
-            'no_gestor' => $ativas->where('situacao', 'gestor')->count(),
-            'esperando' => $ativas->filter(fn ($c) => self::atrasada($c))->count(),
-            'primeira_resposta' => $tempos ? (int) round(array_sum($tempos) / count($tempos)) : null,
-            'especialista_hoje' => $pedidos('especialista'),
-            'atendimentos_hoje' => $pedidos('abrir_atendimento'),
-            'na_fila' => $ativas->filter(fn ($c) => $c->situacao === 'humano' && $c->fila_desde)->count(),
-            // A nota média dos últimos 30 dias e quantas responderam (encerramento.md).
-            'avaliacao' => \App\Models\SuporteAvaliacao::whereNotNull('nota')->where('respondida_em', '>=', now()->subDays(30))->selectRaw('AVG(nota) as media, COUNT(*) as n')->first(),
-        ];
+        return app(\App\Services\Suporte\IndicadoresDoDia::class)->calcular();
     }
 
     /** A foto, o áudio ou o vídeo da mensagem, para a tela (do disco, ou buscado no Gestor). */

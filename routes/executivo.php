@@ -22,6 +22,7 @@ Route::prefix('api/executivo')
     ->middleware(['executivo.auditoria', 'executivo.json', 'throttle:30,1', 'auth:sanctum', 'abilities:executivo:ler', 'executivo.conta'])
     ->group(function () {
         Route::get('/', [ExecutivoController::class, 'indice'])->name('executivo.indice');
+        Route::get('/{bloco}', [ExecutivoController::class, 'bloco'])->where('bloco', '[a-z]+')->name('executivo.bloco');
 
         // Escrita não existe aqui. Esta rota só recusa — e existe para a tentativa
         // passar pela fila (auditoria, token, conta) em vez de morrer num 405 do
