@@ -1,0 +1,63 @@
+# Tarefas AlfaMatriz - API Executiva de leitura
+
+Escopo: interface só de leitura para o ChatGPT consultar o que é da Matriz (spec `api-executiva-leitura`).
+
+**Legenda de status:** `[ ]` Pendente · `[~]` Em andamento · `[x]` Concluido · `[!]` Bloqueado
+**Criticidade:** `[C]` Critico · `[A]` Alto · `[M]` Medio
+
+**Premissas adotadas (recomendação do plano, aceita com "Siga" em 15/11/2026; o Felipe pode reverter):**
+- Autenticação: chave de API em token Sanctum, capacidade única `executivo:ler`, validade 30 dias.
+- LGPD: remetente só como nome; título de compromisso truncado em 80 caracteres, sem participantes.
+- Pedro: só contagens e idade da fila.
+- Limite de "desatualizado" do e-mail: 60 min (a leitura roda a cada poucos minutos; ajustável em config).
+
+**Ainda bloqueado por decisão do Felipe:** critérios de realizado e previsto (spec, decisão 6) e exposição à internet (decisão 3).
+
+---
+
+## FASE 1 - Base segura `[C]`
+
+Ref: FR-001, FR-002, FR-003, FR-008, FR-009
+
+- [ ] 1.1 `alfa:executivo-token <email> [--revogar]`: só a conta do Felipe, só hash, validade configurável
+- [ ] 1.2 `routes/executivo.php` fora do grupo `web`: GET, `auth:sanctum`, `abilities:executivo:ler`, `throttle`
+- [ ] 1.3 Auditoria de chamadas (token, rota, hora, status; sem conteúdo)
+- [ ] 1.4 Envelope comum (`fonte, periodo, consultado_em, atualizado_em, situacao, motivo, dados`); falha de fonte não gera 500
+- [ ] 1.5 Testes: isolamento entre contas, `mcp` x `executivo:ler`, 405 em escrita, rejeição de `user_id`
+- [ ] 1.6 (15/11) Auditoria também das recusas (sem token, token inválido, capacidade errada, 405, 429): `ExecutivoAuditoria` é o primeiro middleware; o 405 passa por uma rota que só recusa
+- [ ] 1.7 (15/11) Teste varre toda rota protegida e prova que o token `executivo:ler` não autentica em nenhuma outra
+
+## FASE 2 - Extrações sem mudar comportamento `[A]`
+
+Ref: FR-006
+
+- [ ] 2.1 Testes de caracterização de `ConsultaDeEmails::importantes/aguardando` (texto atual)
+- [ ] 2.2 Extrair consulta estruturada de e-mail; os métodos de texto passam a usá-la
+- [ ] 2.3 `situacaoEmail(User)` por conta: `falha`, `desatualizado`, `desconectado`, `ok`
+
+## FASE 3 - Blocos `[A]`
+
+Ref: FR-004, FR-005, FR-006, FR-007
+
+- [ ] 3.1 `agenda` (com `situacaoGoogle`, sem participantes, título truncado)
+- [ ] 3.2 `emails` (só metadados, lista branca)
+- [ ] 3.3 `pendencias` (`OQueEsperaVoce`, `CentralDeGestao::numeros`)
+- [ ] 3.4 `alertas` (`Notificacao`, `VigiaErro`, `MonitorAlerta`; não marca como lida)
+- [ ] 3.5 `pedro` (contagens e idade)
+- [ ] 3.6 `fontes` (painel de saúde)
+- [ ] 3.7 Teste de lista branca: sem corpo, e-mail de remetente, telefone, documento
+
+## FASE 4 - Financeiro `[C]`
+
+Ref: FR-007 · Critérios fixados pelo Felipe em 15/11/2026 (pedido da Fase 4); implementada localmente, aguardando QA independente
+
+- [ ] 4.1 (15/11, critérios ditos no pedido da fase) Confirmar com o Felipe os critérios de realizado e previsto usados nas telas
+- [ ] 4.2 `GET /api/executivo/financeiro?de&ate&referencia` (`FinanceiroExecutivo`): realizado, previsto e lucro separados, em centavos, `null` quando ausente, critério escrito
+- [ ] 4.3 `FinanceiroExecutivoTest` (17 testes, base fictícia). Paridade com as telas é PROPOSITALMENTE parcial: saldo e MRR iguais; entradas/saídas e vencido divergem de `IndicadoresService::entradasDoMes` e dos cards (ajuste/transferência e cancelado) — ver docblock
+- [ ] 4.4 Decisão do Felipe: `financeiro_desde` (2026-10-01) e o que fazer com a origem não gravada em `movimentacoes_financeiras` (`origem_*` fora do `$fillable`)
+
+## FASE 5 - Fechamento
+
+- [ ] 5.1 Suíte inteira (`php artisan test`)
+- [ ] 5.2 Teste local; commit e publicação só com autorização do Felipe
+- [ ] 5.3 Exposição à internet: decisão 3, fora desta spec
