@@ -90,6 +90,11 @@
             // exibição — o monitor da parede — lê o quadro sem nunca ter
             // negociado isso. Estar no mesmo grupo não é estar na mesma porta.
             ['route' => 'agenda.index', 'recurso' => 'agenda', 'pattern' => 'agenda.*', 'label' => 'Agenda', 'icon' => 'calendar', 'matriz' => true],
+            // Protótipo do chat interno (T-602): só existe com a chave ligada
+            // (staging). Logo abaixo da Agenda porque a conversa da tarefa é a
+            // mesma do card — quem a procura está pensando no quadro.
+            ['route' => 'conversas.prototipo', 'recurso' => 'agenda', 'pattern' => 'conversas.*', 'label' => 'Conversas (protótipo)', 'icon' => 'balao', 'matriz' => true,
+                'so_se' => fn () => (bool) config('alfa.conversas_prototipo')],
             // Ao lado de Tarefas porque é dali que o conteúdo nasce: o quadro
             // produz a versão, a aba anuncia; o vigia abre Bug, a aba mostra o
             // erro. `matriz` como o resto do grupo — o AC-094 fixa que revenda

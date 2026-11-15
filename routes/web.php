@@ -204,6 +204,11 @@ Route::middleware(['auth', 'verified', 'conta-ativa', 'senha-em-dia'])->group(fu
     Route::get('agenda', [AgendaController::class, 'index'])->name('agenda.index')
         ->middleware('permissao:agenda');
 
+    // Protótipo do chat interno (T-602): só no staging, por `alfa.conversas_prototipo`.
+    // Régua da Agenda: conversa do time não é para o monitor da parede.
+    Route::get('conversas', [\App\Http\Controllers\ConversasPrototipoController::class, 'index'])
+        ->name('conversas.prototipo')->middleware('permissao:agenda');
+
     // Secretário (docs/specs/secretario-executivo): itens PESSOAIS, sem id de
     // usuário na rota — é sempre a conta logada; o de outra conta dá 404.
     Route::prefix('secretario')->name('secretario.')->middleware('throttle:120,1,secretario')->group(function () {
