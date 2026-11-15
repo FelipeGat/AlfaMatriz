@@ -19,13 +19,13 @@ Escopo: interface só de leitura para o ChatGPT consultar o que é da Matriz (sp
 
 Ref: FR-001, FR-002, FR-003, FR-008, FR-009
 
-- [ ] 1.1 `alfa:executivo-token <email> [--revogar]`: só a conta do Felipe, só hash, validade configurável
-- [ ] 1.2 `routes/executivo.php` fora do grupo `web`: GET, `auth:sanctum`, `abilities:executivo:ler`, `throttle`
-- [ ] 1.3 Auditoria de chamadas (token, rota, hora, status; sem conteúdo)
-- [ ] 1.4 Envelope comum (`fonte, periodo, consultado_em, atualizado_em, situacao, motivo, dados`); falha de fonte não gera 500
-- [ ] 1.5 Testes: isolamento entre contas, `mcp` x `executivo:ler`, 405 em escrita, rejeição de `user_id`
-- [ ] 1.6 (15/11) Auditoria também das recusas (sem token, token inválido, capacidade errada, 405, 429): `ExecutivoAuditoria` é o primeiro middleware; o 405 passa por uma rota que só recusa
-- [ ] 1.7 (15/11) Teste varre toda rota protegida e prova que o token `executivo:ler` não autentica em nenhuma outra
+- [x] 1.1 `alfa:executivo-token <email> [--revogar]`: só a conta do Felipe, só hash, validade configurável
+- [x] 1.2 `routes/executivo.php` fora do grupo `web`: GET, `auth:sanctum`, `abilities:executivo:ler`, `throttle`
+- [x] 1.3 Auditoria de chamadas (token, rota, hora, status; sem conteúdo)
+- [x] 1.4 Envelope comum (`fonte, periodo, consultado_em, atualizado_em, situacao, motivo, dados`); falha de fonte não gera 500
+- [x] 1.5 Testes: isolamento entre contas, `mcp` x `executivo:ler`, 405 em escrita, rejeição de `user_id`
+- [x] 1.6 (15/11) Auditoria também das recusas (sem token, token inválido, capacidade errada, 405, 429): `ExecutivoAuditoria` é o primeiro middleware; o 405 passa por uma rota que só recusa
+- [x] 1.7 (15/11) Teste varre toda rota protegida e prova que o token `executivo:ler` não autentica em nenhuma outra
 
 ## FASE 2 - Extrações sem mudar comportamento `[A]`
 

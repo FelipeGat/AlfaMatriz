@@ -31,6 +31,7 @@ return Application::configure(basePath: dirname(__DIR__))
             Route::group([], base_path('routes/monitor.php'));
             Route::group([], base_path('routes/suporte.php'));
             Route::group([], base_path('routes/central-ia.php'));
+            Route::group([], base_path('routes/executivo.php'));
         },
     )
     ->withMiddleware(function (Middleware $middleware): void {
@@ -59,6 +60,10 @@ return Application::configure(basePath: dirname(__DIR__))
             // O escopo do token do MCP (`abilities:mcp`): um token emitido para
             // o agente não serve para nada além do servidor MCP.
             'abilities' => CheckAbilities::class,
+            // A API Executiva (`routes/executivo.php`): só JSON, só a conta do Felipe, auditada.
+            'executivo.auditoria' => \App\Http\Middleware\ExecutivoAuditoria::class,
+            'executivo.json' => \App\Http\Middleware\ExecutivoSoJson::class,
+            'executivo.conta' => \App\Http\Middleware\ExecutivoDaConta::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

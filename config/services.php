@@ -82,6 +82,13 @@ return [
         'desenvolvimento' => env('AREA_DESENVOLVIMENTO', 'rossinidesouza06@gmail.com'),
     ],
 
+    // API Executiva de leitura (spec api-executiva-leitura): a ÚNICA conta que o token `executivo:ler` pode
+    // representar, e a validade dele. Fixa por e-mail e não por parâmetro: nenhuma rota recebe `user_id`.
+    'executivo' => [
+        'conta' => env('EXECUTIVO_CONTA', 'felipehenriquegat@gmail.com'),
+        'validade_dias' => (int) env('EXECUTIVO_TOKEN_DIAS', 30),
+    ],
+
     'suporte_pedro' => [
         'ligado' => env('SUPORTE_PEDRO_LIGADO', true),
         'conta' => env('SUPORTE_PEDRO_CONTA', 'felipehenriquegat@gmail.com'),
