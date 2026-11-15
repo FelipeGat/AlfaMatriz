@@ -36,6 +36,39 @@ paths:
         "403": { $ref: "#/components/responses/Recusa" }
         "429": { $ref: "#/components/responses/Recusa" }
         "422": { description: Intervalo inválido (invertido ou acima de 14 dias) }
+  /api/executivo/acompanhamentos:
+    get:
+      operationId: acompanhamentosExecutivos
+      summary: Acompanhamentos da Matriz em modelo comum (sem secao, só os totais por seção)
+      description: >
+        Itens com id, origem, tipo, ator_esperado, responsavel (primeiro nome de conta ativa),
+        situacao, prioridade (null se não gravada), prazo, atualizado_em, aberta/historica,
+        link relativo e relações (possivel_duplicata_de, notificacao_relacionada). Texto livre
+        nunca sai. Total vem do conjunto completo; a página só o fatia (truncado indica o resto).
+        E-mail sempre com classe indefinida. Valores em centavos só quando houver critério.
+      parameters:
+        - name: secao
+          in: query
+          schema: { type: string, enum: [decisoes, perguntas, pontos, alertas, emails, notificacoes, atividade] }
+        - name: pagina
+          in: query
+          schema: { type: integer, minimum: 1, default: 1 }
+        - name: limite
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 50 }
+      responses:
+        "200":
+          description: >
+            Sem `secao`: totais por seção (`null` = sem permissão de leitura, nunca zero) e `sem_acesso`.
+            Com `secao`: a página de itens; sem permissão na seção vem situacao `nao_configurado`,
+            `total` null e itens vazio.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AcompanhamentosEnvelope" }
+        "401": { $ref: "#/components/responses/Recusa" }
+        "403": { $ref: "#/components/responses/Recusa" }
+        "422": { description: "Seção desconhecida, limite acima de 100 ou parâmetro proibido" }
+        "429": { $ref: "#/components/responses/Recusa" }
   /api/executivo/emails:
     get:
       operationId: emailsExecutivo
@@ -103,6 +136,69 @@ paths:
         "429": { $ref: "#/components/responses/Recusa" }
         "422": { description: Período inválido }
 components:
+  schemas:
+    ItemExecutivo:
+      type: object
+      additionalProperties: false
+      required: [id, origem, tipo, ator_esperado, situacao, aberta, historica, motivos]
+      properties:
+        id: { type: string, pattern: "^matriz:" }
+        origem: { type: string, enum: [matriz] }
+        tipo: { type: string, enum: [decisao, pergunta, validacao, retorno, prazo, ponto_gestao, alerta, proposta, cobranca, chamado, proximo_passo, atividade, notificacao, email] }
+        classe: { type: [string, "null"], enum: [cliente_confirmado, indefinida, null] }
+        ator_esperado: { type: string, enum: [felipe, rossini, alexandre, equipe, cliente, terceiro, indefinido] }
+        responsavel: { type: [string, "null"], description: Primeiro nome de conta ativa }
+        cliente_empresa: { type: [string, "null"], enum: [Grupo Soluções, Invest, Delta, null] }
+        situacao: { type: string, enum: [aberta, em_andamento, aguardando_resposta, aguardando_aprovacao, vencida, parada, sem_tecnico, em_triagem, visita_vencida, concluida, cancelada, desconhecida] }
+        prioridade: { type: [string, "null"], enum: [alta, normal, baixa, null] }
+        prazo: { type: [string, "null"], format: date }
+        atualizado_em: { type: [string, "null"], format: date-time }
+        aberta: { type: boolean }
+        historica: { type: boolean }
+        possivel_duplicata_de: { type: [string, "null"], pattern: "^matriz:" }
+        notificacao_relacionada: { type: [string, "null"], pattern: "^matriz:" }
+        link: { type: [string, "null"], pattern: "^/[^/]", description: Caminho relativo da Matriz }
+        motivos: { type: array, items: { type: string, enum: [visita_vencida, triagem, sem_empresa, sem_tecnico, parado] } }
+        valor_centavos: { type: [integer, "null"] }
+        criterio_valor: { type: [string, "null"], enum: [obrigacao_aberta_nominal, proposta_total_estimado, null] }
+        sentido_valor: { type: [string, "null"], enum: [a_receber, a_pagar, potencial_receita, null] }
+    AcompanhamentosEnvelope:
+      type: object
+      required: [fonte, periodo, consultado_em, atualizado_em, situacao, motivo, dados]
+      properties:
+        fonte: { type: string }
+        periodo: { type: [string, "null"] }
+        consultado_em: { type: string }
+        atualizado_em: { type: [string, "null"] }
+        situacao: { type: string, enum: [ok, desatualizado, falha, nao_configurado] }
+        motivo: { type: [string, "null"] }
+        dados:
+          oneOf:
+            - type: "null"
+              description: Falha de fonte (`Envelope::proteger`) — `situacao` é `falha`
+            - type: object
+              description: Sem `secao` — totais
+              required: [secoes, sem_acesso, cobertura]
+              properties:
+                secoes:
+                  type: object
+                  additionalProperties: { type: [integer, "null"] }
+                sem_acesso: { type: array, items: { type: string } }
+                cobertura: { type: array, items: { type: string } }
+            - type: object
+              description: Com `secao` — página de itens
+              required: [secao, total, retornados, limite, pagina, truncado, itens, cobertura]
+              properties:
+                secao: { type: string, enum: [decisoes, perguntas, pontos, alertas, emails, notificacoes, atividade] }
+                total: { type: [integer, "null"] }
+                retornados: { type: integer }
+                limite: { type: [integer, "null"] }
+                pagina: { type: integer }
+                truncado: { type: boolean }
+                itens: { type: array, items: { $ref: "#/components/schemas/ItemExecutivo" } }
+                cobertura: { type: array, items: { type: string } }
+            - type: array
+              maxItems: 0
   securitySchemes:
     bearerAuth: { type: http, scheme: bearer }
   parameters:

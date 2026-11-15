@@ -31,7 +31,7 @@ use Illuminate\Validation\ValidationException;
  */
 class Blocos
 {
-    public const NOMES = ['agenda', 'emails', 'pendencias', 'alertas', 'pedro', 'fontes', 'financeiro'];
+    public const NOMES = ['agenda', 'emails', 'pendencias', 'alertas', 'pedro', 'fontes', 'financeiro', 'acompanhamentos'];
 
     private const MAX_DIAS_AGENDA = 14;
 
@@ -44,6 +44,7 @@ class Blocos
         private CentralDeGestao $gestao,
         private IndicadoresDoDia $pedro,
         private FinanceiroExecutivo $financeiro,
+        private Acompanhamentos $acompanhamentos,
     ) {}
 
     /** @return array<string, mixed> */
@@ -57,6 +58,7 @@ class Blocos
             'pedro' => $this->pedro($user),
             'fontes' => $this->fontes($user),
             'financeiro' => $this->financeiro->montar($user, $parametros),
+            'acompanhamentos' => $this->acompanhamentos->montar($user, $parametros['secao'] ?? null, $parametros),
         };
     }
 
