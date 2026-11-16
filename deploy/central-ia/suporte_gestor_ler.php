@@ -140,7 +140,10 @@ try {
                 $adicionais[$t->atendimento_visita_id][] = (int) $t->funcionario_id;
             }
         }
+        // Sem as visitas de atendimento apagado (15/11/2026: uma visita sobreviveu ao atendimento, apagado
+        // em agosto, e o Pedro apontou conflito com uma agenda que ninguém via na tela do Gestor).
         foreach (DB::table('atendimento_visitas')->whereNull('deleted_at')
+            ->whereIn('atendimento_id', fn ($q) => $q->select('id')->from('atendimentos')->whereNull('deleted_at'))
             ->whereBetween('data_inicio', [now()->subDays(7)->startOfDay(), now()->addDays(14)->endOfDay()])
             ->orderBy('data_inicio')->limit(5000)->get(['id', 'atendimento_id', 'funcionario_id', 'data_inicio', 'data_fim', 'status', 'observacoes']) as $v) {
             $visitas[] = ['id' => (int) $v->id, 'atendimento_id' => (int) $v->atendimento_id, 'tecnico_id' => $v->funcionario_id ? (int) $v->funcionario_id : null,

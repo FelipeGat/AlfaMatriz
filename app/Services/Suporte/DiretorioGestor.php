@@ -207,8 +207,20 @@ class DiretorioGestor
         $todas = self::palavras($texto);
         $cidadeCitada = fn ($c) => ($cidade = self::palavras((string) ($c['cidade'] ?? ''))) && ! array_diff($cidade, $todas) ? 0.25 : 0;
 
-        return $this->casados($texto)->map(fn ($x) => [$x['cliente'], $x['pontos'] + $cidadeCitada($x['cliente'])])
-            ->sortByDesc(fn ($par) => $par[1])->take($limite)->map(fn ($par) => $par[0])->values()->all();
+        // O nome dito por inteiro não perde a vaga para quem só dividiu uma palavra (15/11/2026: num relato com cinco
+        // agendas, um cliente cuja única palavra é de três cadastros, perdeu as 10 vagas para clientes de duas ou
+        // três palavras citadas, e o Pedro disse que ele "não apareceu"). A ordem é a de sempre; só entram no lugar dos
+        // últimos da lista os de nome inteiro que ficaram de fora.
+        $ordem = $this->casados($texto)->map(fn ($x) => [$x['cliente'], $x['pontos'] + $cidadeCitada($x['cliente']), $x['cobertura'] >= 0.999])
+            ->sortByDesc(fn ($par) => $par[1])->values();
+        $vagas = $ordem->take($limite);
+        $inteiros = $ordem->slice($limite)->filter(fn ($par) => $par[2])->take($limite)->values();
+        if ($inteiros->isNotEmpty()) {
+            $sai = $vagas->reverse()->filter(fn ($par) => ! $par[2])->take($inteiros->count())->keys()->all();
+            $vagas = $vagas->reject(fn ($par, $i) => in_array($i, $sai, true))->concat($inteiros->take(count($sai)));
+        }
+
+        return $vagas->map(fn ($par) => $par[0])->values()->all();
     }
 
     /**
