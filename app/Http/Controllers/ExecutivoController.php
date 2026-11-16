@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\Executivo\Acompanhamentos;
 use App\Services\Executivo\Blocos;
 use App\Services\Executivo\Envelope;
 use Illuminate\Http\JsonResponse;
@@ -26,6 +27,16 @@ class ExecutivoController extends Controller
     public function bloco(Request $request, Blocos $blocos, string $bloco): JsonResponse
     {
         abort_unless(in_array($bloco, Blocos::NOMES, true), 404);
+
+        if ($bloco === 'acompanhamentos') {
+            $parametros = $request->validate([
+                'secao' => ['nullable', 'string', 'in:'.implode(',', Acompanhamentos::SECOES)],
+                'pagina' => ['nullable', 'integer', 'min:1'],
+                'limite' => ['nullable', 'integer', 'min:1', 'max:'.Acompanhamentos::LIMITE_MAXIMO],
+            ]);
+
+            return response()->json($blocos->montar($bloco, $request->user(), $parametros));
+        }
 
         $parametros = in_array($bloco, ['agenda', 'financeiro'], true) ? $request->validate([
             'de' => ['nullable', 'date_format:Y-m-d'],
