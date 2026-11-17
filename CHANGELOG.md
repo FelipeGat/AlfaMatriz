@@ -1,5 +1,15 @@
 # Changelog — AlfaMatriz
 
+## AlfaMatriz — 17/11/2026 — Cobrança de revendas volta a abrir com boleto emitido (v2026.11.17.1, T-622)
+
+### Correção
+
+- **A tela Cobrança de revendas voltou a abrir quando há boleto emitido.**
+  Desde que a primeira cobrança ganhou boleto, a tela dava erro para quem
+  cobra, porque o sistema não lia como data o dia em que o boleto foi emitido
+  e conferido. Agora ela abre normalmente e mostra, em cada cobrança com
+  boleto, quando ele foi emitido e quando foi conferido.
+
 ## AlfaMatriz — 06/11/2026 — A confirmação da Central de IA não trava mais (v2026.11.03.4, T-566)
 
 ### Correção
