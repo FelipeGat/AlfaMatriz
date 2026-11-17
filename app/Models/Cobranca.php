@@ -27,6 +27,10 @@ class Cobranca extends Model
             'valor_pago' => 'decimal:2',
             'data_vencimento' => 'date',
             'data_pagamento' => 'date',
+            // T-622: sem o cast, o banco devolve texto e a tela de Cobrança de
+            // revendas quebrava no ->format() assim que a cobrança tinha boleto.
+            'mp_emitido_em' => 'datetime',
+            'mp_conferido_em' => 'datetime',
             'detalhamento' => 'array',
         ];
     }

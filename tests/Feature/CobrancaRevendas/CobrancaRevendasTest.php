@@ -170,6 +170,21 @@ class CobrancaRevendasTest extends TestCase
         $this->assertSame(1, $this->conta->movimentacoes()->count(), 'Pago não volta a ser conferido nem baixado');
     }
 
+    /** T-622: a tela quebrava ("format() on string") com boleto emitido e conferido. */
+    public function test_tela_abre_com_boleto_emitido_e_conferido(): void
+    {
+        $this->cenario();
+        app(FaturamentoService::class)->gerarParaCompetencia('2026-10');
+        Carbon::setTestNow(Carbon::parse('2026-11-01 08:00', 'America/Sao_Paulo'));
+        $this->fakeMercadoPago('pending');
+        $this->artisan('cobrancas:emitir-boletos-revendas');
+        Carbon::setTestNow(Carbon::parse('2026-11-01 09:00', 'America/Sao_Paulo'));
+        $this->artisan('cobrancas:conferir-boletos');
+
+        $this->actingAs($this->felipe)->get(route('cobranca-revendas.index'))->assertOk()
+            ->assertSee('emitido 01/11 08:00')->assertSee('conferido 01/11 09:00');
+    }
+
     public function test_revenda_que_nao_e_por_cliente_segue_igual(): void
     {
         $this->invest->update(['cobranca_por_cliente' => false, 'dia_vencimento' => null]);
