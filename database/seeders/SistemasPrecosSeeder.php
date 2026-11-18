@@ -83,8 +83,13 @@ class SistemasPrecosSeeder extends Seeder
                 'unidade_cobranca' => 'funcionário ativo',
                 // Metrado: a unidade é o funcionário ativo, que só a origem
                 // sabe contar — daí o `sincroniza_uso` valer mais aqui do que
-                // em qualquer outro sistema.
-                'capacidades' => ['sincroniza', 'sincroniza_uso'],
+                // em qualquer outro sistema. A licença entrou na T-598, o mesmo
+                // conjunto que a migração `licenca_no_alfajornada` grava num
+                // banco já semeado.
+                'capacidades' => [
+                    'sincroniza', 'sincroniza_uso',
+                    'sincroniza_licencas', 'gerencia_licenca',
+                ],
                 'tiers' => [
                     ['nome' => 'Único', 'preco_base' => 0, 'unidades_inclusas' => 0, 'valor_excedente_unidade' => 2.50, 'limite_unidades' => null, 'ordem' => 1],
                 ],

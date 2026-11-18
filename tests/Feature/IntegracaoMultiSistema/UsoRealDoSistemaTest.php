@@ -20,13 +20,14 @@ class UsoRealDoSistemaTest extends TestCase
 {
     use RefreshDatabase;
 
-    /** As três coleções que o AlfaJornada serve, na resposta mínima que o ciclo aceita. */
+    /** As coleções que o AlfaJornada serve (licenças desde a T-598), na resposta mínima que o ciclo aceita. */
     private function fakeJornada(array $uso, array $clientes = [['id_externo' => '7', 'nome' => 'Padaria Estrela', 'ativo' => true]]): void
     {
         Http::preventStrayRequests();
         Http::fake([
             '*jornada.alfasolucoes.cloud/api/matriz/v1/revendas*' => $this->envelope('alfajornada', []),
             '*jornada.alfasolucoes.cloud/api/matriz/v1/clientes*' => $this->envelope('alfajornada', $clientes),
+            '*jornada.alfasolucoes.cloud/api/matriz/v1/licencas*' => $this->envelope('alfajornada', []),
             '*jornada.alfasolucoes.cloud/api/matriz/v1/uso*' => $this->envelope('alfajornada', $uso),
         ]);
     }

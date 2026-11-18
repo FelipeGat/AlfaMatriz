@@ -77,7 +77,9 @@ class SistemaFactory extends Factory
 
     /**
      * O AlfaJornada: metrado por funcionário ativo, que só a origem sabe
-     * contar — o uso real é a razão de ele entrar no ciclo.
+     * contar — o uso real é a razão de ele entrar no ciclo. Desde a T-598 a
+     * licença também é espelhada e gerenciada pela Matriz (o contrato de
+     * licença dele entrou na T-583).
      */
     public function alfajornada(): static
     {
@@ -86,7 +88,10 @@ class SistemaFactory extends Factory
             'slug' => 'alfajornada',
             'unidade_cobranca' => 'funcionário ativo',
             'base_url' => 'https://jornada.alfasolucoes.cloud',
-            'capacidades' => ['sincroniza', 'sincroniza_uso'],
+            'capacidades' => [
+                'sincroniza', 'sincroniza_uso',
+                'sincroniza_licencas', 'gerencia_licenca',
+            ],
         ]);
     }
 

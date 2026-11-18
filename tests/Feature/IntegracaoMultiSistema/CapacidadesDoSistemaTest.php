@@ -97,6 +97,40 @@ class CapacidadesDoSistemaTest extends TestCase
     }
 
     /**
+     * T-598: a migração liga a licença do AlfaJornada num banco em que ele só
+     * media uso — como está em produção — sem tirar o que ele já tinha, e o
+     * down() tira só as duas que ela pôs.
+     */
+    public function test_migracao_liga_a_licenca_do_alfajornada_sem_perder_o_uso(): void
+    {
+        $migracao = 'database/migrations/2026_11_18_100000_licenca_no_alfajornada.php';
+
+        $this->artisan('migrate:rollback', ['--path' => $migracao])->assertSuccessful();
+
+        DB::table('sistemas')->insert([
+            'nome' => 'AlfaJornada', 'slug' => 'alfajornada', 'categoria' => 'saas',
+            'unidade_cobranca' => 'funcionário ativo', 'ativo' => true,
+            'capacidades' => json_encode(['sincroniza', 'sincroniza_uso']),
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        $this->artisan('migrate', ['--path' => $migracao])->assertSuccessful();
+
+        $jornada = Sistema::where('slug', 'alfajornada')->firstOrFail();
+        $this->assertTrue($jornada->suporta('sincroniza_licencas'));
+        $this->assertTrue($jornada->suporta('gerencia_licenca'));
+        $this->assertTrue($jornada->suporta('sincroniza_uso'), 'Ligar a licença não pode desligar a medição de uso.');
+        $this->assertFalse($jornada->suporta('provisiona_cliente'));
+
+        $this->artisan('migrate:rollback', ['--path' => $migracao])->assertSuccessful();
+
+        $this->assertSame(
+            ['sincroniza', 'sincroniza_uso'],
+            $jornada->fresh()->capacidades
+        );
+    }
+
+    /**
      * @spec:AC-158 A consulta por capacidade acha os sistemas certos — é o que
      * substitui o `where('slug', 'alfagym')` espalhado pelos controllers.
      */
