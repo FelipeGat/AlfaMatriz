@@ -1,0 +1,7 @@
+<b>📋 AlfaMatriz — Changelog 19/11/2026</b>
+
+<b>✨ Melhoria</b>
+• <b>O assistente do quadro passou a ver o resultado dos testes das tarefas.</b> Quando alguém aprova ou reprova uma tarefa no staging ou em produção, o assistente que trabalha nas tarefas agora vê esse resultado: se foi aprovada ou reprovada, quem testou, quando e as observações. Ele vê isso ao abrir a tarefa e também na lista. Antes, o resultado só aparecia na tela do quadro, e o assistente podia seguir sem saber que um teste tinha reprovado.
+
+<i>Versão v2026.11.19.1 · T-629</i>
+<i>Alfa Soluções Tecnológicas</i>
