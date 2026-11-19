@@ -68,6 +68,28 @@ class TarefaRelatorioTeste extends Model
         return $this->belongsTo(User::class, 'user_id');
     }
 
+    /**
+     * "Staging aprovado", "Produção reprovada" — o veredito com o ambiente.
+     *
+     * A etapa é a do evento a que o relatório se prende, e não a etapa atual
+     * da tarefa: o veredito do staging continua sendo do staging depois que a
+     * tarefa sobe. Relatório antigo, de Em testes ou sem evento, não finge
+     * ambiente nenhum. "Produção" é feminino e "Staging" não — o mesmo cuidado
+     * do card, que escrevia "Produção reprovado".
+     */
+    public function rotulo(): string
+    {
+        $etapa = $this->evento?->para_status;
+        $resultado = $this->aprovado ? 'aprovad' : 'reprovad';
+
+        return match ($etapa) {
+            'em_staging' => 'Staging '.$resultado.'o',
+            'em_producao' => 'Produção '.$resultado.'a',
+            null => 'Teste '.$resultado.'o',
+            default => 'Teste '.$resultado.'o ('.Tarefa::rotuloDaEtapa($etapa).')',
+        };
+    }
+
     /** A passagem por Em testes de que este relatório é a prova. */
     public function evento(): BelongsTo
     {

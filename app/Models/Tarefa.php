@@ -1155,6 +1155,41 @@ class Tarefa extends Model
             ->first();
     }
 
+    /**
+     * O veredito que vale para a etapa em que a tarefa está — o selo
+     * "Staging aprovado por…" do card — ou null fora dos portões de veredito.
+     *
+     * Existe para quem lê a tarefa sem a tela (o MCP, T-629): na T-616 uma
+     * central respondeu sem saber que a produção já estava aprovada, porque o
+     * `ver_tarefa` não trazia o carimbo. A pergunta é a mesma do card e do
+     * portão, então o recorte continua sendo o do `testeDestaPassagem`.
+     *
+     * Com `eventos` e `relatoriosTeste` já carregados, responde em memória
+     * (como `entregaAtual`): a lista do agente cobre dezenas de tarefas, e duas
+     * consultas por linha seriam o N+1 clássico. Só leitura usa este caminho —
+     * o portão continua consultando o banco, onde o carimbo recém-criado está.
+     */
+    public function vereditoDaEtapa(): ?TarefaRelatorioTeste
+    {
+        if (! $this->passaPelosPortoes() || ! in_array($this->status, self::PORTOES_DE_VEREDITO, true)) {
+            return null;
+        }
+
+        if (! $this->relationLoaded('eventos') || ! $this->relationLoaded('relatoriosTeste')) {
+            return $this->testeDestaPassagem();
+        }
+
+        $eventoAberto = $this->eventos->whereNull('saiu_em')->sortByDesc('entrou_em')->first()?->id;
+
+        // Nulo com nulo também casa: a tarefa que nunca se moveu, como no banco.
+        return $this->relatoriosTeste
+            ->filter(fn (TarefaRelatorioTeste $relatorio) => $relatorio->tarefa_evento_id === null
+                ? $eventoAberto === null
+                : (int) $relatorio->tarefa_evento_id === (int) $eventoAberto)
+            ->sortByDesc('id')
+            ->first();
+    }
+
     /** As entregas para a revisão (#210), da primeira à mais recente. */
     public function entregas(): HasMany
     {

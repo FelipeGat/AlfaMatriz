@@ -14,7 +14,7 @@ class ListarTarefas extends Ferramenta
 
     protected string $title = 'Listar tarefas';
 
-    protected string $description = 'Lista tarefas do quadro, uma por linha, com código, etapa, prioridade, responsável, sistema, prazo e marcas (bloqueada, retorno, pergunta). Por padrão só as em aberto, mais recentes primeiro.';
+    protected string $description = 'Lista tarefas do quadro, uma por linha, com código, etapa, prioridade, responsável, sistema, prazo e marcas (bloqueada, retorno, pergunta) e, em Em staging e Em produção, o veredito desta etapa (aprovado ou reprovado e por quem, ou "sem veredito"). Por padrão só as em aberto, mais recentes primeiro.';
 
     protected array $permissao = ['tarefas', 'ler'];
 
@@ -94,10 +94,37 @@ class ListarTarefas extends Ferramenta
             return Response::text('Nenhuma tarefa encontrada com esse recorte.');
         }
 
+        // O veredito (T-629) só existe em Em staging e Em produção: carrega
+        // eventos e relatórios só dessas, de uma vez, e `vereditoDaEtapa`
+        // responde em memória — sem duas consultas por linha.
+        $tarefas->filter(fn (Tarefa $tarefa) => in_array($tarefa->status, Tarefa::PORTOES_DE_VEREDITO, true))
+            ->load(['eventos', 'relatoriosTeste.autor', 'relatoriosTeste.evento']);
+
         return Response::text(
             $tarefas->count().' tarefa(s):'."\n"
             .$tarefas->map(fn (Tarefa $tarefa) => '- '.$this->linhaDaTarefa($tarefa)
+                .$this->marcaDoVeredito($tarefa)
                 .($tarefa->tarefa_pai_id ? ' — subtarefa de #'.$tarefa->tarefa_pai_id : ''))->implode("\n")
         );
+    }
+
+    /**
+     * O selo do card na linha: "[Staging aprovado por Fulano em 19/11]", ou
+     * "[sem veredito]" no portão ainda sem carimbo — a falta também é
+     * informação, e é a que mais engana quem não a vê. Fica só aqui, e não em
+     * `linhaDaTarefa`, porque aquela linha volta depois de mover e editar,
+     * quando o carimbo já não é o assunto.
+     */
+    private function marcaDoVeredito(Tarefa $tarefa): string
+    {
+        if (! $tarefa->passaPelosPortoes() || ! in_array($tarefa->status, Tarefa::PORTOES_DE_VEREDITO, true)) {
+            return '';
+        }
+
+        $veredito = $tarefa->vereditoDaEtapa();
+
+        return $veredito
+            ? ' ['.$veredito->rotulo().' por '.($veredito->autor?->name ?? '?').' em '.$veredito->created_at->format('d/m').']'
+            : ' [sem veredito]';
     }
 }

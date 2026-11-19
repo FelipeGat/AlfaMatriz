@@ -8,6 +8,7 @@ use App\Models\TarefaComentario;
 use App\Models\TarefaEvento;
 use App\Models\TarefaItem;
 use App\Models\TarefaReferenciaGit;
+use App\Models\TarefaRelatorioTeste;
 use App\Models\User;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
@@ -28,7 +29,7 @@ class VerTarefa extends Ferramenta
 
     protected string $title = 'Ver tarefa';
 
-    protected string $description = 'Tudo sobre uma tarefa: resumo, detalhes, responsável, marcas (arquivo, bloqueio, retorno, pergunta), a entrega para a revisão (o que foi feito, como testar, PR e commits), o código ligado pelo GitHub (PRs e commits que citam T-N), checklist, conversa, histórico de etapas e para onde VOCÊ pode movê-la. Leia antes de mover ou responder.';
+    protected string $description = 'Tudo sobre uma tarefa: resumo, detalhes, responsável, marcas (arquivo, bloqueio, retorno, pergunta), a entrega para a revisão (o que foi feito, como testar, PR e commits), o veredito do teste (o que vale nesta etapa e cada um já registrado: staging ou produção, aprovado ou reprovado, quem, quando e notas), o código ligado pelo GitHub (PRs e commits que citam T-N), checklist, conversa, histórico de etapas e para onde VOCÊ pode movê-la. Leia antes de mover ou responder.';
 
     protected array $permissao = ['tarefas', 'ler'];
 
@@ -55,6 +56,7 @@ class VerTarefa extends Ferramenta
         $tarefa->load([
             'responsavel', 'sistema', 'criadoPor', 'interlocutor', 'perguntaDe', 'perguntaPara',
             'pai', 'subtarefas', 'duplicadaDe', 'duplicadas', 'arquivadaPor', 'itens', 'comentarios.autor', 'eventos.autor', 'anexos', 'entregas.autor', 'referenciasGit',
+            'relatoriosTeste.autor', 'relatoriosTeste.evento',
         ]);
 
         $blocos = [$this->linhaDaTarefa($tarefa)];
@@ -140,6 +142,34 @@ class VerTarefa extends Ferramenta
         } elseif ($tarefa->entregas->isNotEmpty()) {
             $blocos[] = 'Entregas anteriores para a revisão: '.$tarefa->entregas->count()
                 .' (a última, de '.$tarefa->entregas->last()->created_at->format('d/m/Y').', não vale para o código de agora).';
+        }
+
+        // O veredito (T-629), logo depois da entrega: é o carimbo que libera a
+        // etapa seguinte, e sem ele aqui o agente respondia sobre Em staging e
+        // Em produção sem saber se já estava aprovada (T-616). Primeiro o que
+        // vale AGORA — o selo do card —, depois cada um já registrado, porque o
+        // reprovado de uma passagem anterior explica a volta da tarefa.
+        $vigente = $tarefa->vereditoDaEtapa();
+
+        if ($vigente) {
+            $blocos[] = 'Veredito desta etapa: '.$vigente->rotulo().' por '.($vigente->autor?->name ?? '?')
+                .' em '.$vigente->created_at->format('d/m/Y H:i')
+                .($vigente->notas ? ' — '.$vigente->notas : '');
+        } elseif ($tarefa->passaPelosPortoes() && in_array($tarefa->status, Tarefa::PORTOES_DE_VEREDITO, true)) {
+            $blocos[] = 'Veredito desta etapa: nenhum registrado nesta passagem por '.Tarefa::rotuloDaEtapa($tarefa->status).'.';
+        }
+
+        if ($tarefa->relatoriosTeste->isNotEmpty()) {
+            $relatorios = $tarefa->relatoriosTeste->sortBy('id')->values();
+            $omitidos = max(0, $relatorios->count() - self::ULTIMOS);
+
+            $blocos[] = 'Vereditos registrados'.($omitidos ? ' (últimos '.self::ULTIMOS.' de '.$relatorios->count().')' : '').":\n"
+                .$relatorios->slice(-self::ULTIMOS)
+                    ->map(fn (TarefaRelatorioTeste $r) => '- '.$r->created_at->format('d/m/Y H:i').' '.$r->rotulo()
+                        .' por '.($r->autor?->name ?? '?')
+                        .($r->notas ? ' — '.$r->notas : '')
+                        .($vigente && $vigente->is($r) ? ' (vale agora)' : ''))
+                    ->implode("\n");
         }
 
         // O código que o GitHub ligou (#211), logo depois da entrega: o agente
